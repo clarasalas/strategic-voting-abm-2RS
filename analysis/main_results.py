@@ -52,6 +52,8 @@ Usage
     Reduce N_REPS to 50 for a quick test run.
 """
 
+print("Hello world!")
+
 import sys
 import numpy as np
 import pandas as pd

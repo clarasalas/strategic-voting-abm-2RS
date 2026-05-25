@@ -1,0 +1,6 @@
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.7
+pandas>=2.0
+SALib>=1.4
+# Pillow>=9.0      # optional: combined figure grids in robustness_checks.py

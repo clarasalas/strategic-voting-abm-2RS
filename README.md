@@ -223,20 +223,3 @@ two second-round finalists (abstention, blank, and null votes excluded).
 Party positions are equally spaced on [−1, 1]:
 *xⱼ* = −1 + (2*j* + 1)/*K*, *j* = 0, …, *K* − 1.  
 Voter tolerance is normalised by zone spacing: *τ* = *τ̂* · (2/*K*).
-
----
-
-## Citation
-
-```bibtex
-@mastersthesis{salas2025strategic,
-  author = {Salas, Clara},
-  title  = {Public Signals and Strategic Coordination in
-            Two-Round Elections: An Agent-Based Model},
-  school = {ENS-PSL},
-  year   = {2025},
-  type   = {M2 Thesis},
-  note   = {Centre Borelli, ENS-PARIS-SACLAY.
-            \url{https://github.com/clarasalas/strategic-voting-abm-2RS}}
-}
-```

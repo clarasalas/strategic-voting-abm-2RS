@@ -1,0 +1,13 @@
+election_year,party,left_right_position,position_source,block
+2022,NPA,"0,3",hand_coded,far_left
+2022,LO,"0,4",hand_coded,far_left
+2022,PCF,"1,7272727",CHES,left
+2022,LFI,"0,8181818",CHES,left
+2022,EELV,"2,3",CHES,left
+2022,PS,"3,4545455",CHES,left
+2022,RE,"6,2727275",CHES,center
+2022,LR,"7,7272725",CHES,right
+2022,RES,"5,8",hand_coded,right
+2022,DLF,"8,3",hand_coded,right
+2022,RN,"8,818182",CHES,far_right
+2022,REC,"9,727273",CHES,far_right

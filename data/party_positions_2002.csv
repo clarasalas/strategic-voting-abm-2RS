@@ -1,0 +1,16 @@
+election_year,party,left_right_position,position_source,block
+2002,LO,"0,5",hand_coded,far_left
+2002,LCR,"0,7",hand_coded,far_left
+2002,PCF,"1,62",CHES,left
+2002,PS,"3,85",CHES,left
+2002,PRG,"3,62",CHES,left
+2002,LV,"2,65",CHES,left
+2002,MDC,"4,2",hand_coded,left
+2002,CAP21,5,hand_coded,center
+2002,CPNT,"7,3",hand_coded,right
+2002,UDF,"5,85",CHES,center
+2002,DL,"7,07",CHES,right
+2002,RPR,7,CHES,right
+2002,FRS,"7,5",hand_coded,right
+2002,FN,"9,92",CHES,far_right
+2002,MNR,"9,8",hand_coded,far_right

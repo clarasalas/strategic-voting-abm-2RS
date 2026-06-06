@@ -118,6 +118,11 @@ def run_simulation(
         # --- Diagnostics ---
         collect_diagnostics: bool = False,
         collect_mu_calibration: bool = False,
+
+        # --- Empirical replay overrides (all default None = synthetic mode) ---
+        party_positions_override: np.ndarray = None,
+        voter_positions_override: np.ndarray = None,
+        exogenous_signals: list = None,
 ) -> dict:
     """
     Run the strategic voting ABM for one parameter configuration.
@@ -178,6 +183,32 @@ def run_simulation(
     if party_ids is None:
         party_ids = [str(i) for i in range(K)]
 
+    # ------------------------------------------------------------------ #
+    # Empirical replay mode                                               #
+    # ------------------------------------------------------------------ #
+    # When override arrays are supplied the model uses empirical party
+    # positions, empirical voter positions, and/or an exogenous poll-signal
+    # timeline instead of the synthetic generators.  All three default to
+    # None, in which case behaviour is identical to the original model.
+    if party_positions_override is not None:
+        party_positions_override = np.asarray(party_positions_override,
+                                              dtype=float)
+        if len(party_positions_override) != K:
+            raise ValueError(
+                f"party_positions_override has length "
+                f"{len(party_positions_override)} but K={K}."
+            )
+    if voter_positions_override is not None:
+        voter_positions_override = np.asarray(voter_positions_override,
+                                              dtype=float)
+        # n_electors is driven by the empirical voter sample.
+        n_electors = len(voter_positions_override)
+    if exogenous_signals is not None:
+        exogenous_signals = [np.asarray(s, dtype=float)
+                             for s in exogenous_signals]
+        if len(exogenous_signals) == 0:
+            raise ValueError("exogenous_signals must be non-empty.")
+
     rng = np.random.default_rng(seed)
     signal_rng = np.random.default_rng(seed + 1 if seed is not None else None)
 
@@ -196,6 +227,12 @@ def run_simulation(
     env = build_equal_zones(K, space=(-1.0, 1.0))
     party_intervals = env["party_intervals"]
     party_positions = env["party_positions"]
+
+    # Empirical positions replace the equal-zone kernels.  zone_length is
+    # kept at 2/K so the mu expressive-cost normalisation stays comparable
+    # to the synthetic experiments.
+    if party_positions_override is not None:
+        party_positions = party_positions_override
 
     if verbose:
         print(f"\n{'=' * 60}")
@@ -242,7 +279,10 @@ def run_simulation(
     allParties = [Party(j, party_positions[j]) for j in range(K)]
     allElectors = []
     for eid in range(n_electors):
-        position = functions.sample_from_distribution(voter_dist, rng)
+        if voter_positions_override is not None:
+            position = float(voter_positions_override[eid])
+        else:
+            position = functions.sample_from_distribution(voter_dist, rng)
         elector = Elector(eid, position, K, tau=tau)
         elector.calcSincereUtilities(allParties)
         allElectors.append(elector)
@@ -264,15 +304,21 @@ def run_simulation(
     # ------------------------------------------------------------------ #
     # 5. Initial poll signal                                              #
     # ------------------------------------------------------------------ #
-    if collect_diagnostics:
-        s_tilde_0 = transform_signal(true_support, theta=theta)
+    if exogenous_signals is not None:
+        # s^0 is the first empirical poll signal; theta/rho are unused.
+        signal = exogenous_signals[0].copy()
+        if collect_diagnostics:
+            s_tilde_0 = signal.copy()
+    else:
+        if collect_diagnostics:
+            s_tilde_0 = transform_signal(true_support, theta=theta)
 
-    signal = generate_signal(
-        true_support,
-        theta=theta,
-        rho=rho,
-        rng=signal_rng,
-    )
+        signal = generate_signal(
+            true_support,
+            theta=theta,
+            rho=rho,
+            rng=signal_rng,
+        )
 
     # ------------------------------------------------------------------ #
     # 6. Prior beliefs  π_a ~ Dirichlet(ρ_π · s^0)                       #
@@ -313,8 +359,20 @@ def run_simulation(
 
     for iteration in range(1, max_iterations + 1):
 
-        # Refresh signal from current vote shares (from iteration 2 onward)
-        if iteration > 1:
+        # Refresh signal each iteration.
+        #   Empirical mode : pull the next exogenous poll signal s^t,
+        #                    clamping to the last available signal once the
+        #                    timeline is exhausted (hold-last behaviour).
+        #   Synthetic mode : regenerate the signal from current vote shares.
+        if exogenous_signals is not None:
+            # iteration 1 is prior-only (belief_t=0), so the signal there is
+            # never mixed; iteration t>=2 consumes exogenous_signals[t-1].
+            # s0 (index 0) feeds the prior only.  Once the timeline is
+            # exhausted the last signal is held (relevant only when
+            # max_iterations exceeds the timeline length).
+            idx = min(iteration - 1, len(exogenous_signals) - 1)
+            signal = exogenous_signals[idx].copy()
+        elif iteration > 1:
             cur = np.array(current_counts, dtype=float)
             total = cur.sum()
             cur_shares = cur / total if total > 0 else true_support

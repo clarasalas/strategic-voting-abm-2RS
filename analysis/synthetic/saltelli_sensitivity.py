@@ -73,7 +73,7 @@ from SALib.analyze import sobol
 from SALib.sample import saltelli
 
 ROOT = Path(__file__).parent
-REPO = ROOT.parent
+REPO = ROOT.parent.parent
 sys.path.insert(0, str(REPO / "core_model"))
 
 import functions

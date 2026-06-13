@@ -56,7 +56,7 @@ import numpy as np
 import pandas as pd
 
 _ROOT = Path(__file__).parent
-_REPO = _ROOT.parent
+_REPO = _ROOT.parent.parent
 sys.path.insert(0, str(_REPO / "core_model"))
 
 import functions

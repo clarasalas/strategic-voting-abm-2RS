@@ -110,6 +110,11 @@ def run_simulation(
         alpha_prior: float = 0.0,
         K_runoff: int = 2,
 
+        # --- Sincere initialization rule ---
+        sincere_init_mode: str = "nearest",
+        beta: float = 0.0,
+        salience_source: str = "signal",
+
         # --- ABM mechanics ---
         max_iterations: int = 10,
         seed: int = None,
@@ -118,6 +123,11 @@ def run_simulation(
         # --- Diagnostics ---
         collect_diagnostics: bool = False,
         collect_mu_calibration: bool = False,
+
+        # --- Empirical replay overrides (all default None = synthetic mode) ---
+        party_positions_override: np.ndarray = None,
+        voter_positions_override: np.ndarray = None,
+        exogenous_signals: list = None,
 ) -> dict:
     """
     Run the strategic voting ABM for one parameter configuration.
@@ -159,6 +169,23 @@ def run_simulation(
         Loyalty weight.  Use mu=0 with collect_mu_calibration=True.
     alpha_prior : float in [0, 1]
         Prior weight in Bayesian update.
+    sincere_init_mode : {"nearest", "probabilistic"}
+        Rule for each voter's initial expressive party (iteration 0).
+          "nearest"       — deterministic argmax_j u_a(j) (default; original
+                            behaviour, fully backward compatible).
+          "probabilistic" — draw the initial party from the contender set Ca
+                            with P_a(j) ∝ salience_{a,j} · exp(-beta·(x_a-x_j)^2).
+        The drawn party becomes the iteration-0 vote, the switching reference,
+        and the anchor of the expressive cost.
+    beta : float >= 0
+        Ideological sharpness inside Ca for probabilistic initialization.
+        Ignored when sincere_init_mode == "nearest".  beta = 0 → salience-only
+        draw; large beta → collapses onto the nearest contender.
+    salience_source : {"signal", "prior"}
+        Salience used in the probabilistic draw.
+          "signal" (default) — common first public signal s^0_j.
+          "prior"            — voter-specific prior pi_{a,j}.
+        Ignored when sincere_init_mode == "nearest".
     K_runoff : int
     max_iterations : int
         All simulations run the full T iterations; no early stopping.
@@ -178,8 +205,51 @@ def run_simulation(
     if party_ids is None:
         party_ids = [str(i) for i in range(K)]
 
+    if sincere_init_mode not in ("nearest", "probabilistic"):
+        raise ValueError(
+            f"sincere_init_mode must be 'nearest' or 'probabilistic', "
+            f"got {sincere_init_mode!r}."
+        )
+    if salience_source not in ("signal", "prior"):
+        raise ValueError(
+            f"salience_source must be 'signal' or 'prior', "
+            f"got {salience_source!r}."
+        )
+    if sincere_init_mode == "probabilistic" and beta < 0:
+        raise ValueError(f"beta must be >= 0, got {beta}.")
+
+    # ------------------------------------------------------------------ #
+    # Empirical replay mode                                               #
+    # ------------------------------------------------------------------ #
+    # When override arrays are supplied the model uses empirical party
+    # positions, empirical voter positions, and/or an exogenous poll-signal
+    # timeline instead of the synthetic generators.  All three default to
+    # None, in which case behaviour is identical to the original model.
+    if party_positions_override is not None:
+        party_positions_override = np.asarray(party_positions_override,
+                                              dtype=float)
+        if len(party_positions_override) != K:
+            raise ValueError(
+                f"party_positions_override has length "
+                f"{len(party_positions_override)} but K={K}."
+            )
+    if voter_positions_override is not None:
+        voter_positions_override = np.asarray(voter_positions_override,
+                                              dtype=float)
+        # n_electors is driven by the empirical voter sample.
+        n_electors = len(voter_positions_override)
+    if exogenous_signals is not None:
+        exogenous_signals = [np.asarray(s, dtype=float)
+                             for s in exogenous_signals]
+        if len(exogenous_signals) == 0:
+            raise ValueError("exogenous_signals must be non-empty.")
+
     rng = np.random.default_rng(seed)
     signal_rng = np.random.default_rng(seed + 1 if seed is not None else None)
+    # Dedicated stream for probabilistic sincere initialization draws, kept
+    # separate from voter placement (rng) and signal/prior draws (signal_rng)
+    # so a fixed seed makes the initialization fully reproducible.
+    init_rng = np.random.default_rng(seed + 2 if seed is not None else None)
 
     if tau >= 2.0:
         warnings.warn(
@@ -196,6 +266,12 @@ def run_simulation(
     env = build_equal_zones(K, space=(-1.0, 1.0))
     party_intervals = env["party_intervals"]
     party_positions = env["party_positions"]
+
+    # Empirical positions replace the equal-zone kernels.  zone_length is
+    # kept at 2/K so the mu expressive-cost normalisation stays comparable
+    # to the synthetic experiments.
+    if party_positions_override is not None:
+        party_positions = party_positions_override
 
     if verbose:
         print(f"\n{'=' * 60}")
@@ -242,37 +318,47 @@ def run_simulation(
     allParties = [Party(j, party_positions[j]) for j in range(K)]
     allElectors = []
     for eid in range(n_electors):
-        position = functions.sample_from_distribution(voter_dist, rng)
+        if voter_positions_override is not None:
+            position = float(voter_positions_override[eid])
+        else:
+            position = functions.sample_from_distribution(voter_dist, rng)
         elector = Elector(eid, position, K, tau=tau)
         elector.calcSincereUtilities(allParties)
         allElectors.append(elector)
 
     # ------------------------------------------------------------------ #
-    # 4. Iteration 0 — sincere vote                                       #
+    # 4. Nearest-party support (basis for the signal in synthetic mode)   #
     # ------------------------------------------------------------------ #
-    sincere_counts = functions.countVoteIntentions(
+    # At this point no expressive attachment has been drawn, so the
+    # iteration-0 tally is the deterministic nearest-party sincere vote.
+    # In synthetic mode this defines the true support that seeds the poll
+    # signal; in probabilistic-init mode the official iteration-0 shares are
+    # recomputed in step 6b after attachments are drawn.
+    nearest_counts = functions.countVoteIntentions(
         allElectors, allParties, iteration=0
     )
-    sincere_shares = functions.voteShares(sincere_counts, n_electors)
-    true_support = np.array(sincere_shares, dtype=float)
-
-    if verbose:
-        functions.printElectionResults(
-            allParties, sincere_counts, n_electors, iteration=0
-        )
+    true_support = np.array(
+        functions.voteShares(nearest_counts, n_electors), dtype=float
+    )
 
     # ------------------------------------------------------------------ #
     # 5. Initial poll signal                                              #
     # ------------------------------------------------------------------ #
-    if collect_diagnostics:
-        s_tilde_0 = transform_signal(true_support, theta=theta)
+    if exogenous_signals is not None:
+        # s^0 is the first empirical poll signal; theta/rho are unused.
+        signal = exogenous_signals[0].copy()
+        if collect_diagnostics:
+            s_tilde_0 = signal.copy()
+    else:
+        if collect_diagnostics:
+            s_tilde_0 = transform_signal(true_support, theta=theta)
 
-    signal = generate_signal(
-        true_support,
-        theta=theta,
-        rho=rho,
-        rng=signal_rng,
-    )
+        signal = generate_signal(
+            true_support,
+            theta=theta,
+            rho=rho,
+            rng=signal_rng,
+        )
 
     # ------------------------------------------------------------------ #
     # 6. Prior beliefs  π_a ~ Dirichlet(ρ_π · s^0)                       #
@@ -281,6 +367,36 @@ def run_simulation(
         functions.generate_prior(signal, rho_pi, signal_rng)
         for _ in range(n_electors)
     ]
+
+    # ------------------------------------------------------------------ #
+    # 6b. Probabilistic sincere initialization (optional)                 #
+    # ------------------------------------------------------------------ #
+    # Draw each voter's initial expressive party from Ca with probabilities
+    #     P_a(j) ∝ salience_{a,j} · exp(-beta · (x_a - x_j)^2).
+    # The drawn party overrides the nearest party as the iteration-0 vote and
+    # the anchor of the expressive cost.  "nearest" mode leaves
+    # expressiveChoice unset, preserving the original behaviour exactly.
+    if sincere_init_mode == "probabilistic":
+        for idx, elector in enumerate(allElectors):
+            salience = signal if salience_source == "signal" else pi_priors[idx]
+            elector.drawInitialAttachment(
+                party_positions, salience, beta, init_rng
+            )
+
+    # ------------------------------------------------------------------ #
+    # 6c. Iteration 0 — official initial (expressive) vote                 #
+    # ------------------------------------------------------------------ #
+    # Reflects the active initialization rule: nearest-party in "nearest"
+    # mode, the drawn attachments in "probabilistic" mode.
+    sincere_counts = functions.countVoteIntentions(
+        allElectors, allParties, iteration=0
+    )
+    sincere_shares = functions.voteShares(sincere_counts, n_electors)
+
+    if verbose:
+        functions.printElectionResults(
+            allParties, sincere_counts, n_electors, iteration=0
+        )
 
     if verbose:
         ranking = rank_signal(signal)
@@ -313,8 +429,20 @@ def run_simulation(
 
     for iteration in range(1, max_iterations + 1):
 
-        # Refresh signal from current vote shares (from iteration 2 onward)
-        if iteration > 1:
+        # Refresh signal each iteration.
+        #   Empirical mode : pull the next exogenous poll signal s^t,
+        #                    clamping to the last available signal once the
+        #                    timeline is exhausted (hold-last behaviour).
+        #   Synthetic mode : regenerate the signal from current vote shares.
+        if exogenous_signals is not None:
+            # iteration 1 is prior-only (belief_t=0), so the signal there is
+            # never mixed; iteration t>=2 consumes exogenous_signals[t-1].
+            # s0 (index 0) feeds the prior only.  Once the timeline is
+            # exhausted the last signal is held (relevant only when
+            # max_iterations exceeds the timeline length).
+            idx = min(iteration - 1, len(exogenous_signals) - 1)
+            signal = exogenous_signals[idx].copy()
+        elif iteration > 1:
             cur = np.array(current_counts, dtype=float)
             total = cur.sum()
             cur_shares = cur / total if total > 0 else true_support

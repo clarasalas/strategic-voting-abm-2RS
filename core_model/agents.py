@@ -84,6 +84,15 @@ class Elector:
         self.contenders: list[int] = []  # Ca
         self.opponents: list[int] = []  # Oa
 
+        # ── Expressive attachment (sincere reference point) ──────────────────
+        # None  ↔  "nearest" initialization: the sincere/expressive reference
+        #          is the ideologically closest party, argmax_j u_a(j).
+        # int   ↔  "probabilistic" initialization: a party drawn from Ca via
+        #          drawInitialAttachment.  Once set it overrides the nearest
+        #          party as the iteration-0 vote, the switching reference, and
+        #          the anchor of the expressive cost in calcStrategicUtilities.
+        self.expressiveChoice: int | None = None
+
         # ── Diagnostic attribute ─────────────────────────────────────────────
         # Set by calcStrategicUtilities each iteration.
         # True  ↔  G_a = 1: Ca ∩ T_R = ∅, voter has a strategic incentive.
@@ -129,6 +138,90 @@ class Elector:
         if not self.contenders:  # degenerate safety
             self.contenders = list(range(self.nParty))
             self.opponents = []
+
+    # ------------------------------------------------------------------ #
+    # Step 1b — Expressive attachment / sincere reference point           #
+    # ------------------------------------------------------------------ #
+
+    def _attachment(self) -> int:
+        """
+        The voter's expressive attachment j*: the party that serves as the
+        sincere reference point.
+
+        "nearest" mode (expressiveChoice is None)
+            j* = argmax_j u_a(j)  — the ideologically closest party.
+        "probabilistic" mode (expressiveChoice set by drawInitialAttachment)
+            j* = the drawn party.
+
+        This single accessor is the only place the reference party is resolved,
+        so the rest of the pipeline (iteration-0 vote, switching benchmark,
+        expressive cost anchor) is automatically consistent with whichever
+        initialization rule is active.
+        """
+        if self.expressiveChoice is not None:
+            return int(self.expressiveChoice)
+        return int(np.argmax(self.sincereUtilities))
+
+    def initialAttachmentProbs(
+            self,
+            party_positions: np.ndarray,
+            salience: np.ndarray,
+            beta: float,
+    ) -> tuple:
+        """
+        Probabilistic sincere-initialization weights over the contender set:
+
+            P_a(j) ∝ salience_{a,j} * exp(-beta * (x_a - x_j)^2),   j ∈ Ca
+
+        Parameters
+        ----------
+        party_positions : array (K,) — party ideological positions x_j.
+        salience        : array (K,) — per-party salience s_{a,j}.  Either the
+                          common first signal s^0_j ("signal" source) or the
+                          voter's prior pi_{a,j} ("prior" source).
+        beta            : float >= 0 — ideological sharpness inside Ca.
+                          beta = 0  → weights depend only on salience.
+                          beta → ∞  → mass collapses onto the nearest contender.
+
+        Returns
+        -------
+        (contenders, probs) : (np.ndarray[int] (m,), np.ndarray[float] (m,))
+            Contender indices and their normalised draw probabilities, in the
+            same order.  Falls back to a uniform distribution over Ca when all
+            weights are zero or numerically invalid.
+        """
+        C = np.asarray(self.contenders, dtype=int)
+        positions = np.asarray(party_positions, dtype=float)
+        sal = np.asarray(salience, dtype=float)[C]
+
+        d_sq = (self.position - positions[C]) ** 2
+        weights = sal * np.exp(-float(beta) * d_sq)
+
+        total = weights.sum()
+        if not np.isfinite(total) or total <= 0:
+            probs = np.full(len(C), 1.0 / len(C))
+        else:
+            probs = weights / total
+        return C, probs
+
+    def drawInitialAttachment(
+            self,
+            party_positions: np.ndarray,
+            salience: np.ndarray,
+            beta: float,
+            rng,
+    ) -> int:
+        """
+        Draw the voter's initial expressive party from Ca with probabilities
+        from ``initialAttachmentProbs`` and store it in ``expressiveChoice``.
+
+        The drawn party becomes the voter's initial vote intention and the
+        anchor for the expressive cost.  Returns the drawn party index.
+        """
+        C, probs = self.initialAttachmentProbs(party_positions, salience, beta)
+        choice = int(rng.choice(C, p=probs))
+        self.expressiveChoice = choice
+        return choice
 
     # ------------------------------------------------------------------ #
     # Step 2 — Bayesian belief update                                     #
@@ -276,7 +369,10 @@ class Elector:
                                Defaults to 2/K if not supplied.
         """
         N = len(parties)
-        j_star = int(np.argmax(self.sincereUtilities))
+        # Anchor the sincere branch and expressive cost on the voter's
+        # expressive attachment (nearest party by default, or the drawn party
+        # under probabilistic initialization).
+        j_star = self._attachment()
         phi = np.full(N, -np.inf)
 
         # Reset trigger flag at the start of each call.
@@ -334,7 +430,7 @@ class Elector:
         t > 0  →  strategic vote: argmax_{j in Ca} phi_a(j)
         """
         if iteration == 0:
-            return parties[int(np.argmax(self.sincereUtilities))]
+            return parties[self._attachment()]
 
         best_j = max(self.contenders, key=lambda j: self.strategicUtilities[j])
         return parties[best_j]
@@ -345,6 +441,18 @@ class Elector:
 
     @property
     def sincereChoice(self) -> int:
+        """
+        The voter's iteration-0 (expressive) vote and switching reference.
+
+        Equals the ideologically nearest party under "nearest" initialization
+        and the drawn expressive party under "probabilistic" initialization.
+        """
+        return self._attachment()
+
+    @property
+    def nearestChoice(self) -> int:
+        """The ideologically closest party, argmax_j u_a(j), regardless of
+        the active initialization rule."""
         return int(np.argmax(self.sincereUtilities))
 
     @property

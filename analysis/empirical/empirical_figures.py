@@ -36,7 +36,7 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 
 ROOT = Path(__file__).resolve().parent
-REPO = ROOT.parent
+REPO = ROOT.parent.parent
 DATA_DIR = REPO / "data"
 FIG_DIR = REPO / "figures"
 FIG_DIR.mkdir(exist_ok=True)

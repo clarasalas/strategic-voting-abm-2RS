@@ -32,12 +32,12 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
-REPO = ROOT.parent
+REPO = ROOT.parent.parent
 sys.path.insert(0, str(REPO / "core_model"))
 sys.path.insert(0, str(ROOT))
 
 from empirical_data import load_year
-from main_results import cenp                  # reuse existing CENP
+from metrics import cenp           # shared coordination metric (core_model)
 
 YEARS = (2002, 2022)
 OUT = REPO / "data" / "behavioral_targets.csv"

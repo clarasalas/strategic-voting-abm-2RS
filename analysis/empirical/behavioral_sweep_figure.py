@@ -64,7 +64,7 @@ def _setup_font() -> None:
 _setup_font()
 
 ROOT = Path(__file__).resolve().parent
-REPO = ROOT.parent
+REPO = ROOT.parent.parent
 
 YEARS = (2002, 2022)
 COLORS = {2002: "#e8862c", 2022: "#e8862c"}    # violins: soft orange

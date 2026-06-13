@@ -44,7 +44,7 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
-REPO = ROOT.parent
+REPO = ROOT.parent.parent
 sys.path.insert(0, str(REPO / "core_model"))
 
 from model import run_simulation

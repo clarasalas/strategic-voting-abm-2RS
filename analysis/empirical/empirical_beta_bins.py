@@ -51,7 +51,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parent
-REPO = ROOT.parent
+REPO = ROOT.parent.parent
 DATA_DIR = REPO / "data"
 FIG_DIR = REPO / "figures"
 FIG_DIR.mkdir(exist_ok=True)

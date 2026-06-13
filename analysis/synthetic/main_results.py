@@ -60,7 +60,7 @@ import matplotlib.ticker as ticker
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-REPO = ROOT.parent
+REPO = ROOT.parent.parent
 sys.path.insert(0, str(REPO / "core_model"))
 
 import functions
@@ -119,19 +119,9 @@ def tau_abs(tau_hat: float, K: int) -> float:
     return tau_hat * zone_length(K)
 
 
-def enp(shares) -> float:
-    s = np.asarray(shares, dtype=float)
-    s = s / s.sum()
-    return 1.0 / (s ** 2).sum()
-
-
-def cenp(shares, K: int) -> float:
-    return (K - enp(shares)) / (K - 1)
-
-
-def delta_cenp(poll, result) -> float:
-    K = len(poll)
-    return cenp(result, K) - cenp(poll, K)
+# enp / cenp / delta_cenp now live in core_model/metrics.py so both the
+# empirical and synthetic analyses can share them.
+from metrics import enp, cenp, delta_cenp  # noqa: E402,F401
 
 
 def run_batch(params_list: list, collect_history: bool = False) -> list:

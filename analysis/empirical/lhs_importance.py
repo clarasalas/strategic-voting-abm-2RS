@@ -40,8 +40,8 @@ from sklearn.linear_model import LinearRegression
 # Configuration (shared)
 # --------------------------------------------------------------------------- #
 SEED = 42
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-OUT_DIR = Path(__file__).resolve().parent.parent / "figures"
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+OUT_DIR = Path(__file__).resolve().parent.parent.parent / "figures"
 OUT_DIR.mkdir(exist_ok=True)
 
 NAVY = "#1f2d50"

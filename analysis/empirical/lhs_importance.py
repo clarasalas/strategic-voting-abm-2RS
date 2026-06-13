@@ -347,8 +347,8 @@ def run_slide():
         results[year] = fit_and_importance(X, y, year)
 
     # Figure: single panel, grouped horizontal bars (2002 vs 2022 per row).
-    BLUE = "#4A7FC1"     # Setup group color
-    ORANGE = "#E07B3F"   # Behavioral group color
+    BLUE = "#4A7FC1"     # Preferences group color
+    ORANGE = "#E07B3F"   # Beliefs group color
     BAND_GRAY = "#F2F2F2"
 
     def lighten(color, amount=0.45):
@@ -356,13 +356,14 @@ def run_slide():
         r, g, b = mcolors.to_rgb(color)
         return (r + (1 - r) * amount, g + (1 - g) * amount, b + (1 - b) * amount)
 
-    # Four rows, top-to-bottom, with the group each belongs to and the raw params
+    # Five rows, top-to-bottom, with the group each belongs to and the raw params
     # whose importances are summed for that row.
     ROWS = [
-        ("Ideological\ndeterminism (β)", "Setup",      BLUE,   ["beta"]),
-        ("Ideological\ntolerance (τ̂)",   "Setup",      BLUE,   ["tau_hat"]),
-        ("Belief\nupdating\n(ρπ + α)",     "Behavioral", ORANGE, ["rho_pi", "alpha"]),
-        ("Loyalty\ncost (μ)",             "Behavioral", ORANGE, ["mu"]),
+        ("Acceptable\ncandidates (τ̂)", "Preferences", BLUE,   ["tau_hat"]),
+        ("Favorite\nchoice (β)",        "Preferences", BLUE,   ["beta"]),
+        ("Strategic voting\ncost (μ)",  "Preferences", BLUE,   ["mu"]),
+        ("Prior\ndecision (ρπ)",        "Beliefs",     ORANGE, ["rho_pi"]),
+        ("Reaction to\nnew polls (α)",  "Beliefs",     ORANGE, ["alpha"]),
     ]
 
     def grouped_value(pct, params):
@@ -372,8 +373,9 @@ def run_slide():
         return f"{round(val)}%" if val >= 5 else f"<{max(1, round(val))}%"
 
     # Row y-centers (top-to-bottom). Normal row gap = 1.0; the gap at the section
-    # break (between rows 2 and 3) is 1.8 (>1.5x) to make the split obvious.
-    ROW_Y = [4.8, 3.8, 2.0, 1.0]
+    # break (between Preferences rows 0–2 and Beliefs rows 3–4) is widened to
+    # make the split obvious.
+    ROW_Y = [6.0, 5.0, 4.0, 2.2, 1.2]
     BAR_H = 0.28
     OFFSET = 0.17               # half-distance between the paired bars
     pct02 = _importance_pct(results["2002"][0])
@@ -385,7 +387,7 @@ def run_slide():
     def band(rows_y, pad_top=0.55, pad_bot=0.55):
         return min(rows_y) - pad_bot, max(rows_y) + pad_top
 
-    for grp_rows in ([ROW_Y[0], ROW_Y[1]], [ROW_Y[2], ROW_Y[3]]):
+    for grp_rows in (ROW_Y[0:3], ROW_Y[3:5]):
         lo, hi = band(grp_rows)
         ax.axhspan(lo, hi, xmin=0, xmax=1, color=BAND_GRAY, zorder=0)
 
@@ -401,10 +403,10 @@ def run_slide():
         ax.text(v22 + 1.2, ry - OFFSET, fmt(v22), va="center", ha="left",
                 fontsize=12, color=NAVY)
 
-    # Group labels ("SETUP" / "BEHAVIORAL") in the group color, just above each band.
+    # Group labels ("PREFERENCES" / "BELIEFS") in the group color, above each band.
     for grp_rows, grp_label, grp_color in (
-        ([ROW_Y[0], ROW_Y[1]], "Setup parameters", BLUE),
-        ([ROW_Y[2], ROW_Y[3]], "Behavioral parameters", ORANGE),
+        (ROW_Y[0:3], "Preferences parameters", BLUE),
+        (ROW_Y[3:5], "Beliefs parameters", ORANGE),
     ):
         lo, hi = band(grp_rows)
         ax.text(1.5, hi + 0.08, grp_label.upper(), ha="left", va="bottom",
@@ -414,7 +416,7 @@ def run_slide():
     # Y tick labels = parameter names.
     ax.set_yticks(ROW_Y)
     ax.set_yticklabels([r[0] for r in ROWS], fontsize=12, fontweight="bold")
-    ax.set_ylim(0.3, 5.7)  # high y at top (no inversion -> first row on top)
+    ax.set_ylim(0.5, 7.0)  # high y at top (no inversion -> first row on top)
 
     # X axis.
     ax.set_xlim(0, 100)

@@ -90,7 +90,7 @@ Diagnostics and per-voter calibration data are available via
 ```
 strategic-voting-abm-2RS/
 │
-├── core model
+├── core_model/
 │   ├── agents.py               Party and Elector agent classes;
 │   │                           four-step decision pipeline
 │   ├── environment.py          Equal-zone ideological space;
@@ -99,17 +99,32 @@ strategic-voting-abm-2RS/
 │   │                           coordination outcome measures
 │   ├── signals.py              Temperature-transformed Dirichlet
 │   │                           poll signal generation
-│   └── model.py                Main simulation loop (run_simulation)
+│   ├── model.py                Main simulation loop (run_simulation)
+│   ├── metrics.py              Shared coordination metrics (ENP, CENP, ΔCENP)
+│   ├── empirical_data.py       Loaders for the fixed 2002/2022 inputs
+│   │                           (party positions, electorate, poll timeline)
+│   └── empirical_outcomes.py   Per-run outcome and initialization benchmarks
+│                               for the empirical replay
 │
-├── analysis
-│   ├── saltelli_sensitivity.py Global Sobol sensitivity analysis
-│   │                           across K ∈ {6, 8, 9}  (~55 000 runs)
-│   ├── robustness_checks.py    Protocol checks: N, Tmax, εs, ξ (panels A–D);
-│   │                           signal mechanism (E); μ sweep (F)
-│   └── main_results_figures.py Four main paper figures: heatmap, c-sweep,
-│                               trajectory, empirical comparison
+├── analysis/
+│   ├── synthetic/              Abstract model on random inputs
+│   │   ├── saltelli_sensitivity.py Global Sobol sensitivity across
+│   │   │                           K ∈ {6, 8, 9}  (~55 000 runs)
+│   │   ├── robustness_checks.py    Protocol checks: N, Tmax, εs, ξ (A–D);
+│   │   │                           signal mechanism (E); μ sweep (F)
+│   │   └── main_results.py         Four main paper figures: heatmap, c-sweep,
+│   │                               trajectory, empirical comparison
+│   └── empirical/             Real party positions, electorate & polls held fixed
+│       ├── empirical_2002_2022.py  2002/2022 replay pipeline (runs + robustness)
+│       ├── empirical_diagnostics.py Diagnostic tables per year
+│       ├── empirical_figures.py     Figures from the replay outputs
+│       ├── empirical_beta_bins.py   Outcome by β bin
+│       ├── behavioral_targets.py    Observed ΔCENP target per year
+│       ├── behavioral_sweep.py      Behavioral-parameter sweep (fixed structure)
+│       ├── behavioral_sweep_figure.py  Sweep summary figures
+│       └── lhs_importance.py        LHS parameter-importance (use --slide for slides)
 │
-├── illustration figures
+├── illustration_figures/
 │   ├── distribution_figure.py      Voter distribution on ideological interval
 │   ├── outcome_measures_figure.py  Sincere vs final shares with ΔCENP, k*, Δd*, Δr'
 │   ├── preferences_figure.py       Contender (Ca) and opponent (Oa) sets
@@ -117,15 +132,23 @@ strategic-voting-abm-2RS/
 │   ├── fr_elections.py             French election poll-vs-result bar charts
 │   └── fr_vote_transfers.py        Second-round vote transfer alluvial diagrams
 │
-├── data
+├── tests/                     pytest suite (test_empirical.py, …)
+│
+├── data/
 │   ├── FR-electoral_data.csv       Poll and result shares by year and party
 │   ├── FR-vote_transfers.csv       Second-round transfer rates (2002, 2022)
-│   ├── saltelli_results_K6.csv     Pre-computed Saltelli output, K = 6
-│   ├── saltelli_results_K8.csv     Pre-computed Saltelli output, K = 8
-│   └── saltelli_results_K9.csv     Pre-computed Saltelli output, K = 9
+│   ├── party_positions_{2002,2022}.csv  Candidate ideological positions
+│   ├── polls_{2002,2022}.csv            Pre-electoral poll timeline
+│   ├── results_{2002,2022}.csv          First-round results
+│   ├── voters_ideology_{2002,2022}.csv  Empirical electorate distribution
+│   └── saltelli_results_K{6,8,9}.csv    Pre-computed Saltelli output
 │
 └── requirements.txt
 ```
+
+> Generated outputs (`data/empirical_*`, `data/behavioral_*`, `data/sweep_*`,
+> and everything under `figures/`) are git-ignored — regenerate them by running
+> the analysis scripts below.
 
 ---
 
@@ -134,34 +157,60 @@ strategic-voting-abm-2RS/
 Pre-computed Saltelli CSVs are included so the main figures can be reproduced
 without re-running the full sensitivity analysis.
 
+Scripts are organised by data regime: `analysis/synthetic/` runs the abstract
+model on random inputs, while `analysis/empirical/` holds the real 2002/2022
+party positions, electorate, and polls fixed. Run each from the repo root.
+
 **Main paper figures** (heatmap, c-sweep, trajectory, empirical range):
 ```bash
-python main_results_figures.py
+python analysis/synthetic/main_results.py
 ```
 Outputs: `fig1_heatmap_trigger.png`, `fig2_trigger_condswitch_c.png`,
 `fig3_trajectory_deltacenp.png`, `fig4_empirical_range_cenp.png`.
 
 **Robustness checks** (Appendices B–D):
 ```bash
-python robustness_checks.py               # all six panels
-python robustness_checks.py --panels A B  # specific panels only
+python analysis/synthetic/robustness_checks.py               # all six panels
+python analysis/synthetic/robustness_checks.py --panels A B  # specific panels only
 ```
 Outputs written to `outputs/robustness_checks/`.
 
+**Empirical 2002/2022 replay** (real structure fixed):
+```bash
+python analysis/empirical/empirical_2002_2022.py            # runs + robustness
+python analysis/empirical/empirical_2002_2022.py --quick    # few draws, smoke run
+python analysis/empirical/empirical_figures.py              # figures from the outputs
+python analysis/empirical/empirical_diagnostics.py          # diagnostic tables
+```
+
+**Behavioral sweep & parameter importance** (fixed empirical structure):
+```bash
+python analysis/empirical/behavioral_targets.py        # observed ΔCENP targets
+python analysis/empirical/behavioral_sweep.py          # run the sweep
+python analysis/empirical/behavioral_sweep_figure.py   # sweep figures
+python analysis/empirical/lhs_importance.py            # paper figures
+python analysis/empirical/lhs_importance.py --slide    # slide figure
+```
+
 **Illustration figures**:
 ```bash
-python distribution_figure.py
-python outcome_measures_figure.py
-python preferences_figure.py
-python signal_figures.py
-python fr_elections.py --save             # saves one PNG per election year
-python fr_vote_transfers.py               # saves PNG + PDF per year
+python illustration_figures/distribution_figure.py
+python illustration_figures/outcome_measures_figure.py
+python illustration_figures/preferences_figure.py
+python illustration_figures/signal_figures.py
+python illustration_figures/fr_elections.py --save     # one PNG per election year
+python illustration_figures/fr_vote_transfers.py       # PNG + PDF per year
 ```
 
 **Re-run the full Saltelli analysis** (overwrites included CSVs; ~1.5 hours):
 ```bash
-python saltelli_sensitivity.py
+python analysis/synthetic/saltelli_sensitivity.py
 # Edit K_VALUES or set N_SALTELLI = 64 for a quick test run (1152 runs per K).
+```
+
+**Tests**:
+```bash
+pytest
 ```
 
 ---

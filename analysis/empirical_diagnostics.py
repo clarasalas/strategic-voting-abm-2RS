@@ -87,18 +87,61 @@ plt.rcParams.update({
 #  LOADING                                                                     #
 # =========================================================================== #
 
-def load_runs(year: int) -> pd.DataFrame:
-    path = DATA_DIR / f"empirical_runs_{year}.csv"
-    if not path.exists():
-        raise FileNotFoundError(
-            f"{path} not found. Run empirical_2002_2022.py first."
-        )
-    return pd.read_csv(path)
+def _tagged(stem: str, tag: str, ext: str) -> str:
+    """Append a tag to a filename stem: 'stem_tag.ext' (or 'stem.ext' if no tag)."""
+    return f"{stem}_{tag}.{ext}" if tag else f"{stem}.{ext}"
 
 
-def tidy_diagnostics(year: int) -> pd.DataFrame:
+def _resolve_runs_path(year: int, tag: str) -> Path:
+    """
+    Locate the empirical_runs CSV for a given year and tag.
+
+    The runner (empirical_2002_2022.py) writes the mode suffix *before* the
+    year, e.g. ``empirical_runs_prob_signal_2002.csv``, with no ``main_``
+    prefix in the filename.  To be forgiving we try several conventions and
+    also strip a leading ``main_``/``main`` from the tag, so all of these
+    resolve to the same file:
+
+        --tag main_prob_signal
+        --tag prob_signal
+        --tag main_prob_signal_mu0
+
+    Returns the first existing path, else raises FileNotFoundError listing the
+    patterns tried.
+    """
+    if not tag:
+        candidates = [f"empirical_runs_{year}.csv"]
+    else:
+        variants = [tag]
+        for prefix in ("main_", "main"):
+            if tag.startswith(prefix):
+                variants.append(tag[len(prefix):].lstrip("_"))
+        candidates = []
+        for t in dict.fromkeys(variants):  # de-dup, preserve order
+            candidates += [
+                f"empirical_runs_{t}_{year}.csv",   # suffix-before-year (runner)
+                f"empirical_runs_{year}_{t}.csv",   # suffix-after-year
+            ]
+
+    for name in candidates:
+        path = DATA_DIR / name
+        if path.exists():
+            return path
+
+    tried = "\n  ".join(candidates)
+    raise FileNotFoundError(
+        f"No empirical_runs file found for year={year}, tag={tag!r}. "
+        f"Run empirical_2002_2022.py first. Tried:\n  {tried}"
+    )
+
+
+def load_runs(year: int, tag: str = "") -> pd.DataFrame:
+    return pd.read_csv(_resolve_runs_path(year, tag))
+
+
+def tidy_diagnostics(year: int, tag: str = "") -> pd.DataFrame:
     """Select + rename the requested per-draw diagnostic columns."""
-    runs = load_runs(year)
+    runs = load_runs(year, tag)
     out = pd.DataFrame({"draw": runs["draw"]})
     for new, src in _DIAG_MAP.items():
         out[new] = runs[src]
@@ -162,7 +205,8 @@ MIN_BIN_COUNT = 3
 N_BINS = 6
 
 
-def _save(fig, name: str) -> None:
+def _save(fig, name: str, tag: str = "") -> None:
+    name = _tagged(name, tag, "").rstrip(".")
     for ext in ("png", "pdf"):
         fig.savefig(FIG_DIR / f"{name}.{ext}")
     plt.close(fig)
@@ -197,7 +241,8 @@ def _binned_stats(df: pd.DataFrame, xcol: str, ycol: str, vcol: str,
     return mean_grid, count_grid, xedges, yedges
 
 
-def fig_region_taumu(diags: dict, min_count: int = MIN_BIN_COUNT) -> None:
+def fig_region_taumu(diags: dict, min_count: int = MIN_BIN_COUNT,
+                     tag: str = "") -> None:
     """
     Trigger, switching and conditional-switching rate over (tau_hat, mu).
 
@@ -251,10 +296,10 @@ def fig_region_taumu(diags: dict, min_count: int = MIN_BIN_COUNT) -> None:
                  f"(bins with <{min_count} draws masked; cell = draw count)",
                  fontsize=12, fontweight="bold")
     fig.tight_layout(rect=[0, 0, 1, 0.98])
-    _save(fig, "fig_diag_region_taumu")
+    _save(fig, "fig_diag_region_taumu", tag)
 
 
-def fig_alpha_rhopi_scatter(diags: dict) -> None:
+def fig_alpha_rhopi_scatter(diags: dict, tag: str = "") -> None:
     """
     Per-draw scatter of trigger / switching rate against alpha and rho_pi.
 
@@ -281,7 +326,7 @@ def fig_alpha_rhopi_scatter(diags: dict) -> None:
     fig.suptitle(r"Per-draw activation vs $\alpha$ and $\rho_\pi$",
                  fontsize=12, fontweight="bold")
     fig.tight_layout(rect=[0, 0, 1, 0.97])
-    _save(fig, "fig_diag_alpha_rhopi")
+    _save(fig, "fig_diag_alpha_rhopi", tag)
 
 
 # =========================================================================== #
@@ -329,28 +374,44 @@ def shared_activating_draws(diags: dict) -> pd.DataFrame:
 # =========================================================================== #
 
 def main() -> None:
-    print("Building mechanism diagnostics...")
+    import argparse
+
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(
+        "--tag", default="",
+        help="run diagnostics on tagged empirical_runs files (e.g. "
+             "'main_prob_signal'). Default: baseline empirical_runs_<year>.csv. "
+             "All output CSVs and figures are suffixed with the tag so they do "
+             "not overwrite baseline diagnostics.",
+    )
+    args = ap.parse_args()
+    tag = args.tag
+
+    label = f" [tag={tag}]" if tag else ""
+    print(f"Building mechanism diagnostics...{label}")
     diags = {}
     for year in YEARS:
-        d = tidy_diagnostics(year)
-        d.to_csv(DATA_DIR / f"empirical_diagnostics_{year}.csv", index=False)
-        print(f"  wrote data/empirical_diagnostics_{year}.csv ({len(d)} draws)")
+        d = tidy_diagnostics(year, tag)
+        out = _tagged(f"empirical_diagnostics_{year}", tag, "csv")
+        d.to_csv(DATA_DIR / out, index=False)
+        print(f"  wrote data/{out} ({len(d)} draws)")
         diags[year] = d
 
     summary = activation_summary(diags)
-    summary.to_csv(DATA_DIR / "empirical_activation_summary.csv", index=False)
-    print("  wrote data/empirical_activation_summary.csv")
+    out = _tagged("empirical_activation_summary", tag, "csv")
+    summary.to_csv(DATA_DIR / out, index=False)
+    print(f"  wrote data/{out}")
     print("\nActivation summary:")
     print(summary.to_string(index=False))
 
     shared = shared_activating_draws(diags)
-    shared.to_csv(DATA_DIR / "empirical_shared_activating_draws.csv",
-                  index=False)
-    print(f"\n  wrote data/empirical_shared_activating_draws.csv "
+    out = _tagged("empirical_shared_activating_draws", tag, "csv")
+    shared.to_csv(DATA_DIR / out, index=False)
+    print(f"\n  wrote data/{out} "
           f"({len(shared)} jointly-activating draws)")
 
-    fig_region_taumu(diags)
-    fig_alpha_rhopi_scatter(diags)
+    fig_region_taumu(diags, tag=tag)
+    fig_alpha_rhopi_scatter(diags, tag=tag)
     print("Done.")
 
 

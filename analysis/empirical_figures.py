@@ -73,21 +73,70 @@ def pos_colors(positions) -> np.ndarray:
     return POS_CMAP(POS_NORM(np.asarray(positions, dtype=float)))
 
 
-def save(fig, name: str) -> None:
-    """Save a figure as both PNG and PDF in figures/."""
+def _tagged(stem: str, tag: str, ext: str) -> str:
+    """Append a tag to a filename stem: 'stem_tag.ext' (or 'stem.ext' if no tag)."""
+    return f"{stem}_{tag}.{ext}" if tag else f"{stem}.{ext}"
+
+
+def save(fig, name: str, tag: str = "") -> None:
+    """Save a figure as both PNG and PDF in figures/, tag-suffixed."""
+    name = _tagged(name, tag, "").rstrip(".")
     for ext in ("png", "pdf"):
         fig.savefig(FIG_DIR / f"{name}.{ext}")
     plt.close(fig)
     print(f"  wrote figures/{name}.png + .pdf")
 
 
-def load_candidates(year: int) -> pd.DataFrame:
-    df = pd.read_csv(DATA_DIR / f"empirical_candidate_shares_{year}.csv")
+def _resolve_data_path(stem: str, year: int, tag: str) -> Path:
+    """
+    Locate a data CSV (stem = 'empirical_candidate_shares' or 'empirical_runs')
+    for a given year and tag.
+
+    The runner writes the mode suffix *before* the year, e.g.
+    ``empirical_candidate_shares_prob_signal_2002.csv``, with no ``main_``
+    prefix.  To be forgiving we try several conventions and also strip a leading
+    ``main_``/``main`` from the tag, so all of these resolve to the same file:
+
+        --tag main_prob_signal
+        --tag prob_signal
+        --tag main_prob_signal_mu0
+
+    Returns the first existing path, else raises FileNotFoundError listing the
+    patterns tried.
+    """
+    if not tag:
+        candidates = [f"{stem}_{year}.csv"]
+    else:
+        variants = [tag]
+        for prefix in ("main_", "main"):
+            if tag.startswith(prefix):
+                variants.append(tag[len(prefix):].lstrip("_"))
+        candidates = []
+        for t in dict.fromkeys(variants):  # de-dup, preserve order
+            candidates += [
+                f"{stem}_{t}_{year}.csv",   # suffix-before-year (runner)
+                f"{stem}_{year}_{t}.csv",   # suffix-after-year
+            ]
+
+    for name in candidates:
+        path = DATA_DIR / name
+        if path.exists():
+            return path
+
+    tried = "\n  ".join(candidates)
+    raise FileNotFoundError(
+        f"No {stem} file found for year={year}, tag={tag!r}. "
+        f"Run empirical_2002_2022.py first. Tried:\n  {tried}"
+    )
+
+
+def load_candidates(year: int, tag: str = "") -> pd.DataFrame:
+    df = pd.read_csv(_resolve_data_path("empirical_candidate_shares", year, tag))
     return df.sort_values("position", kind="stable").reset_index(drop=True)
 
 
-def load_runs(year: int) -> pd.DataFrame:
-    return pd.read_csv(DATA_DIR / f"empirical_runs_{year}.csv")
+def load_runs(year: int, tag: str = "") -> pd.DataFrame:
+    return pd.read_csv(_resolve_data_path("empirical_runs", year, tag))
 
 
 def _position_colorbar(fig, ax):
@@ -102,10 +151,10 @@ def _position_colorbar(fig, ax):
 #  FIGURE: simulated vs actual scatter                                         #
 # =========================================================================== #
 
-def fig_sim_vs_actual() -> None:
+def fig_sim_vs_actual(tag: str = "") -> None:
     fig, axes = plt.subplots(1, 2, figsize=(11, 5.2))
     for ax, year in zip(axes, YEARS):
-        df = load_candidates(year)
+        df = load_candidates(year, tag)
         colors = pos_colors(df["position"])
         hi = max(df["actual_share"].max(), df["mean_final_share"].max()) * 1.1
         ax.plot([0, hi], [0, hi], ls="--", lw=1, color="#999999", zorder=0)
@@ -129,15 +178,15 @@ def fig_sim_vs_actual() -> None:
     fig.suptitle("Simulated vs actual first-round shares",
                  fontsize=13, fontweight="bold")
     fig.tight_layout()
-    save(fig, "fig_sim_vs_actual")
+    save(fig, "fig_sim_vs_actual", tag)
 
 
 # =========================================================================== #
 #  FIGURE: candidate final shares with intervals + actual                      #
 # =========================================================================== #
 
-def fig_candidate_shares(year: int) -> None:
-    df = load_candidates(year)
+def fig_candidate_shares(year: int, tag: str = "") -> None:
+    df = load_candidates(year, tag)
     x = np.arange(len(df))
     colors = pos_colors(df["position"])
     fig, ax = plt.subplots(figsize=(max(8, 0.7 * len(df)), 5))
@@ -158,15 +207,15 @@ def fig_candidate_shares(year: int) -> None:
     ax.legend(frameon=False, loc="upper left")
     _position_colorbar(fig, ax)
     fig.tight_layout()
-    save(fig, f"fig_candidate_shares_{year}")
+    save(fig, f"fig_candidate_shares_{year}", tag)
 
 
 # =========================================================================== #
 #  FIGURE: candidate change from first signal to final                         #
 # =========================================================================== #
 
-def fig_candidate_change(year: int) -> None:
-    df = load_candidates(year)
+def fig_candidate_change(year: int, tag: str = "") -> None:
+    df = load_candidates(year, tag)
     x = np.arange(len(df))
     colors = pos_colors(df["position"])
     fig, ax = plt.subplots(figsize=(max(8, 0.7 * len(df)), 5))
@@ -185,15 +234,15 @@ def fig_candidate_change(year: int) -> None:
     ax.set_title(f"{year}: mean simulated change from first signal to final")
     _position_colorbar(fig, ax)
     fig.tight_layout()
-    save(fig, f"fig_candidate_change_{year}")
+    save(fig, f"fig_candidate_change_{year}", tag)
 
 
 # =========================================================================== #
 #  FIGURE: top-k probabilities by candidate                                    #
 # =========================================================================== #
 
-def fig_candidate_topk(year: int) -> None:
-    df = load_candidates(year)
+def fig_candidate_topk(year: int, tag: str = "") -> None:
+    df = load_candidates(year, tag)
     x = np.arange(len(df))
     colors = pos_colors(df["position"])
     keys = [("prob_top2", "P(top 2)"), ("prob_top3", "P(top 3)"),
@@ -210,15 +259,15 @@ def fig_candidate_topk(year: int) -> None:
     axes[0].set_title(f"{year}: probability of finishing in the top k")
     _position_colorbar(fig, axes[1])
     fig.tight_layout()
-    save(fig, f"fig_candidate_topk_{year}")
+    save(fig, f"fig_candidate_topk_{year}", tag)
 
 
 # =========================================================================== #
 #  FIGURE: ENP and ΔCENP distributions, 2002 vs 2022                            #
 # =========================================================================== #
 
-def fig_enp_deltacenp() -> None:
-    runs = {y: load_runs(y) for y in YEARS}
+def fig_enp_deltacenp(tag: str = "") -> None:
+    runs = {y: load_runs(y, tag) for y in YEARS}
     metrics = [("enp_final", "ENP (final)"),
                ("delta_enp", "ΔENP (final − sincere)"),
                ("delta_cenp", "ΔCENP (coordination gain)")]
@@ -238,7 +287,7 @@ def fig_enp_deltacenp() -> None:
     fig.suptitle("Coordination / fragmentation: 2002 vs 2022",
                  fontsize=13, fontweight="bold")
     fig.tight_layout()
-    save(fig, "fig_enp_deltacenp")
+    save(fig, "fig_enp_deltacenp", tag)
 
 
 # =========================================================================== #
@@ -280,22 +329,31 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--contact-sheet", action="store_true",
                     help="also tile all PNGs into figures/_contact_sheet.png")
+    ap.add_argument(
+        "--tag", default="",
+        help="build figures from tagged empirical output files (e.g. "
+             "'main_prob_signal'). Default: baseline empirical_*_<year>.csv. "
+             "Figures are suffixed with the tag so they do not overwrite "
+             "baseline figures.",
+    )
     args = ap.parse_args()
+    tag = args.tag
 
-    print("Building empirical figures...")
+    label = f" [tag={tag}]" if tag else ""
+    print(f"Building empirical figures...{label}")
     names = ["fig_sim_vs_actual", "fig_enp_deltacenp"]
-    fig_sim_vs_actual()
-    fig_enp_deltacenp()
+    fig_sim_vs_actual(tag)
+    fig_enp_deltacenp(tag)
     for year in YEARS:
-        fig_candidate_shares(year)
-        fig_candidate_change(year)
-        fig_candidate_topk(year)
+        fig_candidate_shares(year, tag)
+        fig_candidate_change(year, tag)
+        fig_candidate_topk(year, tag)
         names += [f"fig_candidate_shares_{year}",
                   f"fig_candidate_change_{year}",
                   f"fig_candidate_topk_{year}"]
     if args.contact_sheet:
         print("Tiling contact sheet...")
-        contact_sheet(names)
+        contact_sheet([_tagged(n, tag, "").rstrip(".") for n in names])
     print("Done.")
 
 

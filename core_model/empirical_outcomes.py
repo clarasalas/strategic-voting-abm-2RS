@@ -17,6 +17,7 @@ place.
 import numpy as np
 
 import functions
+from agents import Elector, Party
 
 
 def _topk_set(shares: np.ndarray, k: int) -> set:
@@ -33,6 +34,81 @@ def topk_membership(sim_shares: np.ndarray, k: int) -> np.ndarray:
     """Boolean (K,) indicator of which candidates are in the simulated top-k."""
     members = _topk_set(sim_shares, k)
     return np.array([j in members for j in range(len(sim_shares))], dtype=float)
+
+
+def initialization_benchmarks(
+        party_positions: np.ndarray,
+        voter_positions: np.ndarray,
+        tau: float,
+        first_signal: np.ndarray,
+        beta: float,
+        rho_pi: float = 50.0,
+        seed: int = 0,
+) -> dict:
+    """
+    Candidate-level sincere-initialization benchmark shares, computed without
+    running the strategic loop.
+
+    For the given empirical environment (party positions, voter ideology, first
+    poll signal s^0) this returns the expected iteration-0 share of every party
+    under three initialization rules, so the over-allocation to small parties
+    near dense voter regions can be compared directly:
+
+        nearest      : deterministic argmax_j u_a(j) (one vote each).
+        prob_signal  : probabilistic draw with salience = s^0 (expected share =
+                       mean over voters of P_a(j); analytic, no sampling).
+        prob_prior   : probabilistic draw with salience = pi_a, where the priors
+                       pi_a ~ Dirichlet(rho_pi · s^0) are sampled once per voter.
+
+    Expected shares are the mean per-voter draw probabilities, so they are the
+    sampling-free expectation of the realised iteration-0 shares.
+
+    Parameters
+    ----------
+    party_positions : array (K,)
+    voter_positions : array (N,)
+    tau             : float       — contender-set threshold tau_hat.
+    first_signal    : array (K,)  — s^0.
+    beta            : float >= 0  — ideological sharpness inside Ca.
+    rho_pi          : float       — prior precision for the prob_prior benchmark.
+    seed            : int         — RNG seed for the prior draws.
+
+    Returns
+    -------
+    dict with keys 'nearest', 'prob_signal', 'prob_prior', each an (K,) array
+    of expected shares summing to 1.
+    """
+    party_positions = np.asarray(party_positions, dtype=float)
+    voter_positions = np.asarray(voter_positions, dtype=float)
+    s0 = np.asarray(first_signal, dtype=float)
+    K = len(party_positions)
+    N = len(voter_positions)
+    rng = np.random.default_rng(seed)
+
+    parties = [Party(j, party_positions[j]) for j in range(K)]
+
+    nearest = np.zeros(K)
+    prob_signal = np.zeros(K)
+    prob_prior = np.zeros(K)
+
+    for x in voter_positions:
+        e = Elector(-1, float(x), K, tau=tau)
+        e.calcSincereUtilities(parties)
+
+        nearest[e.nearestChoice] += 1.0
+
+        C, p_sig = e.initialAttachmentProbs(party_positions, s0, beta)
+        prob_signal[C] += p_sig
+
+        pi = functions.generate_prior(s0, rho_pi, rng)
+        C, p_pri = e.initialAttachmentProbs(party_positions, pi, beta)
+        prob_prior[C] += p_pri
+
+    return {
+        "nearest": nearest / N,
+        "prob_signal": prob_signal / N,
+        "prob_prior": prob_prior / N,
+    }
 
 
 def compute_run_outcomes(result: dict, actual: np.ndarray,

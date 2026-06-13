@@ -52,7 +52,7 @@ from empirical_data import (
     load_year, sample_voters, perturb_positions,
     weekly_signal_timeline, individual_signal_timeline,
 )
-from empirical_outcomes import compute_run_outcomes
+from empirical_outcomes import compute_run_outcomes, initialization_benchmarks
 
 DATA_DIR = REPO / "data"
 YEARS = (2002, 2022)
@@ -71,6 +71,7 @@ TAU_RANGE = (0.5, 3.0)
 RHO_PI_RANGE = (5.0, 200.0)
 ALPHA_RANGE = (0.0, 0.9)
 MU_RANGE = (0.0, 1.0)
+BETA_RANGE = (0.0, 20.0)   # ideological sharpness (probabilistic init only)
 
 # Position perturbation magnitude on the [-1, 1] scale (robustness).
 PERTURB_SIZE = 0.05
@@ -95,18 +96,32 @@ def _latin_hypercube(n: int, ranges: list, rng) -> np.ndarray:
     return out
 
 
-def sample_parameter_design(n_draws: int, rng) -> pd.DataFrame:
-    """Shared behavioural parameter draws (one row per draw)."""
-    lhs = _latin_hypercube(
-        n_draws, [TAU_RANGE, RHO_PI_RANGE, ALPHA_RANGE, MU_RANGE], rng
-    )
-    return pd.DataFrame({
-        "draw": np.arange(n_draws),
-        "tau_hat": lhs[:, 0],
-        "rho_pi": lhs[:, 1],
-        "alpha": lhs[:, 2],
-        "mu": lhs[:, 3],
-    })
+def sample_parameter_design(n_draws: int, rng,
+                            include_beta: bool = False,
+                            mu_zero: bool = False) -> pd.DataFrame:
+    """
+    Shared behavioural parameter draws (one row per draw).
+
+    include_beta : add beta in BETA_RANGE (probabilistic initialization).
+    mu_zero      : fix mu = 0 instead of sampling MU_RANGE (mu=0 variant).
+    """
+    ranges, cols = [TAU_RANGE, RHO_PI_RANGE, ALPHA_RANGE], ["tau_hat", "rho_pi", "alpha"]
+    if not mu_zero:
+        ranges.append(MU_RANGE)
+        cols.append("mu")
+    if include_beta:
+        ranges.append(BETA_RANGE)
+        cols.append("beta")
+
+    lhs = _latin_hypercube(n_draws, ranges, rng)
+    design = pd.DataFrame({"draw": np.arange(n_draws)})
+    for j, c in enumerate(cols):
+        design[c] = lhs[:, j]
+    if mu_zero:
+        design["mu"] = 0.0
+    if not include_beta:
+        design["beta"] = 0.0
+    return design
 
 
 # =========================================================================== #
@@ -120,8 +135,13 @@ def _max_iterations(signals: list) -> int:
 
 def run_single(params: dict, positions: np.ndarray, voters: np.ndarray,
                signals: list, results: np.ndarray, party_ids: list,
-               seed: int) -> dict:
-    """Run one empirical simulation and return its outcome dict."""
+               seed: int, cfg: dict = None) -> dict:
+    """Run one empirical simulation and return its outcome dict.
+
+    cfg : optional initialization config with keys 'sincere_init_mode' and
+          'salience_source'.  Defaults to the nearest-party baseline.
+    """
+    cfg = cfg or {}
     res = run_simulation(
         K=len(positions),
         party_ids=party_ids,
@@ -132,6 +152,9 @@ def run_single(params: dict, positions: np.ndarray, voters: np.ndarray,
         mu=params["mu"],
         alpha_prior=params["alpha"],
         rho_pi=params["rho_pi"],
+        sincere_init_mode=cfg.get("sincere_init_mode", "nearest"),
+        beta=params.get("beta", 0.0),
+        salience_source=cfg.get("salience_source", "signal"),
         n_electors=len(voters),
         max_iterations=_max_iterations(signals),
         seed=seed,
@@ -156,9 +179,27 @@ _SCALAR_KEYS = [
 def _scalar_row(params: dict, outcome: dict) -> dict:
     row = {"draw": params["draw"], "tau_hat": params["tau_hat"],
            "rho_pi": params["rho_pi"], "alpha": params["alpha"],
-           "mu": params["mu"]}
+           "mu": params["mu"], "beta": params.get("beta", 0.0)}
     row.update({k: outcome[k] for k in _SCALAR_KEYS})
     return row
+
+
+def output_suffix(cfg: dict) -> str:
+    """
+    Build a filename suffix encoding the initialization mode, salience source
+    and mu setting, so probabilistic variants never overwrite the baseline.
+
+        nearest                              -> ""  (baseline filenames)
+        probabilistic, signal, mu varied     -> "_prob_signal"
+        probabilistic, prior,  mu varied     -> "_prob_prior"
+        probabilistic, signal, mu=0          -> "_prob_signal_mu0"
+    """
+    if cfg.get("sincere_init_mode", "nearest") != "probabilistic":
+        return ""
+    parts = ["prob", cfg.get("salience_source", "signal")]
+    if cfg.get("mu_zero", False):
+        parts.append("mu0")
+    return "_" + "_".join(parts)
 
 
 def aggregate_candidates(bundle: dict, outcomes: list) -> pd.DataFrame:
@@ -191,9 +232,54 @@ def aggregate_candidates(bundle: dict, outcomes: list) -> pd.DataFrame:
     })
 
 
-def run_main_experiment(n_draws: int = N_DRAWS) -> None:
+def per_draw_candidate_table(bundle: dict, design: pd.DataFrame,
+                             outcomes: list) -> pd.DataFrame:
+    """
+    Long-format per-draw, per-candidate final shares for one year.
+
+    One row per (draw, candidate), carrying the draw's behavioural parameters
+    (incl. beta) alongside the candidate's simulated final share and the actual
+    result.  This is the input for beta-binned candidate diagnostics
+    (analysis/empirical_beta_bins.py); the wide candidate-shares CSV averages
+    over all draws and so cannot be re-binned by beta.
+    """
+    parties = bundle["parties"]
+    positions = bundle["positions"]
+    blocks = bundle["blocks"]
+    actual = bundle["results"]
+    first_signal = bundle["signals"][0]
+
+    rows = []
+    for (_, prow), o in zip(design.iterrows(), outcomes):
+        final = o["final_shares"]
+        for k, party in enumerate(parties):
+            rows.append({
+                "draw": int(prow["draw"]),
+                "tau_hat": prow["tau_hat"],
+                "rho_pi": prow["rho_pi"],
+                "alpha": prow["alpha"],
+                "mu": prow["mu"],
+                "beta": prow.get("beta", 0.0),
+                "party": party,
+                "block": blocks[k],
+                "position": positions[k],
+                "final_share": float(final[k]),
+                "actual_share": float(actual[k]),
+                "first_signal_share": float(first_signal[k]),
+            })
+    return pd.DataFrame(rows)
+
+
+def run_main_experiment(n_draws: int = N_DRAWS, cfg: dict = None) -> None:
+    cfg = cfg or {}
+    probabilistic = cfg.get("sincere_init_mode", "nearest") == "probabilistic"
+    mu_zero = cfg.get("mu_zero", False)
+    suffix = output_suffix(cfg)
+
     rng = np.random.default_rng(MASTER_SEED)
-    design = sample_parameter_design(n_draws, rng)
+    design = sample_parameter_design(
+        n_draws, rng, include_beta=probabilistic, mu_zero=mu_zero
+    )
 
     bundles = {y: load_year(y, signal_mode="weekly") for y in YEARS}
 
@@ -207,17 +293,21 @@ def run_main_experiment(n_draws: int = N_DRAWS) -> None:
             voters = sample_voters(year, N_VOTERS, voter_rng)
             outcome = run_single(
                 params, bundle["positions"], voters, bundle["signals"],
-                bundle["results"], bundle["parties"], draw_seed,
+                bundle["results"], bundle["parties"], draw_seed, cfg,
             )
             rows.append(_scalar_row(params, outcome))
             outcomes.append(outcome)
 
         pd.DataFrame(rows).to_csv(
-            DATA_DIR / f"empirical_runs_{year}.csv", index=False)
+            DATA_DIR / f"empirical_runs{suffix}_{year}.csv", index=False)
         aggregate_candidates(bundle, outcomes).to_csv(
-            DATA_DIR / f"empirical_candidate_shares_{year}.csv", index=False)
-        print(f"[main] {year}: wrote {len(rows)} runs "
-              f"+ candidate aggregates.")
+            DATA_DIR / f"empirical_candidate_shares{suffix}_{year}.csv",
+            index=False)
+        per_draw_candidate_table(bundle, design, outcomes).to_csv(
+            DATA_DIR / f"empirical_candidate_draws{suffix}_{year}.csv",
+            index=False)
+        print(f"[main{suffix or ' nearest'}] {year}: wrote {len(rows)} runs "
+              f"+ candidate aggregates + per-draw candidate table.")
 
 
 # =========================================================================== #
@@ -278,6 +368,64 @@ def run_robustness(n_draws: int = N_DRAWS_ROBUST) -> None:
 
 
 # =========================================================================== #
+#  INITIALIZATION BENCHMARKS (diagnostic)                                       #
+# =========================================================================== #
+
+def run_init_benchmarks(beta: float = 5.0, rho_pi: float = 50.0) -> None:
+    """
+    Candidate-level comparison of sincere-initialization rules, written to
+    ``data/empirical_init_benchmarks_<year>.csv``.
+
+    Columns
+    -------
+        first_signal_share         : s^0
+        nearest_share              : deterministic nearest-party benchmark
+        prob_signal_share          : probabilistic init, salience = s^0
+        prob_prior_share           : probabilistic init, salience = pi_a
+        actual_share               : actual R1 result
+    plus mean_final_share columns merged from any candidate-shares CSVs already
+    written for the matching mode (nearest / prob_signal / prob_prior).
+
+    The key question is whether prob_* reduce over-allocation to small parties
+    near dense voter regions relative to nearest.
+    """
+    for year in YEARS:
+        bundle = load_year(year, signal_mode="weekly")
+        voter_rng = np.random.default_rng(MASTER_SEED * 7919 + year)
+        voters = sample_voters(year, N_VOTERS, voter_rng)
+
+        bench = initialization_benchmarks(
+            bundle["positions"], voters, tau=2.0,
+            first_signal=bundle["signals"][0], beta=beta,
+            rho_pi=rho_pi, seed=MASTER_SEED + year,
+        )
+
+        table = pd.DataFrame({
+            "party": bundle["parties"],
+            "block": bundle["blocks"],
+            "position": bundle["positions"],
+            "first_signal_share": bundle["signals"][0],
+            "nearest_share": bench["nearest"],
+            "prob_signal_share": bench["prob_signal"],
+            "prob_prior_share": bench["prob_prior"],
+            "actual_share": bundle["results"],
+        })
+
+        # Merge mean final shares from any candidate-shares CSVs present.
+        for tag in ("", "_prob_signal", "_prob_prior"):
+            path = DATA_DIR / f"empirical_candidate_shares{tag}_{year}.csv"
+            if path.exists():
+                col = f"mean_final{tag or '_nearest'}"
+                cs = pd.read_csv(path)[["party", "mean_final_share"]]
+                cs = cs.rename(columns={"mean_final_share": col})
+                table = table.merge(cs, on="party", how="left")
+
+        out = DATA_DIR / f"empirical_init_benchmarks_{year}.csv"
+        table.to_csv(out, index=False)
+        print(f"[init-benchmarks] {year} (beta={beta}): wrote {out.name}")
+
+
+# =========================================================================== #
 #  ENTRY POINT                                                                 #
 # =========================================================================== #
 
@@ -292,7 +440,32 @@ def main() -> None:
                     help="number of robustness draws per variant "
                          "(overrides default / --quick)")
     ap.add_argument("--no-robustness", action="store_true")
+
+    # --- Sincere initialization options ---
+    ap.add_argument("--sincere-init", choices=["nearest", "probabilistic"],
+                    default="nearest",
+                    help="initial expressive-vote rule (default: nearest)")
+    ap.add_argument("--salience-source", choices=["signal", "prior"],
+                    default="signal",
+                    help="salience for probabilistic init (default: signal)")
+    ap.add_argument("--mu-zero", action="store_true",
+                    help="fix mu=0 (probabilistic init variant B)")
+    ap.add_argument("--init-benchmarks", action="store_true",
+                    help="write candidate-level initialization benchmark CSVs "
+                         "and exit (no strategic sweep)")
+    ap.add_argument("--beta-benchmark", type=float, default=5.0,
+                    help="beta used by --init-benchmarks (default: 5.0)")
     args = ap.parse_args()
+
+    if args.init_benchmarks:
+        run_init_benchmarks(beta=args.beta_benchmark)
+        return
+
+    cfg = {
+        "sincere_init_mode": args.sincere_init,
+        "salience_source": args.salience_source,
+        "mu_zero": args.mu_zero,
+    }
 
     n_main = 15 if args.quick else N_DRAWS
     n_rob = 5 if args.quick else N_DRAWS_ROBUST
@@ -301,8 +474,10 @@ def main() -> None:
     if args.robust_draws is not None:
         n_rob = args.robust_draws
 
-    run_main_experiment(n_main)
-    if not args.no_robustness:
+    run_main_experiment(n_main, cfg)
+    # Robustness is defined for the nearest-party baseline only; probabilistic
+    # variants write their own suffixed main outputs and skip robustness.
+    if not args.no_robustness and args.sincere_init == "nearest":
         run_robustness(n_rob)
 
 

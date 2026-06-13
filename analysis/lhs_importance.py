@@ -8,11 +8,22 @@ then uses permutation importance to rank which parameters matter most.
 We deliberately call this an *exploratory* / LHS sensitivity analysis rather than a
 formal Sobol/Saltelli analysis, because the design is LHS (not a Saltelli sequence).
 
-Outputs:
-    lhs_importance_pooled.png / .pdf      -> importance pooled across years
-    lhs_importance_by_year.png / .pdf     -> two panels, 2002 and 2022
+Two output styles share the same surrogate-fitting core:
+
+    (default)  Paper/analysis figures with in-figure titles and raw R²-drop units:
+                   lhs_importance_pooled.png / .pdf      -> importance pooled across years
+                   lhs_importance_by_year.png / .pdf     -> two panels, 2002 and 2022
+
+    --slide    Presentation figure: no in-figure title/subtitle, importances
+               normalized to % within each year, transparent background:
+                   lhs_importance_by_year_slide.png / .pdf
+
+Usage:
+    python analysis/lhs_importance.py            # paper figures
+    python analysis/lhs_importance.py --slide     # slide figure
 """
 
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -26,12 +37,14 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
 
 # --------------------------------------------------------------------------- #
-# Configuration
+# Configuration (shared)
 # --------------------------------------------------------------------------- #
 SEED = 42
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 OUT_DIR = Path(__file__).resolve().parent.parent / "figures"
 OUT_DIR.mkdir(exist_ok=True)
+
+NAVY = "#1f2d50"
 
 # Per-year input files (the "_design" files contain only inputs, so we use the
 # full sweep files that also carry the outcome columns).
@@ -57,51 +70,9 @@ NON_PREDICTOR_PATTERNS = [
     "cenp_s0", "cenp_real", "observed", "result", "mean_", "_real",
 ]
 
-# --------------------------------------------------------------------------- #
-# Slide styling
-# --------------------------------------------------------------------------- #
-NAVY = "#1f2d50"
-plt.rcParams.update({
-    "figure.facecolor": "white",
-    "axes.facecolor": "white",
-    "savefig.facecolor": "white",
-    "axes.edgecolor": NAVY,
-    "axes.labelcolor": NAVY,
-    "text.color": NAVY,
-    "xtick.color": NAVY,
-    "ytick.color": NAVY,
-    "font.size": 12,
-})
-
-# Map raw parameter names -> readable labels for the figures.
-PRETTY_LABELS = {
-    "tau_hat": "Strategic threshold (τ̂)",
-    "mu": "Expressive weight (μ)",
-    "alpha": "Learning / update rate (α)",
-    "rho_pi": "Trust in polls (ρπ)",
-    "beta": "Choice rationality (β)",
-}
-
-# Assign each parameter to a family so bars can be colour-coded.
-# Edit this dictionary if your parameter set changes.
-PARAM_FAMILY = {
-    "tau_hat": "behavioral",
-    "mu": "behavioral",
-    "alpha": "behavioral",
-    "beta": "behavioral",
-    "rho_pi": "structural",   # poll structure / precision
-}
-
-FAMILY_COLORS = {
-    "structural": "#7fa8c9",   # soft blue
-    "behavioral": "#9cc9a4",   # soft green
-    "stochastic": "#e6b88a",   # soft orange
-}
-DEFAULT_COLOR = "#c2c2c2"
-
 
 # --------------------------------------------------------------------------- #
-# Helpers
+# Surrogate-fitting core (shared)
 # --------------------------------------------------------------------------- #
 def find_outcome_column(df):
     """Return the outcome column name using the candidate list."""
@@ -128,18 +99,12 @@ def find_predictor_columns(df, outcome_col):
     return predictors
 
 
-def family_color(param):
-    return FAMILY_COLORS.get(PARAM_FAMILY.get(param), DEFAULT_COLOR)
-
-
-def pretty(param):
-    return PRETTY_LABELS.get(param, param)
-
-
 def fit_and_importance(X, y, label):
     """Fit a RandomForest surrogate, report R², and compute permutation importance.
 
-    Returns a DataFrame with columns: param, importance, importance_std, std_coef.
+    Returns (DataFrame, cv_r2_mean). The DataFrame has columns:
+    param, importance (raw R² drop), importance_std, std_coef. Callers that want
+    percentage-normalized importances derive them from `importance`.
     """
     rf = RandomForestRegressor(n_estimators=500, random_state=SEED, n_jobs=-1)
 
@@ -174,10 +139,51 @@ def fit_and_importance(X, y, label):
     return out, cv_r2.mean()
 
 
-def barh_panel(ax, imp_df, title, subtitle=None):
+def load_year_frames():
+    """Read the per-year sweep CSVs, returning {year: DataFrame}."""
+    return {year: pd.read_csv(path) for year, path in YEAR_FILES.items()}
+
+
+# =========================================================================== #
+# Paper figures (default)
+# =========================================================================== #
+PAPER_PRETTY_LABELS = {
+    "tau_hat": "Strategic threshold (τ̂)",
+    "mu": "Expressive weight (μ)",
+    "alpha": "Learning / update rate (α)",
+    "rho_pi": "Trust in polls (ρπ)",
+    "beta": "Choice rationality (β)",
+}
+
+# Assign each parameter to a family so bars can be colour-coded.
+PAPER_PARAM_FAMILY = {
+    "tau_hat": "behavioral",
+    "mu": "behavioral",
+    "alpha": "behavioral",
+    "beta": "behavioral",
+    "rho_pi": "structural",   # poll structure / precision
+}
+
+PAPER_FAMILY_COLORS = {
+    "structural": "#7fa8c9",   # soft blue
+    "behavioral": "#9cc9a4",   # soft green
+    "stochastic": "#e6b88a",   # soft orange
+}
+PAPER_DEFAULT_COLOR = "#c2c2c2"
+
+
+def _paper_color(param):
+    return PAPER_FAMILY_COLORS.get(PAPER_PARAM_FAMILY.get(param), PAPER_DEFAULT_COLOR)
+
+
+def _paper_pretty(param):
+    return PAPER_PRETTY_LABELS.get(param, param)
+
+
+def _paper_barh_panel(ax, imp_df, title, subtitle=None):
     """Draw a horizontal permutation-importance bar chart on `ax`."""
-    colors = [family_color(p) for p in imp_df["param"]]
-    labels = [pretty(p) for p in imp_df["param"]]
+    colors = [_paper_color(p) for p in imp_df["param"]]
+    labels = [_paper_pretty(p) for p in imp_df["param"]]
     ax.barh(labels, imp_df["importance"], xerr=imp_df["importance_std"],
             color=colors, edgecolor=NAVY, linewidth=0.6,
             error_kw=dict(ecolor=NAVY, alpha=0.4, lw=1))
@@ -190,96 +196,267 @@ def barh_panel(ax, imp_df, title, subtitle=None):
     ax.margins(x=0.12)
 
 
-def family_legend(fig):
+def _paper_family_legend(fig):
     handles = [Patch(facecolor=c, edgecolor=NAVY, label=f.capitalize())
-               for f, c in FAMILY_COLORS.items()]
+               for f, c in PAPER_FAMILY_COLORS.items()]
     fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False,
                bbox_to_anchor=(0.5, -0.02))
 
 
-# --------------------------------------------------------------------------- #
-# Load data
-# --------------------------------------------------------------------------- #
-frames = []
-for year, path in YEAR_FILES.items():
-    df = pd.read_csv(path)
-    df["year"] = year
-    frames.append(df)
-all_df = pd.concat(frames, ignore_index=True)
+def run_paper():
+    plt.rcParams.update({
+        "figure.facecolor": "white",
+        "axes.facecolor": "white",
+        "savefig.facecolor": "white",
+        "axes.edgecolor": NAVY,
+        "axes.labelcolor": NAVY,
+        "text.color": NAVY,
+        "xtick.color": NAVY,
+        "ytick.color": NAVY,
+        "font.size": 12,
+    })
 
-outcome_col = find_outcome_column(all_df)
-predictor_cols = find_predictor_columns(all_df, outcome_col)
+    # Load data and pool.
+    frames = load_year_frames()
+    all_df = pd.concat(
+        [df.assign(year=year) for year, df in frames.items()], ignore_index=True
+    )
 
-print("=" * 60)
-print("Detected columns")
-print("=" * 60)
-print(f"Outcome column   : {outcome_col}")
-print(f"Year column      : year")
-print(f"Predictor columns: {predictor_cols}")
-print(f"Excluded columns : "
-      f"{[c for c in all_df.columns if c not in predictor_cols + [outcome_col]]}")
-print(f"Rows: total={len(all_df)}  "
-      f"({', '.join(f'{y}={len(f)}' for y, f in zip(YEAR_FILES, frames))})")
+    outcome_col = find_outcome_column(all_df)
+    predictor_cols = find_predictor_columns(all_df, outcome_col)
+
+    print("=" * 60)
+    print("Detected columns")
+    print("=" * 60)
+    print(f"Outcome column   : {outcome_col}")
+    print(f"Year column      : year")
+    print(f"Predictor columns: {predictor_cols}")
+    print(f"Excluded columns : "
+          f"{[c for c in all_df.columns if c not in predictor_cols + [outcome_col]]}")
+    print(f"Rows: total={len(all_df)}  "
+          f"({', '.join(f'{y}={len(f)}' for y, f in frames.items())})")
+
+    # Run analyses: pooled, 2002, 2022.
+    results = {}
+    for label, subset in [
+        ("Pooled (2002 + 2022)", all_df),
+        ("2002", all_df[all_df["year"] == "2002"]),
+        ("2022", all_df[all_df["year"] == "2022"]),
+    ]:
+        X = subset[predictor_cols].copy()
+        y = subset[outcome_col].to_numpy()
+        results[label] = fit_and_importance(X, y, label)
+
+    # Print standardized-coefficient robustness table.
+    print("\n" + "=" * 60)
+    print("Robustness check: standardized regression coefficients")
+    print("=" * 60)
+    for label, (imp_df, _) in results.items():
+        print(f"\n[{label}]")
+        for _, r in imp_df.sort_values("std_coef", key=abs, ascending=False).iterrows():
+            print(f"  {_paper_pretty(r['param']):28s} std_coef={r['std_coef']:+.3f}  "
+                  f"perm_imp={r['importance']:.4f}")
+
+    # Figure 1: pooled.
+    pooled_df, pooled_r2 = results["Pooled (2002 + 2022)"]
+    fig, ax = plt.subplots(figsize=(9, 5.4))
+    fig.suptitle("WHAT DRIVES THE SIMULATIONS?", color=NAVY, fontweight="bold",
+                 fontsize=18, x=0.02, y=0.99, ha="left")
+    fig.text(0.02, 0.92, "Exploratory sensitivity from LHS parameter sweep",
+             fontsize=11, color=NAVY, alpha=0.7)
+    _paper_barh_panel(ax, pooled_df, title="",
+                      subtitle=f"Pooled across years   ·   surrogate CV R² = {pooled_r2:.2f}")
+    _paper_family_legend(fig)
+    fig.tight_layout(rect=[0, 0.04, 1, 0.86])
+    fig.savefig(OUT_DIR / "lhs_importance_pooled.png", dpi=200, bbox_inches="tight")
+    fig.savefig(OUT_DIR / "lhs_importance_pooled.pdf", bbox_inches="tight")
+    print(f"\nSaved {OUT_DIR/'lhs_importance_pooled.png'} (+ .pdf)")
+
+    # Figure 2: by year (two panels).
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5.4), sharex=False)
+    fig.suptitle("WHAT DRIVES THE SIMULATIONS?", color=NAVY, fontweight="bold",
+                 fontsize=18, x=0.02, y=0.99, ha="left")
+    fig.text(0.02, 0.92, "Exploratory sensitivity from LHS parameter sweep",
+             fontsize=11, color=NAVY, alpha=0.7)
+    for ax, year in zip(axes, ["2002", "2022"]):
+        imp_df, r2 = results[year]
+        _paper_barh_panel(ax, imp_df, title=year,
+                          subtitle=f"surrogate CV R² = {r2:.2f}")
+    _paper_family_legend(fig)
+    fig.tight_layout(rect=[0, 0.04, 1, 0.85])
+    fig.savefig(OUT_DIR / "lhs_importance_by_year.png", dpi=200, bbox_inches="tight")
+    fig.savefig(OUT_DIR / "lhs_importance_by_year.pdf", bbox_inches="tight")
+    print(f"Saved {OUT_DIR/'lhs_importance_by_year.png'} (+ .pdf)")
+
+    print("\nInterpretation suggestion:")
+    print("  Structural parameters explain most variation in the baseline "
+          "simulations;\n  behavioral parameters matter less until the electoral "
+          "structure is better specified.")
+
+
+# =========================================================================== #
+# Slide figure (--slide)
+# =========================================================================== #
+def _importance_pct(imp_df):
+    """Map {param -> percentage importance}, clipping negatives before scaling."""
+    imp = np.clip(imp_df["importance"].to_numpy(), 0, None)
+    pct = 100 * imp / imp.sum() if imp.sum() > 0 else imp
+    return dict(zip(imp_df["param"], pct))
+
+
+def run_slide():
+    # Prefer Open Sans if installed, otherwise a clean sans-serif fallback.
+    from matplotlib import font_manager
+    import matplotlib.colors as mcolors
+
+    available = {f.name for f in font_manager.fontManager.ttflist}
+    main_font = next((f for f in ("Open Sans", "Inter") if f in available),
+                     "DejaVu Sans")
+    print(f"Using font: {main_font}")
+
+    plt.rcParams.update({
+        "font.family": "sans-serif",
+        "font.sans-serif": [main_font, "DejaVu Sans", "Arial"],
+        "figure.facecolor": "none",
+        "axes.facecolor": "none",
+        "savefig.facecolor": "none",
+        "savefig.transparent": True,
+        "axes.edgecolor": NAVY,
+        "axes.labelcolor": NAVY,
+        "text.color": NAVY,
+        "xtick.color": NAVY,
+        "ytick.color": NAVY,
+        "font.size": 13,
+    })
+
+    # Load data and fit per year.
+    frames = load_year_frames()
+    sample = next(iter(frames.values()))
+    outcome_col = find_outcome_column(sample)
+    predictor_cols = find_predictor_columns(sample, outcome_col)
+
+    print("=" * 60)
+    print(f"Outcome column   : {outcome_col}")
+    print(f"Predictor columns: {predictor_cols}")
+    print("=" * 60)
+
+    results = {}
+    for year, df in frames.items():
+        X = df[predictor_cols].copy()
+        y = df[outcome_col].to_numpy()
+        results[year] = fit_and_importance(X, y, year)
+
+    # Figure: single panel, grouped horizontal bars (2002 vs 2022 per row).
+    BLUE = "#4A7FC1"     # Setup group color
+    ORANGE = "#E07B3F"   # Behavioral group color
+    BAND_GRAY = "#F2F2F2"
+
+    def lighten(color, amount=0.45):
+        """Blend `color` toward white by `amount` (0 = unchanged, 1 = white)."""
+        r, g, b = mcolors.to_rgb(color)
+        return (r + (1 - r) * amount, g + (1 - g) * amount, b + (1 - b) * amount)
+
+    # Four rows, top-to-bottom, with the group each belongs to and the raw params
+    # whose importances are summed for that row.
+    ROWS = [
+        ("Ideological\ndeterminism (β)", "Setup",      BLUE,   ["beta"]),
+        ("Ideological\ntolerance (τ̂)",   "Setup",      BLUE,   ["tau_hat"]),
+        ("Belief\nupdating\n(ρπ + α)",     "Behavioral", ORANGE, ["rho_pi", "alpha"]),
+        ("Loyalty\ncost (μ)",             "Behavioral", ORANGE, ["mu"]),
+    ]
+
+    def grouped_value(pct, params):
+        return sum(pct.get(p, 0.0) for p in params)
+
+    def fmt(val):
+        return f"{round(val)}%" if val >= 5 else f"<{max(1, round(val))}%"
+
+    # Row y-centers (top-to-bottom). Normal row gap = 1.0; the gap at the section
+    # break (between rows 2 and 3) is 1.8 (>1.5x) to make the split obvious.
+    ROW_Y = [4.8, 3.8, 2.0, 1.0]
+    BAR_H = 0.28
+    OFFSET = 0.17               # half-distance between the paired bars
+    pct02 = _importance_pct(results["2002"][0])
+    pct22 = _importance_pct(results["2022"][0])
+
+    fig, ax = plt.subplots(figsize=(14, 7))
+
+    # Shaded background bands per group (very light gray), drawn behind everything.
+    def band(rows_y, pad_top=0.55, pad_bot=0.55):
+        return min(rows_y) - pad_bot, max(rows_y) + pad_top
+
+    for grp_rows in ([ROW_Y[0], ROW_Y[1]], [ROW_Y[2], ROW_Y[3]]):
+        lo, hi = band(grp_rows)
+        ax.axhspan(lo, hi, xmin=0, xmax=1, color=BAND_GRAY, zorder=0)
+
+    # Bars: 2002 (lighter shade, upper) and 2022 (full color, lower) per row.
+    for ry, (label, grp, color, params) in zip(ROW_Y, ROWS):
+        v02 = grouped_value(pct02, params)
+        v22 = grouped_value(pct22, params)
+        ax.barh(ry + OFFSET, v02, height=BAR_H, color=lighten(color), zorder=3)
+        ax.barh(ry - OFFSET, v22, height=BAR_H, color=color, zorder=3)
+        # Value labels at the end of each bar.
+        ax.text(v02 + 1.2, ry + OFFSET, fmt(v02), va="center", ha="left",
+                fontsize=12, color=NAVY)
+        ax.text(v22 + 1.2, ry - OFFSET, fmt(v22), va="center", ha="left",
+                fontsize=12, color=NAVY)
+
+    # Group labels ("SETUP" / "BEHAVIORAL") in the group color, just above each band.
+    for grp_rows, grp_label, grp_color in (
+        ([ROW_Y[0], ROW_Y[1]], "Setup parameters", BLUE),
+        ([ROW_Y[2], ROW_Y[3]], "Behavioral parameters", ORANGE),
+    ):
+        lo, hi = band(grp_rows)
+        ax.text(1.5, hi + 0.08, grp_label.upper(), ha="left", va="bottom",
+                fontsize=16, style="italic", fontweight="bold", color=grp_color,
+                zorder=5)
+
+    # Y tick labels = parameter names.
+    ax.set_yticks(ROW_Y)
+    ax.set_yticklabels([r[0] for r in ROWS], fontsize=12, fontweight="bold")
+    ax.set_ylim(0.3, 5.7)  # high y at top (no inversion -> first row on top)
+
+    # X axis.
+    ax.set_xlim(0, 100)
+    ax.set_xlabel("Relative permutation importance (%)", fontsize=12, color=NAVY)
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    ax.spines["bottom"].set_color(NAVY)
+    ax.tick_params(length=0)
+    ax.tick_params(axis="y", pad=14)  # extra space between labels and bars
+    ax.grid(False)
+
+    # Compact year legend (two squares) at the top-right of the chart area.
+    year_handles = [
+        Patch(facecolor=lighten(BLUE), label="2002"),
+        Patch(facecolor=BLUE, label="2022"),
+    ]
+    ax.legend(handles=year_handles, loc="upper right", frameon=False, fontsize=11,
+              handlelength=1.0, handleheight=1.0, ncol=2, columnspacing=1.2,
+              bbox_to_anchor=(1.0, 1.05))
+
+    fig.tight_layout(rect=[0, 0.05, 1, 1])
+
+    fig.savefig(OUT_DIR / "lhs_importance_by_year_slide.png", dpi=300,
+                bbox_inches="tight", transparent=True)
+    fig.savefig(OUT_DIR / "lhs_importance_by_year_slide.pdf",
+                bbox_inches="tight", transparent=True)
+    print(f"\nSaved {OUT_DIR/'lhs_importance_by_year_slide.png'} (+ .pdf) at 300 dpi")
+
 
 # --------------------------------------------------------------------------- #
-# Run analyses: pooled, 2002, 2022
+# Entry point
 # --------------------------------------------------------------------------- #
-results = {}
-for label, subset in [
-    ("Pooled (2002 + 2022)", all_df),
-    ("2002", all_df[all_df["year"] == "2002"]),
-    ("2022", all_df[all_df["year"] == "2022"]),
-]:
-    X = subset[predictor_cols].copy()
-    y = subset[outcome_col].to_numpy()
-    results[label] = fit_and_importance(X, y, label)
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--slide", action="store_true",
+                        help="Render the presentation (slide) figure instead of "
+                             "the paper figures.")
+    args = parser.parse_args()
+    if args.slide:
+        run_slide()
+    else:
+        run_paper()
 
-# Print standardized-coefficient robustness table.
-print("\n" + "=" * 60)
-print("Robustness check: standardized regression coefficients")
-print("=" * 60)
-for label, (imp_df, _) in results.items():
-    print(f"\n[{label}]")
-    for _, r in imp_df.sort_values("std_coef", key=abs, ascending=False).iterrows():
-        print(f"  {pretty(r['param']):28s} std_coef={r['std_coef']:+.3f}  "
-              f"perm_imp={r['importance']:.4f}")
 
-# --------------------------------------------------------------------------- #
-# Figure 1: pooled
-# --------------------------------------------------------------------------- #
-pooled_df, pooled_r2 = results["Pooled (2002 + 2022)"]
-fig, ax = plt.subplots(figsize=(9, 5.4))
-fig.suptitle("WHAT DRIVES THE SIMULATIONS?", color=NAVY, fontweight="bold",
-             fontsize=18, x=0.02, y=0.99, ha="left")
-fig.text(0.02, 0.92, "Exploratory sensitivity from LHS parameter sweep",
-         fontsize=11, color=NAVY, alpha=0.7)
-barh_panel(ax, pooled_df, title="",
-           subtitle=f"Pooled across years   ·   surrogate CV R² = {pooled_r2:.2f}")
-family_legend(fig)
-fig.tight_layout(rect=[0, 0.04, 1, 0.86])
-fig.savefig(OUT_DIR / "lhs_importance_pooled.png", dpi=200, bbox_inches="tight")
-fig.savefig(OUT_DIR / "lhs_importance_pooled.pdf", bbox_inches="tight")
-print(f"\nSaved {OUT_DIR/'lhs_importance_pooled.png'} (+ .pdf)")
-
-# --------------------------------------------------------------------------- #
-# Figure 2: by year (two panels)
-# --------------------------------------------------------------------------- #
-fig, axes = plt.subplots(1, 2, figsize=(14, 5.4), sharex=False)
-fig.suptitle("WHAT DRIVES THE SIMULATIONS?", color=NAVY, fontweight="bold",
-             fontsize=18, x=0.02, y=0.99, ha="left")
-fig.text(0.02, 0.92, "Exploratory sensitivity from LHS parameter sweep",
-         fontsize=11, color=NAVY, alpha=0.7)
-for ax, year in zip(axes, ["2002", "2022"]):
-    imp_df, r2 = results[year]
-    barh_panel(ax, imp_df, title=year,
-               subtitle=f"surrogate CV R² = {r2:.2f}")
-family_legend(fig)
-fig.tight_layout(rect=[0, 0.04, 1, 0.85])
-fig.savefig(OUT_DIR / "lhs_importance_by_year.png", dpi=200, bbox_inches="tight")
-fig.savefig(OUT_DIR / "lhs_importance_by_year.pdf", bbox_inches="tight")
-print(f"Saved {OUT_DIR/'lhs_importance_by_year.png'} (+ .pdf)")
-
-print("\nInterpretation suggestion:")
-print("  Structural parameters explain most variation in the baseline "
-      "simulations;\n  behavioral parameters matter less until the electoral "
-      "structure is better specified.")
+if __name__ == "__main__":
+    main()

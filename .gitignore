@@ -217,3 +217,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 .DS_Store
+
+# Generated outputs (regenerate from analysis scripts)
+figures/
+data/empirical_*
+data/behavioral_*
+data/sweep_*

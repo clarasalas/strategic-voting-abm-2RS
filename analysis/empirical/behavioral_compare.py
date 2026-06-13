@@ -8,11 +8,23 @@ year's real electoral structure fixed) and tests whether the distribution of
 ΔCENP differs between the two years. Each draw is summarized by its mean ΔCENP
 over repeats — the same quantity plotted by behavioral_sweep_figure.py.
 
-Two complementary tests are reported:
+Two metrics are compared:
+
+    raw ΔCENP        the coordination gain as-is.
+    relative gain    ΔCENP / (1 − CENP(s⁰)) — the fraction of the *available*
+                     headroom toward full coordination that got closed. This
+                     controls for initial fragmentation: the baseline poll s⁰
+                     is fixed per year, so its CENP(s⁰) is a single constant per
+                     year (0.572 for 2002, 0.557 for 2022) and is perfectly
+                     confounded with `year` — it cannot be used as a regression
+                     covariate. Normalizing by headroom is the meaningful way to
+                     put the two years on a comparable starting footing.
+
+For each metric, two complementary tests are reported:
 
     Mann–Whitney U   non-parametric; no normality assumption. Effect size:
                      rank-biserial correlation and the common-language effect
-                     size CLES = P(ΔCENP_2002 > ΔCENP_2022).
+                     size CLES = P(metric_2002 > metric_2022).
     Welch's t-test   difference of means with unequal variances. Effect size:
                      Cohen's d (pooled SD).
 
@@ -20,10 +32,11 @@ Reads
 -----
     data/behavioral_sweep_2002.csv   (column: mean_delta_cenp)
     data/behavioral_sweep_2022.csv
+    data/behavioral_targets.csv      (column: cenp_s0, per year)
 
 Writes
 ------
-    data/behavioral_compare_2002_2022.csv   tidy one-row-per-test summary
+    data/behavioral_compare_2002_2022.csv   tidy one-row-per-(metric, test)
 
 Usage
 -----
@@ -50,6 +63,12 @@ def load_delta_cenp(year: int) -> np.ndarray:
     return df[VALUE_COL].to_numpy(dtype=float)
 
 
+def load_baseline_cenp() -> dict:
+    """Per-year baseline CENP(s⁰) from the behavioral targets table."""
+    df = pd.read_csv(DATA_DIR / "behavioral_targets.csv")
+    return {int(r["year"]): float(r["cenp_s0"]) for _, r in df.iterrows()}
+
+
 def describe(x: np.ndarray) -> dict:
     return {
         "n": x.size,
@@ -66,13 +85,11 @@ def cohens_d(a: np.ndarray, b: np.ndarray) -> float:
     return (np.mean(a) - np.mean(b)) / np.sqrt(sp2)
 
 
-def main() -> None:
-    a = load_delta_cenp(YEARS[0])   # 2002
-    b = load_delta_cenp(YEARS[1])   # 2022
-
+def compare(a: np.ndarray, b: np.ndarray, metric: str) -> list:
+    """Print and return both tests comparing 2002 (a) vs 2022 (b) for `metric`."""
     da, db = describe(a), describe(b)
     print("=" * 64)
-    print(f"ΔCENP per-draw distributions  ({VALUE_COL})")
+    print(f"{metric}: per-draw distributions")
     print("=" * 64)
     for year, d in zip(YEARS, (da, db)):
         print(f"  {year}: n={d['n']:4d}  mean={d['mean']:+.4f}  "
@@ -88,38 +105,53 @@ def main() -> None:
     t_stat, p_t = stats.ttest_ind(a, b, equal_var=False)
     d = cohens_d(a, b)
 
-    print("\n" + "-" * 64)
-    print("Mann–Whitney U (non-parametric)")
-    print("-" * 64)
-    print(f"  U = {u_stat:.1f}   p = {p_mw:.3e}")
-    print(f"  CLES P(2002 > 2022) = {cles:.3f}   rank-biserial r = {rank_biserial:+.3f}")
+    print("  Mann–Whitney U : "
+          f"U={u_stat:.1f}  p={p_mw:.3e}  "
+          f"CLES(2002>2022)={cles:.3f}  rank-biserial r={rank_biserial:+.3f}")
+    print("  Welch's t      : "
+          f"t={t_stat:.3f}  p={p_t:.3e}  "
+          f"mean diff(2002−2022)={da['mean'] - db['mean']:+.4f}  Cohen's d={d:+.3f}")
 
-    print("\n" + "-" * 64)
-    print("Welch's t-test (unequal variances)")
-    print("-" * 64)
-    print(f"  t = {t_stat:.3f}   p = {p_t:.3e}")
-    print(f"  mean diff (2002 − 2022) = {da['mean'] - db['mean']:+.4f}   "
-          f"Cohen's d = {d:+.3f}")
-
-    # Tidy summary, one row per test.
-    out = pd.DataFrame([
+    return [
         {
-            "test": "mann_whitney_u", "statistic": u_stat, "p_value": p_mw,
+            "metric": metric, "test": "mann_whitney_u",
+            "statistic": u_stat, "p_value": p_mw,
             "effect_size_name": "rank_biserial", "effect_size": rank_biserial,
             "cles_2002_gt_2022": cles,
             "n_2002": n1, "n_2022": n2,
             "mean_2002": da["mean"], "mean_2022": db["mean"],
         },
         {
-            "test": "welch_t", "statistic": t_stat, "p_value": p_t,
+            "metric": metric, "test": "welch_t",
+            "statistic": t_stat, "p_value": p_t,
             "effect_size_name": "cohens_d", "effect_size": d,
             "cles_2002_gt_2022": np.nan,
             "n_2002": n1, "n_2022": n2,
             "mean_2002": da["mean"], "mean_2022": db["mean"],
         },
-    ])
+    ]
+
+
+def main() -> None:
+    raw = {y: load_delta_cenp(y) for y in YEARS}
+    cenp_s0 = load_baseline_cenp()
+
+    # Relative gain controls for initial fragmentation: fraction of the headroom
+    # (1 − CENP(s⁰)) toward full coordination that each draw closes.
+    rel = {y: raw[y] / (1.0 - cenp_s0[y]) for y in YEARS}
+
+    print("Baseline CENP(s⁰) per year (fixed across draws):")
+    for y in YEARS:
+        print(f"  {y}: CENP(s⁰)={cenp_s0[y]:.4f}  headroom (1−CENP)={1 - cenp_s0[y]:.4f}")
+    print()
+
+    rows = []
+    rows += compare(raw[YEARS[0]], raw[YEARS[1]], "raw_delta_cenp")
+    print()
+    rows += compare(rel[YEARS[0]], rel[YEARS[1]], "relative_gain_headroom")
+
     out_path = DATA_DIR / "behavioral_compare_2002_2022.csv"
-    out.to_csv(out_path, index=False)
+    pd.DataFrame(rows).to_csv(out_path, index=False)
     print(f"\n[compare] wrote -> {out_path}")
 
 

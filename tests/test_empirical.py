@@ -17,6 +17,7 @@ sys.path.insert(0, str(REPO / "core_model"))
 
 import empirical_data as ed
 from model import run_simulation
+from metrics import tau_absolute
 from agents import Elector, Party
 
 YEARS = (2002, 2022)
@@ -258,10 +259,15 @@ def test_invalid_init_options_raise():
 # published number silently changes.
 #
 # The two tests below are the missing anchor: they pin the actual output of one
-# synthetic and one empirical configuration, recorded from the working tree at
-# commit 5623084 (13 June 2026).  Both configurations were chosen to exercise
-# the strategic loop rather than to be cheap: the synthetic run switches 19/500
-# voters, the empirical one 56/350.
+# synthetic and one empirical configuration.  Both were chosen to exercise the
+# strategic loop rather than to be cheap: the synthetic run switches 19/500
+# voters, the empirical one 48/350.
+#
+# The synthetic values were recorded at commit 5623084 (13 June 2026) and are
+# unchanged since.  The empirical values were RE-RECORDED when the tau_hat unit
+# bug was fixed (19 Aug 2026): the runner now converts tau_hat to absolute units
+# with metrics.tau_absolute, so the specification this test pins changed on
+# purpose.  See tests/test_tau_units.py for the conversion itself.
 #
 # If one of these fails, the model changed.  That is either a bug or a decision:
 #
@@ -279,7 +285,7 @@ def test_golden_synthetic_baseline():
 
         r = run_simulation(K=8, n_modes=1, width_factor=1.5, theta=1.0,
                            rho=100.0, rho_pi=100.0, n_electors=500,
-                           tau=1.75 * (2.0 / 8), mu=0.1, alpha_prior=0.0,
+                           tau=tau_absolute(1.75, 8), mu=0.1, alpha_prior=0.0,
                            K_runoff=2, max_iterations=15, seed=42,
                            verbose=False, collect_diagnostics=True)
         print(r["sincere_shares"], r["final_shares"], r["switching"])
@@ -287,7 +293,7 @@ def test_golden_synthetic_baseline():
     res = run_simulation(
         K=8, n_modes=1, width_factor=1.5, theta=1.0,
         rho=100.0, rho_pi=100.0, n_electors=500,
-        tau=1.75 * (2.0 / 8), mu=0.1, alpha_prior=0.0,
+        tau=tau_absolute(1.75, 8), mu=0.1, alpha_prior=0.0,
         K_runoff=2, max_iterations=15, seed=42,
         verbose=False, collect_diagnostics=True,
     )
@@ -304,11 +310,19 @@ def test_golden_synthetic_baseline():
 def test_golden_empirical_probabilistic():
     """
     Empirical 2022 replay under the main specification (probabilistic sincere
-    initialization, salience = s^0), pinned.  Re-record with:
+    initialization, salience = s^0), pinned.
+
+    tau_hat = 1.75 is the mid-range value used throughout the synthetic figures,
+    converted here through tau_absolute exactly as the empirical runner does:
+    for K = 12 it is an absolute tau of 0.2917.  Re-recorded when the tau_hat
+    unit bug was fixed -- the previous values were taken with tau passed in
+    absolute units, which is no longer what the runner does.
+
+    Re-record with:
 
         bundle = ed.load_year(2022)
         voters = ed.sample_voters(2022, 350, np.random.default_rng(8))
-        r = run_simulation(**_GOLDEN_EMPIRICAL_KWARGS)   # see below
+        r = run_simulation(... tau=tau_absolute(1.75, bundle["K"]) ...)
         print(r["sincere_shares"], r["final_shares"], r["switching"])
     """
     bundle = ed.load_year(2022)
@@ -318,7 +332,7 @@ def test_golden_empirical_probabilistic():
         party_positions_override=bundle["positions"],
         voter_positions_override=voters,
         exogenous_signals=bundle["signals"],
-        tau=0.5, mu=0.3, alpha_prior=0.1, rho_pi=70.0,
+        tau=tau_absolute(1.75, bundle["K"]), mu=0.3, alpha_prior=0.1, rho_pi=70.0,
         sincere_init_mode="probabilistic", beta=6.0, salience_source="signal",
         n_electors=len(voters), max_iterations=len(bundle["signals"]),
         seed=33, verbose=False, collect_diagnostics=True,
@@ -326,33 +340,33 @@ def test_golden_empirical_probabilistic():
 
     expected_sincere = [
         0.002857142857142857,
-        0.002857142857142857,
-        0.1,
-        0.045714285714285714,
+        0.005714285714285714,
+        0.06857142857142857,
+        0.054285714285714284,
+        0.02857142857142857,
+        0.13714285714285715,
         0.03428571428571429,
-        0.11428571428571428,
-        0.03428571428571429,
-        0.4257142857142857,
-        0.08,
-        0.008571428571428572,
-        0.10571428571428572,
-        0.045714285714285714,
+        0.43142857142857144,
+        0.08571428571428572,
+        0.011428571428571429,
+        0.11714285714285715,
+        0.022857142857142857,
     ]
     expected_final = [
         0.02,
         0.0,
         0.037142857142857144,
-        0.06857142857142857,
-        0.002857142857142857,
-        0.17142857142857143,
+        0.06571428571428571,
+        0.0,
+        0.1742857142857143,
         0.03428571428571429,
-        0.4257142857142857,
-        0.08,
-        0.008571428571428572,
-        0.10571428571428572,
-        0.045714285714285714,
+        0.43142857142857144,
+        0.08571428571428572,
+        0.011428571428571429,
+        0.11714285714285715,
+        0.022857142857142857,
     ]
 
     assert res["sincere_shares"] == pytest.approx(expected_sincere, abs=1e-12)
     assert res["final_shares"] == pytest.approx(expected_final, abs=1e-12)
-    assert res["switching"]["strategic"] == 56
+    assert res["switching"]["strategic"] == 48

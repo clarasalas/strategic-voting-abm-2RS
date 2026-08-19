@@ -111,17 +111,12 @@ N_REPS  = 100
 # =========================================================================== #
 
 
-def zone_length(K: int) -> float:
-    return 2.0 / K
+# enp / cenp / delta_cenp and the tau_hat -> tau conversion live in
+# core_model/metrics.py so both the empirical and synthetic analyses share them.
+from metrics import (enp, cenp, delta_cenp,          # noqa: E402,F401
+                     zone_length, tau_absolute)      # noqa: E402,F401
 
-
-def tau_abs(tau_hat: float, K: int) -> float:
-    return tau_hat * zone_length(K)
-
-
-# enp / cenp / delta_cenp now live in core_model/metrics.py so both the
-# empirical and synthetic analyses can share them.
-from metrics import enp, cenp, delta_cenp  # noqa: E402,F401
+tau_abs = tau_absolute        # local alias kept for readability at call sites
 
 
 def run_batch(params_list: list, collect_history: bool = False) -> list:

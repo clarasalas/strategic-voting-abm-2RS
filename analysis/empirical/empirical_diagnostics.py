@@ -49,6 +49,8 @@ YEARS = (2002, 2022)
 YEAR_COLORS = {2002: "#4C72B0", 2022: "#C44E52"}
 
 # Behavioural parameter ranges (mirror the runner, for plot axes/bins).
+# tau_hat is recorded NORMALISED in the runner's CSVs, so these ranges and
+# every axis built from them stay in normalised units; no conversion here.
 TAU_RANGE = (0.5, 3.0)
 MU_RANGE = (0.0, 1.0)
 ALPHA_RANGE = (0.0, 0.9)

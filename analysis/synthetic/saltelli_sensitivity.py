@@ -35,14 +35,24 @@ Outcome measures
 
 Run cost
 --------
-    SALib Saltelli: N_saltelli * (2*k + 2) evaluations
-    k=8 parameters → N_saltelli * 18 runs
-    N_saltelli=1024 → 18,432 runs per K value
-    3 K values     → 55,296 total runs
+    This design uses calc_second_order=False, so the Saltelli sample size is
+    N_saltelli * (k + 2) evaluations -- NOT the N * (2k + 2) of the full
+    second-order design.  Second-order indices are not estimated, which is what
+    saves the extra N * k runs.
 
-    At ~0.1s per run (N=2000 electors): ~1.5 hours total.
-    At ~0.05s per run: ~45 minutes.
-    Recommend running overnight or on a machine with multiprocessing.
+    k=8 parameters → N_saltelli * 10 runs
+    N_saltelli=1024 → 10,240 runs per K value
+    3 K values     → 30,720 total runs
+
+    That is exactly the row count of the committed
+    data/saltelli_results_K{6,8,9}.csv files (10,240 each); the 2k+2 formula
+    would imply a non-integer base sample of 568.9 and is simply wrong here.
+
+    At ~0.1s per run (N=2000 electors): ~50 minutes total.
+    At ~0.05s per run: ~25 minutes.
+
+    The committed result files mean this cost can be avoided entirely: use
+    --analyze-existing to recompute the Sobol indices from them.
 
 Outputs
 -------
@@ -52,13 +62,21 @@ Outputs
     saltelli_sobol_K{k}.png             bar chart of Sobol indices
     saltelli_comparison_{outcome}.png   S1 and ST across K values (overlay)
     saltelli_sobol_all.csv              combined index table across all K
+    results/tables/sobol_indices.csv    committed reader-facing table
+                                        (K, outcome, parameter, S1, S1_conf,
+                                         ST, ST_conf, n_base, n_evaluations)
 
 Usage
 -----
-    python saltelli_sensitivity.py
+    python analysis/synthetic/saltelli_sensitivity.py                    # full re-run
+    python analysis/synthetic/saltelli_sensitivity.py --analyze-existing # indices only
+
+    --analyze-existing recomputes the Sobol indices from the committed
+    data/saltelli_results_K{6,8,9}.csv without re-running a single simulation,
+    and writes results/tables/sobol_indices.csv.
 
     To run a single K value only, set K_VALUES = [6] at the top.
-    To do a quick test run, set N_SALTELLI = 64 (gives 1152 runs per K).
+    To do a quick test run, set N_SALTELLI = 64 (gives 640 runs per K).
 """
 
 import sys
@@ -88,8 +106,9 @@ from model import run_simulation
 K_VALUES = [6, 8, 9]
 
 # Saltelli sample size (power of 2 recommended)
-# N_SALTELLI = 64      # quick test: 64 * 18 = 1152 runs per K
-N_SALTELLI = 1024      # full run:   1024 * 18 = 18432 runs per K
+# calc_second_order=False, so evaluations = N_SALTELLI * (num_vars + 2).
+# N_SALTELLI = 64      # quick test: 64 * 10 = 640 runs per K
+N_SALTELLI = 1024      # full run:   1024 * 10 = 10240 runs per K
 
 # Fixed parameters
 N_ELECTORS = 2000
@@ -209,7 +228,7 @@ def _run_analysis(K: int) -> dict:
     -------
     dict mapping outcome name → SALib Si dict (S1, ST, confidence intervals).
     """
-    n_total = N_SALTELLI * (2 * PROBLEM["num_vars"] + 2)
+    n_total = N_SALTELLI * (PROBLEM["num_vars"] + 2)   # calc_second_order=False
     print(f"\n{'=' * 60}")
     print(f"  K = {K}  |  {n_total} runs")
     print(f"{'=' * 60}")
@@ -417,15 +436,204 @@ they only matter in combination with other parameters, not on their own.
 
 
 # =========================================================================== #
+#  REANALYSIS FROM COMMITTED RESULTS                                           #
+# =========================================================================== #
+#
+# The 30,720 model evaluations behind data/saltelli_results_K{6,8,9}.csv are
+# committed, so the Sobol indices can be recomputed without running the model
+# at all.  Everything below reads those files and writes the reader-facing
+# table; it never calls run_simulation.
+
+TABLES_DIR = REPO / "results" / "tables"
+
+# Fixed seed for the bootstrap confidence intervals, so repeated runs of
+# --analyze-existing reproduce the same S1_conf / ST_conf to the last digit.
+CONF_SEED = 20020422
+
+SOBOL_TABLE_COLUMNS = [
+    "K", "outcome", "parameter",
+    "S1", "S1_conf", "ST", "ST_conf",
+    "n_base", "n_evaluations",
+]
+
+
+def infer_base_sample(n_rows: int, num_vars: int = None) -> int:
+    """
+    Recover the Saltelli base sample size N from a result file's row count.
+
+    With calc_second_order=False the design is N * (D + 2) evaluations, so
+    N = n_rows / (D + 2).  Raises if that is not an exact integer -- a
+    non-integer means the file does not come from this design at all.
+    """
+    D = PROBLEM["num_vars"] if num_vars is None else num_vars
+    per_base = D + 2
+    if n_rows % per_base != 0:
+        raise ValueError(
+            f"{n_rows} rows is not a multiple of (D + 2) = {per_base}, so it "
+            f"cannot come from a calc_second_order=False Saltelli design "
+            f"(implied base sample {n_rows / per_base:.4f}). Note that the "
+            f"full second-order formula N*(2D+2) does NOT apply here."
+        )
+    return n_rows // per_base
+
+
+def load_existing_results(K: int, verify_design: bool = True) -> tuple:
+    """
+    Load data/saltelli_results_K{K}.csv and validate it against the design.
+
+    Validates, in order:
+      * every parameter column and every outcome column is present;
+      * the row count implies an integer Saltelli base sample size;
+      * (verify_design) the parameter columns reproduce the Saltelli sample
+        that saltelli.sample(PROBLEM, N, calc_second_order=False) generates --
+        this checks row ORDER as well as count, and the Sobol estimator is
+        order-sensitive, so it is the check that actually matters.
+
+    Returns (dataframe, n_base).
+    """
+    path = REPO / "data" / f"saltelli_results_K{K}.csv"
+    if not path.exists():
+        raise FileNotFoundError(f"missing committed result file: {path}")
+
+    df = pd.read_csv(path)
+
+    missing_params = [c for c in PROBLEM["names"] if c not in df.columns]
+    if missing_params:
+        raise ValueError(f"{path.name}: missing parameter columns {missing_params}")
+    missing_outcomes = [c for c in OUTCOMES if c not in df.columns]
+    if missing_outcomes:
+        raise ValueError(f"{path.name}: missing outcome columns {missing_outcomes}")
+
+    n_base = infer_base_sample(len(df))
+
+    if verify_design:
+        expected = saltelli.sample(PROBLEM, N=n_base, calc_second_order=False)
+        actual = df[PROBLEM["names"]].to_numpy(dtype=float)
+        if actual.shape != expected.shape:
+            raise ValueError(
+                f"{path.name}: parameter block is {actual.shape}, "
+                f"design expects {expected.shape}")
+        max_dev = float(np.abs(actual - expected).max())
+        if max_dev > 1e-9:
+            raise ValueError(
+                f"{path.name}: rows do not match the Saltelli design for "
+                f"N={n_base} (max deviation {max_dev:.3e}). Row order matters "
+                f"to the Sobol estimator, so this file cannot be analysed."
+            )
+
+    return df, n_base
+
+
+def analyze_existing(K: int, verify_design: bool = True) -> tuple:
+    """
+    Recompute Sobol indices for one K from the committed results.
+
+    Returns (sobol_results, n_base, n_evaluations) where sobol_results maps
+    outcome -> the SALib Si object.  The table writer and the plots both take
+    that same object, so their numbers cannot diverge.
+    """
+    df, n_base = load_existing_results(K, verify_design=verify_design)
+    n_eval = len(df)
+    print(f"  K={K}: {n_eval} evaluations, base sample N={n_base} "
+          f"(N x (D+2) = {n_base} x {PROBLEM['num_vars'] + 2})")
+
+    sobol_results = {}
+    for outcome in OUTCOMES:
+        Y = df[outcome].to_numpy(dtype=float)
+        n_nan = int(np.isnan(Y).sum())
+        if n_nan:
+            print(f"    WARNING: {n_nan} NaN in {outcome}; replacing with mean.")
+            Y = np.where(np.isnan(Y), np.nanmean(Y), Y)
+        sobol_results[outcome] = sobol.analyze(
+            PROBLEM, Y,
+            calc_second_order=False,
+            print_to_console=False,
+            seed=CONF_SEED,
+        )
+    return sobol_results, n_base, n_eval
+
+
+def sobol_table(all_sobol: dict, meta: dict) -> pd.DataFrame:
+    """
+    Build the combined reader-facing table from the SAME Si objects the plots
+    consume.
+
+    all_sobol : {K: {outcome: Si}}
+    meta      : {K: (n_base, n_evaluations)}
+    """
+    rows = []
+    for K in sorted(all_sobol):
+        n_base, n_eval = meta[K]
+        for outcome in OUTCOMES:
+            Si = all_sobol[K][outcome]
+            for j, parameter in enumerate(PROBLEM["names"]):
+                rows.append({
+                    "K": K,
+                    "outcome": outcome,
+                    "parameter": parameter,
+                    "S1": float(Si["S1"][j]),
+                    "S1_conf": float(Si["S1_conf"][j]),
+                    "ST": float(Si["ST"][j]),
+                    "ST_conf": float(Si["ST_conf"][j]),
+                    "n_base": int(n_base),
+                    "n_evaluations": int(n_eval),
+                })
+    df = pd.DataFrame(rows, columns=SOBOL_TABLE_COLUMNS)
+    # Stable sort order so regeneration is byte-identical.
+    return df.sort_values(["K", "outcome", "parameter"]).reset_index(drop=True)
+
+
+def write_sobol_table(df: pd.DataFrame) -> Path:
+    TABLES_DIR.mkdir(parents=True, exist_ok=True)
+    out = TABLES_DIR / "sobol_indices.csv"
+    df.to_csv(out, index=False)
+    print(f"  -> {out}  ({len(df)} rows)")
+    return out
+
+
+def run_analyze_existing() -> None:
+    """CLI mode: indices and table from committed results, no simulation."""
+    print("=" * 60)
+    print("  Sobol reanalysis from committed results (no model runs)")
+    print("=" * 60)
+    all_sobol, meta = {}, {}
+    for K in K_VALUES:
+        sob, n_base, n_eval = analyze_existing(K)
+        all_sobol[K] = sob
+        meta[K] = (n_base, n_eval)
+
+    write_sobol_table(sobol_table(all_sobol, meta))
+    _plot_cross_k(all_sobol)          # same Si objects as the table
+    print("\nDone. No model evaluations were performed.")
+
+
+# =========================================================================== #
 #  ENTRY POINT                                                                 #
 # =========================================================================== #
 
 
 def main() -> None:
-    all_sobol = {}
+    import argparse
+
+    ap = argparse.ArgumentParser(description="Saltelli / Sobol sensitivity.")
+    ap.add_argument(
+        "--analyze-existing", action="store_true",
+        help="recompute Sobol indices from the committed "
+             "data/saltelli_results_K*.csv instead of re-running the model, "
+             "and write results/tables/sobol_indices.csv",
+    )
+    args = ap.parse_args()
+
+    if args.analyze_existing:
+        run_analyze_existing()
+        return
+
+    all_sobol, meta = {}, {}
     for K in K_VALUES:
         all_sobol[K] = _run_analysis(K)
+        meta[K] = (N_SALTELLI, N_SALTELLI * (PROBLEM["num_vars"] + 2))
     _plot_cross_k(all_sobol)
+    write_sobol_table(sobol_table(all_sobol, meta))
     _print_summary()
 
 

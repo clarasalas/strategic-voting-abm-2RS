@@ -245,3 +245,114 @@ def test_invalid_init_options_raise():
     with pytest.raises(ValueError):
         run_simulation(K=5, salience_source="bogus", verbose=False,
                        max_iterations=2, n_electors=50, seed=1)
+
+
+# --------------------------------------------------------------------------- #
+#  Golden (snapshot) values                                                    #
+# --------------------------------------------------------------------------- #
+#
+# The tests above compare two runs of the CURRENT code against each other, so
+# they only catch a divergence between two argument paths.  A change that moves
+# every path equally -- a rewrite of the sincere-init rule, a reordering of the
+# RNG draws, a different trigger condition -- leaves them all green while every
+# published number silently changes.
+#
+# The two tests below are the missing anchor: they pin the actual output of one
+# synthetic and one empirical configuration, recorded from the working tree at
+# commit 5623084 (13 June 2026).  Both configurations were chosen to exercise
+# the strategic loop rather than to be cheap: the synthetic run switches 19/500
+# voters, the empirical one 56/350.
+#
+# If one of these fails, the model changed.  That is either a bug or a decision:
+#
+#   * unintended -> fix the code, not the numbers;
+#   * intended   -> re-record with the snippet in each docstring, and say so in
+#                   the commit message, because every figure generated before
+#                   that commit is now stale.
+
+_GOLDEN_COMMIT = "5623084"
+
+
+def test_golden_synthetic_baseline():
+    """
+    Synthetic baseline, pinned.  Re-record with:
+
+        r = run_simulation(K=8, n_modes=1, width_factor=1.5, theta=1.0,
+                           rho=100.0, rho_pi=100.0, n_electors=500,
+                           tau=1.75 * (2.0 / 8), mu=0.1, alpha_prior=0.0,
+                           K_runoff=2, max_iterations=15, seed=42,
+                           verbose=False, collect_diagnostics=True)
+        print(r["sincere_shares"], r["final_shares"], r["switching"])
+    """
+    res = run_simulation(
+        K=8, n_modes=1, width_factor=1.5, theta=1.0,
+        rho=100.0, rho_pi=100.0, n_electors=500,
+        tau=1.75 * (2.0 / 8), mu=0.1, alpha_prior=0.0,
+        K_runoff=2, max_iterations=15, seed=42,
+        verbose=False, collect_diagnostics=True,
+    )
+
+    expected_sincere = [0.032, 0.08, 0.168, 0.246, 0.26, 0.126, 0.056, 0.032]
+    expected_final = [0.032, 0.08, 0.168, 0.246, 0.26, 0.164, 0.018, 0.032]
+
+    assert res["sincere_shares"] == pytest.approx(expected_sincere, abs=1e-12)
+    assert res["final_shares"] == pytest.approx(expected_final, abs=1e-12)
+    assert res["winner_id"] == 4
+    assert res["switching"]["strategic"] == 19
+
+
+def test_golden_empirical_probabilistic():
+    """
+    Empirical 2022 replay under the main specification (probabilistic sincere
+    initialization, salience = s^0), pinned.  Re-record with:
+
+        bundle = ed.load_year(2022)
+        voters = ed.sample_voters(2022, 350, np.random.default_rng(8))
+        r = run_simulation(**_GOLDEN_EMPIRICAL_KWARGS)   # see below
+        print(r["sincere_shares"], r["final_shares"], r["switching"])
+    """
+    bundle = ed.load_year(2022)
+    voters = ed.sample_voters(2022, 350, np.random.default_rng(8))
+    res = run_simulation(
+        K=bundle["K"], party_ids=bundle["parties"],
+        party_positions_override=bundle["positions"],
+        voter_positions_override=voters,
+        exogenous_signals=bundle["signals"],
+        tau=0.5, mu=0.3, alpha_prior=0.1, rho_pi=70.0,
+        sincere_init_mode="probabilistic", beta=6.0, salience_source="signal",
+        n_electors=len(voters), max_iterations=len(bundle["signals"]),
+        seed=33, verbose=False, collect_diagnostics=True,
+    )
+
+    expected_sincere = [
+        0.002857142857142857,
+        0.002857142857142857,
+        0.1,
+        0.045714285714285714,
+        0.03428571428571429,
+        0.11428571428571428,
+        0.03428571428571429,
+        0.4257142857142857,
+        0.08,
+        0.008571428571428572,
+        0.10571428571428572,
+        0.045714285714285714,
+    ]
+    expected_final = [
+        0.02,
+        0.0,
+        0.037142857142857144,
+        0.06857142857142857,
+        0.002857142857142857,
+        0.17142857142857143,
+        0.03428571428571429,
+        0.4257142857142857,
+        0.08,
+        0.008571428571428572,
+        0.10571428571428572,
+        0.045714285714285714,
+    ]
+
+    assert res["sincere_shares"] == pytest.approx(expected_sincere, abs=1e-12)
+    assert res["final_shares"] == pytest.approx(expected_final, abs=1e-12)
+    assert res["switching"]["strategic"] == 56

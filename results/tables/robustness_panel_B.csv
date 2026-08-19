@@ -1,0 +1,5 @@
+regime,N_electors,n_reps,tmax_ceiling,median_conv,p95_conv,n_tmax_binding,prop_tmax_binding
+Low ($c=0.5$),500,20,30,3.0,3.0,0,0.0
+Active A ($c=1.25$),500,20,30,3.0,14.100000000000001,0,0.0
+Active B ($c=1.5$),500,20,30,7.5,20.200000000000003,0,0.0
+Diffuse ($c=2.5$),500,20,30,30.0,25.0,14,0.7

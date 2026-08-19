@@ -61,16 +61,17 @@ Usage
 
 Neither mode runs without an explicit --quick or --full.
 
-KNOWN DEPENDENCY -- signal offset eps_s
----------------------------------------
-eps_s cannot currently be set through run_simulation: model.py binds
-``from signals import generate_signal`` at import time, so the value in force is
-always that function's default (1e-12).  robustness_checks panel C attempts to
-vary it by rebinding signals.generate_signal, which never reaches the
-simulation -- its committed table shows ΔCENP identical to the last digit across
-all five eps values.  Until that plumbing exists this script RECORDS the eps_s
-in force in every output row and refuses --signal-epsilon values it cannot
-honour.  It does not claim to have varied it.
+Signal offset eps_s
+-------------------
+eps_s is the numerical floor added before the temperature exponentiation.  It is
+now a real parameter of run_simulation (``signal_epsilon``), so this script sets
+it explicitly and records it in every raw and summary row.  --full REQUIRES
+--signal-epsilon: a validation whose epsilon is inherited silently is a
+validation of an undocumented protocol.
+
+The value every result in this repository was produced under is 1e-12.  The
+corrected Panel C shows outcomes are bit-identical across 1e-12, 1e-6 and 1e-4,
+so that choice is not load-bearing -- but it must still be stated.
 """
 
 from __future__ import annotations
@@ -93,9 +94,12 @@ from metrics import tau_absolute
 from model import run_simulation
 from parameter_space import (
     C_STRATA, K_VALUES, N_MODES, PROBLEM, XI, M_RUNOFF,
-    c_stratum, signal_epsilon_in_force, signal_epsilon_is_settable,
-    within_bounds,
+    c_stratum, signal_epsilon_in_force, within_bounds,
 )
+
+# The value every committed result was produced under.  Used only as the
+# --quick default; --full must state its epsilon explicitly.
+DEFAULT_SIGNAL_EPSILON = 1e-12
 
 DATA_DIR = REPO / "data"
 OUT_DIR = ROOT / "outputs" / "protocol_validation"
@@ -248,8 +252,8 @@ def validate_design(design: pd.DataFrame, k_values=None) -> None:
 # =========================================================================== #
 
 def _simulate(params: dict, K: int, n_electors: int, t_max: int,
-              seed: int) -> dict:
-    """One run, with diagnostics, at the given population and ceiling."""
+              seed: int, signal_epsilon: float) -> dict:
+    """One run, with diagnostics, at the given population, ceiling and eps_s."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         return run_simulation(
@@ -266,6 +270,7 @@ def _simulate(params: dict, K: int, n_electors: int, t_max: int,
             mu=params["mu"],
             alpha_prior=params["alpha"],
             K_runoff=M_RUNOFF,
+            signal_epsilon=signal_epsilon,
             max_iterations=t_max,
             seed=seed,
             verbose=False,
@@ -383,6 +388,7 @@ def _append_rows(path: Path, rows: list) -> None:
 
 def run_horizon(design: pd.DataFrame, seeds: list, horizons: list,
                 tail_window: int, n_electors: int, out_dir: Path,
+                signal_epsilon: float = DEFAULT_SIGNAL_EPSILON,
                 resume: bool = True) -> pd.DataFrame:
     """One run per (config, seed) to max(horizons); states read from it."""
     raw_path = out_dir / "horizon_raw.csv"
@@ -391,7 +397,7 @@ def run_horizon(design: pd.DataFrame, seeds: list, horizons: list,
     if done:
         print(f"  resume: {len(done)} (config, seed) rows already present")
 
-    eps_s = signal_epsilon_in_force()
+    eps_s = signal_epsilon
     total = len(design) * len(seeds)
     started = time.perf_counter()
     n_new = 0
@@ -403,14 +409,15 @@ def run_horizon(design: pd.DataFrame, seeds: list, horizons: list,
             if key in done:
                 continue
 
-            res = _simulate(params, int(cfg["K"]), n_electors, t_max, seed)
+            res = _simulate(params, int(cfg["K"]), n_electors, t_max, seed,
+                            signal_epsilon)
             traj = trajectory_outcomes(res, int(cfg["K"]))
 
             row = {
                 "config_id": cfg["config_id"], "K": int(cfg["K"]),
                 "c_stratum": cfg["c_stratum"], "seed": int(seed),
                 "n_electors": n_electors, "t_max": t_max,
-                "tail_window": tail_window, "signal_eps_in_force": eps_s,
+                "tail_window": tail_window, "signal_epsilon": eps_s,
             }
             row.update({name: float(cfg[name]) for name in PROBLEM["names"]})
             for h in horizons:
@@ -450,6 +457,8 @@ def summarise_horizon(raw: pd.DataFrame, horizons: list,
                 "n_configurations": grp["config_id"].nunique(),
                 "n_runs": len(grp),
                 "reference_horizon": ref,
+                "signal_epsilon": (raw["signal_epsilon"].iloc[0]
+                                   if "signal_epsilon" in raw.columns else np.nan),
                 "stability_threshold": threshold,
             }
             for h in later:
@@ -477,6 +486,8 @@ def summarise_horizon(raw: pd.DataFrame, horizons: list,
                 "n_configurations": grp["config_id"].nunique(),
                 "n_runs": len(grp),
                 "reference_horizon": ref,
+                "signal_epsilon": (raw["signal_epsilon"].iloc[0]
+                                   if "signal_epsilon" in raw.columns else np.nan),
                 "stability_threshold": threshold,
             }
             for h in later:
@@ -504,6 +515,7 @@ def summarise_horizon(raw: pd.DataFrame, horizons: list,
 
 def run_population(design: pd.DataFrame, seeds: list, populations: list,
                    horizon: int, tail_window: int, out_dir: Path,
+                   signal_epsilon: float = DEFAULT_SIGNAL_EPSILON,
                    resume: bool = True) -> pd.DataFrame:
     """Same configurations and seeds at each population size."""
     raw_path = out_dir / "population_raw.csv"
@@ -511,7 +523,7 @@ def run_population(design: pd.DataFrame, seeds: list, populations: list,
     if done:
         print(f"  resume: {len(done)} rows already present")
 
-    eps_s = signal_epsilon_in_force()
+    eps_s = signal_epsilon
     started = time.perf_counter()
     n_new = 0
 
@@ -523,14 +535,15 @@ def run_population(design: pd.DataFrame, seeds: list, populations: list,
                 if key in done:
                     continue
 
-                res = _simulate(params, int(cfg["K"]), n_el, horizon, seed)
+                res = _simulate(params, int(cfg["K"]), n_el, horizon, seed,
+                                signal_epsilon)
                 traj = trajectory_outcomes(res, int(cfg["K"]))
 
                 row = {
                     "config_id": cfg["config_id"], "K": int(cfg["K"]),
                     "c_stratum": cfg["c_stratum"], "seed": int(seed),
                     "n_electors": n_el, "horizon": horizon,
-                    "tail_window": tail_window, "signal_eps_in_force": eps_s,
+                    "tail_window": tail_window, "signal_epsilon": eps_s,
                 }
                 row.update({name: float(cfg[name]) for name in PROBLEM["names"]})
                 row.update(state_at(traj, horizon))
@@ -582,6 +595,8 @@ def summarise_population(raw: pd.DataFrame, reference_n: int,
             rows_k.append({
                 "K": keys[0], "c_stratum": keys[1], "outcome": outcome,
                 "reference_N": reference_n, "compare_N": compare_n,
+                "signal_epsilon": (raw["signal_epsilon"].iloc[0]
+                                   if "signal_epsilon" in raw.columns else np.nan),
                 "n_configurations": merged["config_id"].nunique(),
                 "n_pairs": len(merged),
                 "median_abs_diff": float(np.median(d)) if d.size else np.nan,
@@ -609,6 +624,8 @@ def summarise_population(raw: pd.DataFrame, reference_n: int,
             rows_c.append({
                 "c_stratum": stratum, "outcome": outcome,
                 "reference_N": reference_n, "compare_N": compare_n,
+                "signal_epsilon": (raw["signal_epsilon"].iloc[0]
+                                   if "signal_epsilon" in raw.columns else np.nan),
                 "n_configurations": merged["config_id"].nunique(),
                 "n_pairs": len(merged),
                 "median_abs_diff": float(np.median(d)) if d.size else np.nan,
@@ -646,21 +663,34 @@ def _write_table(df: pd.DataFrame, name: str) -> Path:
     return out
 
 
-def _report_epsilon_dependency(requested: float | None) -> float:
-    """Print what eps_s is in force; refuse a value that cannot be honoured."""
-    in_force = signal_epsilon_in_force()
-    settable = signal_epsilon_is_settable()
-    print(f"  signal offset eps_s in force: {in_force:g} "
-          f"(settable through run_simulation: {settable})")
-    if requested is not None and not settable:
-        raise SystemExit(
-            f"\n--signal-epsilon={requested:g} cannot be honoured.\n"
-            f"run_simulation has no eps_s parameter, and model.py binds\n"
-            f"'from signals import generate_signal' at import time, so patching\n"
-            f"the signals module does not reach the simulation. The value in\n"
-            f"force would still be {in_force:g}. Plumb eps_s through\n"
-            f"run_simulation first; this script will then honour the flag.\n")
-    return in_force
+def resolve_signal_epsilon(requested, is_full: bool) -> float:
+    """
+    Decide the eps_s this run uses, and refuse to guess for a --full run.
+
+    A full validation that inherited its epsilon silently would be validating an
+    undocumented protocol -- exactly the failure this whole change exists to fix.
+    --quick may default, because a smoke run asserts nothing.
+    """
+    if requested is None:
+        if is_full:
+            raise SystemExit(
+                "\n--full requires --signal-epsilon to be stated explicitly.\n"
+                f"The value every committed result was produced under is "
+                f"{DEFAULT_SIGNAL_EPSILON:g}; pass\n"
+                f"    --signal-epsilon {DEFAULT_SIGNAL_EPSILON:g}\n"
+                "to validate the current protocol, or another value to validate "
+                "a different one.\n")
+        requested = DEFAULT_SIGNAL_EPSILON
+
+    eps = float(requested)
+    if not np.isfinite(eps) or eps < 0:
+        raise SystemExit(f"--signal-epsilon must be finite and non-negative, "
+                         f"got {requested!r}")
+
+    default_in_signals = signal_epsilon_in_force()
+    note = "" if eps == default_in_signals else "  (differs from signals default)"
+    print(f"  signal offset eps_s: {eps:g}{note}")
+    return eps
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -699,8 +729,11 @@ def build_parser() -> argparse.ArgumentParser:
                         "columns. Continuous medians and p95 are reported "
                         "regardless and are the actual result.")
     p.add_argument("--signal-epsilon", type=float, default=None,
-                   help="requested eps_s. Currently refused: see the module "
-                        "docstring's KNOWN DEPENDENCY section.")
+                   help="numerical floor eps_s added before the temperature "
+                        "transform. REQUIRED with --full so the validated "
+                        "protocol is on the record; --quick defaults to "
+                        f"{DEFAULT_SIGNAL_EPSILON:g}, the value every committed "
+                        "result was produced under.")
     p.add_argument("--out-dir", type=Path, default=OUT_DIR)
     p.add_argument("--no-resume", action="store_true",
                    help="ignore existing raw rows and recompute everything")
@@ -743,7 +776,7 @@ def main(argv=None) -> None:
     print(f"  Protocol validation — mode={args.mode} "
           f"({'quick' if quick else 'full' if args.full else 'dry-run'})")
     print("=" * 70)
-    _report_epsilon_dependency(args.signal_epsilon)
+    signal_epsilon = resolve_signal_epsilon(args.signal_epsilon, args.full)
 
     design = build_design(cfg_per_cell, args.k_values, args.design_seed)
     validate_design(design, args.k_values)
@@ -768,13 +801,15 @@ def main(argv=None) -> None:
 
     if args.mode == "horizon":
         raw = run_horizon(design, seeds, horizons, tail_window, n_electors,
-                          out_dir, resume=not args.no_resume)
+                          out_dir, signal_epsilon=signal_epsilon,
+                          resume=not args.no_resume)
         by_k, by_c = summarise_horizon(raw, horizons, args.stability_threshold)
         _write_table(by_k, "protocol_horizon_validation.csv")
         _write_table(by_c, "protocol_horizon_stability_by_c.csv")
     else:
         raw = run_population(design, seeds, populations, horizon, tail_window,
-                             out_dir, resume=not args.no_resume)
+                             out_dir, signal_epsilon=signal_epsilon,
+                             resume=not args.no_resume)
         ref = 2000 if 2000 in populations else populations[len(populations) // 2]
         cmp_ = max(populations)
         by_k, by_c = summarise_population(raw, ref, cmp_,

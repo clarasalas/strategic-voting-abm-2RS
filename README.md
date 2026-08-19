@@ -318,7 +318,7 @@ two second-round finalists (abstention, blank, and null votes excluded).
 | *N* | Number of voters | 2000 | Fixed |
 | *Tmax* | Maximum iterations | 25 | Fixed |
 | *ξ* | Electorate mode position | 0.0 | Fixed |
-| *εs* | Signal offset | 10⁻⁴ | Fixed |
+| *εs* | Signal offset (numerical floor) | 10⁻¹² | Fixed |
 
 Party positions are equally spaced on [−1, 1]:
 *xⱼ* = −1 + (2*j* + 1)/*K*, *j* = 0, …, *K* − 1.  

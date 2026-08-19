@@ -77,7 +77,7 @@ quantities, and a common schema would obscure all of them.
 |---|---|---|---|---|
 | A | *N* ∈ {250, 500, 1000, 2000, 5000} | *K* = 6, 4 width regimes | 30 | SE of ΔCENP |
 | B | — (convergence timing) | *K* = 6, 4 width regimes, *N* = 500 | 20 | median / p95 convergence iteration, count hitting the ceiling |
-| C | ε<sub>s</sub> ∈ {10⁻⁶ … 10⁻¹} | 4 configs | 10 | mean ΔCENP ± SD |
+| C | ε<sub>s</sub> ∈ {10⁻¹², 10⁻⁶ … 10⁻¹} | 4 configs | 10 | mean ΔCENP ± SD |
 | D | ξ ∈ [−0.75, 0.75], 9 values | *K* = 6, θ = 1 | 20 | mean sincere and final ENP ± SE |
 | E | θ ∈ {0.3 … 3.0} | analytic, *K* = 8 | — | transformed share per party, ΔENP |
 | F | μ ∈ {0 … 1}, 8 values | *K* = 8, τ̂ = 1.75, 2 width regimes | 30 | mean conditional switching ± SE |
@@ -97,6 +97,13 @@ seed-to-seed SD (`drift_over_sd` ≈ 1.2–1.4 at *c* = 2.5), but the **mean acr
 seeds** barely moves — 0.3 % for ΔCENP, 0.04 % for final ENP. The trajectory
 oscillates around a stable centre rather than still trending toward one. So
 aggregate results are robust to the ceiling; individual trajectories are not.
+
+**Panel C was invalid before this and has been regenerated.** It varied
+ε<sub>s</sub> by rebinding `signals.generate_signal`, which `model.py` never
+consults — it binds the name at import time — so all five ε values produced
+bit-identical output. ε<sub>s</sub> is now a real parameter
+(`run_simulation(signal_epsilon=...)`), the grid includes the historical
+**10⁻¹²** actually in force, and the results genuinely vary.
 
 Each table carries the varied condition, the fixed regime, the repetition count
 and the dispersion statistic, so every plotted point can be reconstructed from

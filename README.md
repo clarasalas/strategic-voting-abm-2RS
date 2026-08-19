@@ -168,6 +168,32 @@ python analysis/synthetic/main_results.py
 Outputs: `fig1_heatmap_trigger.png`, `fig2_trigger_condswitch_c.png`,
 `fig3_trajectory_deltacenp.png`, `fig4_empirical_range_cenp.png`.
 
+**Protocol validation across the Saltelli domain**:
+```bash
+python analysis/synthetic/protocol_validation.py --mode horizon --dry-run
+python analysis/synthetic/protocol_validation.py --mode horizon --full
+python analysis/synthetic/protocol_validation.py --mode population --full
+```
+
+The A–F panels in `robustness_checks.py` are *baseline* diagnostics: each varies
+one protocol constant around a single hand-picked baseline (*K* = 6, τ̂ = 1.0,
+μ = 0). That establishes whether a constant is defensible **at that baseline**.
+
+`protocol_validation.py` asks the harder question — whether *T*<sub>max</sub> = 25
+and *N* = 2000 hold up across the **whole eight-parameter domain the Saltelli
+analysis actually sweeps**, stratified by electorate width *c* (low / medium /
+high) and covering every *K*. Panel G already showed the answer is
+regime-dependent, so a single baseline cannot settle it.
+
+It is a **targeted validation design, not another Sobol analysis**: it estimates
+no indices and re-runs no part of the Saltelli experiment. Configurations are a
+deterministic stratified subset of the committed Saltelli rows, so every
+configuration validated is one the sensitivity analysis really evaluated.
+
+Raw per-run output goes to `analysis/synthetic/outputs/protocol_validation/`
+and stays git-ignored; compact summaries are committed to `results/tables/`.
+Neither mode runs without an explicit `--quick` or `--full`.
+
 **Robustness checks** (Appendices B–D):
 ```bash
 python analysis/synthetic/robustness_checks.py               # all six panels
@@ -228,6 +254,8 @@ tables under [`results/tables/`](results/tables/) — see
 | [`sobol_indices.csv`](results/tables/sobol_indices.csv) | **Formal** Sobol S1/ST + confidence intervals, 3 *K* × 5 outcomes × 8 parameters | `python analysis/synthetic/saltelli_sensitivity.py --analyze-existing` |
 | `robustness_panel_{A–F}.csv` | Protocol robustness summaries, one table per panel | `python analysis/synthetic/robustness_checks.py` |
 | `lhs_parameter_importance.csv` | **Exploratory** LHS surrogate importance (not Sobol) | `python analysis/empirical/lhs_importance.py` |
+| `protocol_horizon_validation.csv`, `protocol_horizon_stability_by_c.csv` | Is *T*<sub>max</sub> = 25 adequate across the Saltelli domain? | `python analysis/synthetic/protocol_validation.py --mode horizon --full` |
+| `protocol_population_validation.csv`, `protocol_population_stability_by_c.csv` | Is *N* = 2000 adequate across the Saltelli domain? | `python analysis/synthetic/protocol_validation.py --mode population --full` |
 
 `--analyze-existing` recomputes the Sobol indices from the committed
 `data/saltelli_results_K{6,8,9}.csv` **without re-running a single

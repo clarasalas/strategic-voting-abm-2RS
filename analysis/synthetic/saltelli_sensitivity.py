@@ -102,63 +102,25 @@ from model import run_simulation
 #  CONFIGURATION                                                               #
 # =========================================================================== #
 
-# K values to run separately
-K_VALUES = [6, 8, 9]
+# Parameter space, K values, outcomes and the fixed protocol constants live in
+# parameter_space.py -- a side-effect-free module, so protocol_validation.py and
+# the tests can import the definitions without pulling in SALib, matplotlib or
+# the model.  Re-exported here so existing references keep working.
+from parameter_space import (                                  # noqa: E402
+    PROBLEM, K_VALUES, OUTCOMES, OUTCOME_LABELS,
+    N_ELECTORS, M_RUNOFF, TMAX, XI, N_MODES,
+)
 
 # Saltelli sample size (power of 2 recommended)
 # calc_second_order=False, so evaluations = N_SALTELLI * (num_vars + 2).
 # N_SALTELLI = 64      # quick test: 64 * 10 = 640 runs per K
 N_SALTELLI = 1024      # full run:   1024 * 10 = 10240 runs per K
 
-# Fixed parameters
-N_ELECTORS = 2000
-M_RUNOFF   = 2
-TMAX       = 25
-EPS_SIGNAL = 1e-4
-XI         = 0.0       # mode position (symmetric)
-N_MODES    = 1         # unimodal electorate
-
-# Saltelli parameter space
-PROBLEM = {
-    "num_vars": 8,
-    "names": [
-        "tau_hat",   # normalized tolerance threshold
-        "c",         # electorate width factor
-        "theta",     # signal temperature
-        "rho_s",     # signal precision
-        "rho_pi",    # prior precision
-        "alpha",     # prior weight
-        "mu",        # expressive cost
-        "epsilon",   # floor weight
-    ],
-    "bounds": [
-        [0.5,   3.0],    # tau_hat
-        [0.25,  3.0],    # c
-        [0.3,   3.0],    # theta
-        [10.0,  200.0],  # rho_s
-        [5.0,   200.0],  # rho_pi
-        [0.0,   0.9],    # alpha
-        [0.0,   1.0],    # mu
-        [0.05,  0.5],    # epsilon (floor weight)
-    ],
-}
-
-# Outcome measures to analyse
-OUTCOMES = [
-    "delta_cenp",
-    "trigger_rate",
-    "cond_switching",
-    "total_switching",
-    "enp_final",
-]
-
-OUTCOME_LABELS = {
-    "delta_cenp":      "ΔCENP",
-    "trigger_rate":    "Trigger rate",
-    "cond_switching":  "Cond. switching",
-    "total_switching": "Total switching",
-    "enp_final":       "Final ENP",
-}
+# NOTE: the signal offset eps_s is NOT set here and never was.  A constant
+# EPS_SIGNAL = 1e-4 used to sit at this spot, unreferenced by any code path.
+# run_simulation has no eps_s parameter, so the value actually in force is the
+# default of signals.generate_signal (1e-12).  Use
+# parameter_space.signal_epsilon_in_force() to read it rather than assuming.
 
 # Plot colours — defined once, reused across all K iterations
 COLOR_S1 = plt.cm.Spectral(0.32)

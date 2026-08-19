@@ -61,6 +61,7 @@ sys.path.insert(0, str(_REPO / "core_model"))
 
 import functions
 import signals as _signals
+from metrics import tau_absolute
 from model import run_simulation
 from signals import transform_signal
 
@@ -112,7 +113,7 @@ SPECTRAL = plt.cm.Spectral
 # insensitive to this choice.
 
 BASE_K       = 6
-BASE_TAU_ABS = 1.0 * (2.0 / BASE_K)   # τ̂ = 1.0, converted to absolute units
+BASE_TAU_ABS = tau_absolute(1.0, BASE_K)   # τ̂ = 1.0 in absolute units
 BASE_THETA   = 1.0
 BASE_MU      = 0.0
 BASE_ALPHA   = 0.0
@@ -670,7 +671,7 @@ K_F       = 8
 N_F       = 1000
 TMAX_F    = 25
 TAU_HAT_F = 1.75
-TAU_ABS_F = TAU_HAT_F * (2.0 / K_F)
+TAU_ABS_F = tau_absolute(TAU_HAT_F, K_F)
 N_REPS_F  = 30
 
 MU_VALUES_F = [0.0, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0]

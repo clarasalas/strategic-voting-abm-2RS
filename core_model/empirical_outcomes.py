@@ -67,7 +67,11 @@ def initialization_benchmarks(
     ----------
     party_positions : array (K,)
     voter_positions : array (N,)
-    tau             : float       — contender-set threshold tau_hat.
+    tau             : float       — contender-set threshold in ABSOLUTE
+                                    ideological units (not tau_hat); it is
+                                    handed straight to Elector(tau=...).
+                                    Callers wanting a normalised threshold
+                                    must convert with metrics.tau_absolute.
     first_signal    : array (K,)  — s^0.
     beta            : float >= 0  — ideological sharpness inside Ca.
     rho_pi          : float       — prior precision for the prob_prior benchmark.

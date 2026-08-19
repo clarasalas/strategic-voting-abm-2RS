@@ -12,10 +12,24 @@ plausible behavioural parameters.
 
 Varied behavioural parameters (shared across years)
 ---------------------------------------------------
-    tau_hat  in [0.5, 3.0]
+    tau_hat  in [0.5, 3.0]   NORMALISED (zone lengths) -- see units note below
     rho_pi   in [5, 200]
     alpha    in [0.0, 0.9]
     mu       in [0.0, 1.0]
+
+Units of tau
+------------
+tau_hat is normalised in zone lengths and is what the design draws and every
+CSV records.  run_simulation expects an ABSOLUTE threshold on [-1, 1], so the
+runner converts with metrics.tau_absolute:
+
+    tau = tau_hat * (2 / K)
+
+K is year-specific (15 in 2002, 12 in 2022), so ONE shared tau_hat draw maps to
+a DIFFERENT absolute tau in each year -- tau_hat = 3.0 becomes 0.40 in 2002 and
+0.50 in 2022.  That is the intended behaviour: the shared draw is a shared
+*behavioural* setting (tolerance measured in zone lengths), and the year-specific
+absolute distance is part of the environment, exactly like the party positions.
 
 Fixed / unused: theta, rho_s, eps_s, xi, c, eps_F -- the signal is exogenous
 (empirical polls), so the signal-generating parameters play no role here.
@@ -53,6 +67,7 @@ from empirical_data import (
     weekly_signal_timeline, individual_signal_timeline,
 )
 from empirical_outcomes import compute_run_outcomes, initialization_benchmarks
+from metrics import tau_absolute
 
 DATA_DIR = REPO / "data"
 YEARS = (2002, 2022)
@@ -142,13 +157,17 @@ def run_single(params: dict, positions: np.ndarray, voters: np.ndarray,
           'salience_source'.  Defaults to the nearest-party baseline.
     """
     cfg = cfg or {}
+    K = len(positions)
+    # tau_hat is normalised (zone lengths); the model wants absolute units.
+    # K differs by year, so one shared tau_hat draw becomes a different
+    # absolute tau in 2002 (K=15) and 2022 (K=12).
     res = run_simulation(
-        K=len(positions),
+        K=K,
         party_ids=party_ids,
         party_positions_override=positions,
         voter_positions_override=voters,
         exogenous_signals=signals,
-        tau=params["tau_hat"],
+        tau=tau_absolute(params["tau_hat"], K),
         mu=params["mu"],
         alpha_prior=params["alpha"],
         rho_pi=params["rho_pi"],
@@ -394,6 +413,12 @@ def run_init_benchmarks(beta: float = 5.0, rho_pi: float = 50.0) -> None:
         voter_rng = np.random.default_rng(MASTER_SEED * 7919 + year)
         voters = sample_voters(year, N_VOTERS, voter_rng)
 
+        # INTENTIONAL EXCEPTION to the tau_hat -> tau conversion: tau is passed
+        # in absolute units and set to 2.0 (the full width of [-1, 1]) so that
+        # every party is a contender for every voter.  These benchmarks compare
+        # the three ATTACHMENT RULES on identical footing; restricting the
+        # contender set would confound the rule being measured with the size of
+        # Ca, which is a separate parameter.  This is not a swept draw.
         bench = initialization_benchmarks(
             bundle["positions"], voters, tau=2.0,
             first_signal=bundle["signals"][0], beta=beta,

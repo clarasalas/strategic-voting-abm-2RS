@@ -272,3 +272,35 @@ two second-round finalists (abstention, blank, and null votes excluded).
 Party positions are equally spaced on [−1, 1]:
 *xⱼ* = −1 + (2*j* + 1)/*K*, *j* = 0, …, *K* − 1.  
 Voter tolerance is normalised by zone spacing: *τ* = *τ̂* · (2/*K*).
+
+### Units of *τ*: normalised vs absolute
+
+Two different quantities are both written "tau" in the code, and mixing them up
+is a silent bug rather than an error:
+
+| | Symbol | Units | Where it appears |
+|---|---|---|---|
+| Normalised | *τ̂* | zone lengths | every design/sweep variable named `tau_hat`, every CSV column, the paper |
+| Absolute | *τ* | ideological distance on [−1, 1] | `run_simulation(tau=…)`, `Elector(tau=…)` |
+
+**Every runner that draws a `tau_hat` must convert before calling the model**,
+using the single shared helper in `core_model/metrics.py`:
+
+```python
+from metrics import tau_absolute
+tau = tau_absolute(tau_hat, K)      # tau_hat * (2 / K)
+```
+
+Because *K* is year-specific in the empirical replay, **one shared *τ̂* draw maps
+to a different absolute *τ* in each year** — *τ̂* = 3.0 becomes *τ* = 0.40 in 2002
+(*K* = 15) and *τ* = 0.50 in 2022 (*K* = 12). That is intended: *τ̂* is the shared
+behavioural setting (tolerance in zone lengths), while the absolute distance it
+implies belongs to the year's environment, exactly like the party positions.
+
+Passing a `tau_hat` straight into `run_simulation` reinterprets it as an absolute
+distance. For *τ̂* ≥ 2 that makes every party a contender for every voter and
+disables the *Cₐ*/*Oₐ* distinction entirely; the model emits a `UserWarning`
+saying so. Two deliberate exceptions pass absolute *τ* directly and are commented
+as such at their call sites: the unit-test fixtures in `tests/`, and
+`initialization_benchmarks(..., tau=2.0)`, which makes every party available on
+purpose so that the three attachment rules are compared on identical footing.

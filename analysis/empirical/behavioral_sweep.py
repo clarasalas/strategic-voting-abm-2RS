@@ -42,7 +42,12 @@ real candidate set, weekly-mean polls, N = 2000, Tmax = 25, M = 2 (K_runoff).
 
 Swept (Latin hypercube, one draw = one row)
 -------------------------------------------
-    tau_hat (τ̂)  ∈ [0.5, 3.0]      -> run_simulation(tau=…)
+    tau_hat (τ̂)  ∈ [0.5, 3.0]      -> run_simulation(tau=tau_absolute(τ̂, K))
+                                      τ̂ is NORMALISED in zone lengths; the model
+                                      wants absolute units, so it is converted
+                                      with tau = τ̂·(2/K).  K is year-specific,
+                                      so the same τ̂ is 0.40 in 2002 (K=15) and
+                                      0.50 in 2022 (K=12).
     mu      (µ)  ∈ [0.0, 1.0]      -> run_simulation(mu=…)
     alpha   (α)  ∈ [0.0, 0.9]      -> run_simulation(alpha_prior=…)
     rho_pi  (ρπ) ∈ [5, 200]        -> run_simulation(rho_pi=…)
@@ -87,7 +92,7 @@ sys.path.insert(0, str(ROOT))
 
 from model import run_simulation                       # import & call; do not reimplement
 from empirical_data import load_year, sample_voters
-from metrics import cenp           # shared coordination metric (core_model)
+from metrics import cenp, tau_absolute   # shared metrics + unit conversion
 
 YEARS = (2002, 2022)
 
@@ -153,7 +158,8 @@ def run_one(params: dict, bundle: dict, voters: np.ndarray, seed: int) -> dict:
         party_positions_override=positions,
         voter_positions_override=voters,
         exogenous_signals=signals,
-        tau=params["tau_hat"],
+        # tau_hat is normalised; run_simulation wants absolute units (2/K).
+        tau=tau_absolute(params["tau_hat"], K),
         mu=params["mu"],
         alpha_prior=params["alpha"],
         rho_pi=params["rho_pi"],

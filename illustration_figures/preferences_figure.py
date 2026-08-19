@@ -45,6 +45,9 @@ zone_kernels = np.array([(i + 0.5) * w for i in range(K)])
 
 voter_x = 0.685          # just inside zone F, very close to E/F border
 tau     = 0.250           # lo=0.435 (inside D, past D's kernel), hi=0.935 (inside G)
+#   NB: absolute units in THIS figure's own [0, 1] frame (w = 1/K), hand-picked so
+#   the annotated lo/hi land in the intended zones.  Not a tau_hat, and never passed
+#   to run_simulation -- no metrics.tau_absolute conversion applies here.
 
 lo = voter_x - tau
 hi = voter_x + tau

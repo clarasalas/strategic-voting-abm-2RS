@@ -77,6 +77,7 @@ REPO = ROOT.parent.parent
 sys.path.insert(0, str(REPO / "core_model"))
 
 import functions
+from metrics import tau_absolute
 from model import run_simulation
 
 # =========================================================================== #
@@ -157,8 +158,7 @@ def run_one(params: dict, K: int, seed: int) -> dict:
     to run_simulation.  tau is converted from normalised (tau_hat) to
     absolute units here.
     """
-    zone_length = 2.0 / K
-    tau_abs = params["tau_hat"] * zone_length
+    tau_abs = tau_absolute(params["tau_hat"], K)
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")

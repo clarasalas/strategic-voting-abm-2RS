@@ -205,10 +205,23 @@ def _simulate_N_robustness() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _plot_N_robustness(df: pd.DataFrame) -> plt.Figure:
-    agg = df.groupby(["scenario_name", "N"]).agg(
-        se=("delta_cenp", lambda x: x.std() / np.sqrt(len(x)))
+def _agg_N_robustness(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Grouped statistics behind panel A: SE of ΔCENP per (regime, N).
+
+    The plot and the exported summary table both call this, so a plotted point
+    and its table row can never disagree.
+    """
+    return df.groupby(["scenario_name", "N"]).agg(
+        delta_cenp_mean=("delta_cenp", "mean"),
+        delta_cenp_sd=("delta_cenp", "std"),
+        se=("delta_cenp", lambda x: x.std() / np.sqrt(len(x))),
+        n_reps=("delta_cenp", "size"),
     ).reset_index()
+
+
+def _plot_N_robustness(df: pd.DataFrame) -> plt.Figure:
+    agg = _agg_N_robustness(df)
 
     n_vals = sorted(agg["N"].unique())
     x_pos  = np.arange(len(n_vals))
@@ -541,14 +554,25 @@ def _simulate_xi() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _plot_xi(df: pd.DataFrame) -> plt.Figure:
+def _agg_xi(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Grouped statistics behind panel D: mean and SE of sincere and final ENP
+    per electorate centre xi, restricted to the baseline theta.
+
+    Shared by the plot and the exported summary table.
+    """
     sub = df[np.isclose(df["theta"], BASE_THETA)].copy()
-    agg = sub.groupby("xi").agg(
+    return sub.groupby("xi").agg(
         enp_final_mean   =("enp_final",   "mean"),
         enp_final_se     =("enp_final",   lambda x: x.std() / np.sqrt(len(x))),
         enp_sincere_mean =("enp_sincere", "mean"),
         enp_sincere_se   =("enp_sincere", lambda x: x.std() / np.sqrt(len(x))),
+        n_reps           =("enp_final",   "size"),
     ).reset_index().sort_values("xi")
+
+
+def _plot_xi(df: pd.DataFrame) -> plt.Figure:
+    agg = _agg_xi(df)
 
     color_final   = SPECTRAL(0.15)
     color_sincere = SPECTRAL(0.85)
@@ -754,6 +778,137 @@ def _plot_mu(df: pd.DataFrame) -> plt.Figure:
 
 
 # =========================================================================== #
+#  APPENDIX SUMMARY TABLES                                                     #
+# =========================================================================== #
+#
+# The panel_*_raw.csv files stay in outputs/ (bulky, git-ignored).  These are
+# the compact, committed, appendix-facing summaries: one table per panel,
+# because the panels report genuinely different quantities and forcing them
+# into a shared schema would obscure all of them.
+#
+# Each table is built from the SAME aggregation function the corresponding plot
+# uses, so every row reconstructs a plotted point exactly.
+
+TABLES_DIR = _REPO / "results" / "tables"
+
+
+def _regime_lookup() -> dict:
+    """scenario_name -> (label, c value)."""
+    return {name: (label, c) for name, (label, c, _) in REGIMES.items()}
+
+
+def table_panel_A(df_raw: pd.DataFrame) -> pd.DataFrame:
+    """Panel A: SE of ΔCENP by electorate width regime and N."""
+    agg = _agg_N_robustness(df_raw)              # same call the plot makes
+    look = _regime_lookup()
+    agg["regime"] = agg["scenario_name"].map(lambda k: look[k][0])
+    agg["c"] = agg["scenario_name"].map(lambda k: look[k][1])
+    agg["n_chosen"] = N_CHOSEN
+    out = agg[["regime", "c", "N", "n_reps",
+               "delta_cenp_mean", "delta_cenp_sd", "se", "n_chosen"]]
+    out = out.rename(columns={"se": "delta_cenp_se"})
+    return out.sort_values(["regime", "N"]).reset_index(drop=True)
+
+
+def table_panel_B(df_raw: pd.DataFrame) -> pd.DataFrame:
+    """Panel B: hard fixed-point convergence time by regime."""
+    summary = _build_tmax_summary(df_raw)        # same call the plot makes
+    summary["n_reps"] = N_REPS_B
+    summary["tmax_ceiling"] = TMAX_CEILING_B
+    summary["prop_tmax_binding"] = summary["n_tmax_binding"] / N_REPS_B
+    summary["N_electors"] = N_B
+    return summary[["regime", "N_electors", "n_reps", "tmax_ceiling",
+                    "median_conv", "p95_conv",
+                    "n_tmax_binding", "prop_tmax_binding"]].reset_index(drop=True)
+
+
+def table_panel_C(df_agg: pd.DataFrame) -> pd.DataFrame:
+    """Panel C: ΔCENP by signal-offset epsilon.  Already aggregated upstream."""
+    out = df_agg.copy()
+    out["n_reps"] = N_REPS_C
+    keep = [c for c in ["config", "eps", "n_reps",
+                        "delta_cenp_mean", "delta_cenp_sd",
+                        "trigger_rate_mean", "cond_switching_mean",
+                        "total_switching_mean"] if c in out.columns]
+    return out[keep].sort_values(["config", "eps"]).reset_index(drop=True)
+
+
+def table_panel_D(df_raw: pd.DataFrame) -> pd.DataFrame:
+    """Panel D: sincere and final ENP by electorate centre xi."""
+    agg = _agg_xi(df_raw)                        # same call the plot makes
+    agg["K"] = BASE_K
+    agg["theta"] = BASE_THETA
+    return agg[["xi", "K", "theta", "n_reps",
+                "enp_sincere_mean", "enp_sincere_se",
+                "enp_final_mean", "enp_final_se"]].reset_index(drop=True)
+
+
+def table_panel_E() -> pd.DataFrame:
+    """
+    Panel E: the analytic signal-temperature distortion.
+
+    This panel runs no simulation, so it previously existed only as a figure.
+    One row per (theta, party) carrying the transformed share, plus the
+    distribution-level ENP distortion that the right-hand plot draws:
+
+        delta_enp = ENP(s_tilde) - ENP(delta_0)
+    """
+    delta0 = BASELINE_SHARES_E / BASELINE_SHARES_E.sum()
+
+    def _enp_local(shares):
+        s = np.asarray(shares, dtype=float)
+        s = s / s.sum()
+        return 1.0 / (s ** 2).sum()
+
+    enp_orig = _enp_local(delta0)
+    rows = []
+    for theta in THETA_VALUES_E:
+        s_tilde = transform_signal(delta0, theta=theta)
+        d_enp = _enp_local(s_tilde) - enp_orig
+        for j in range(len(delta0)):
+            rows.append({
+                "theta": theta,
+                "party": j + 1,
+                "sincere_share": float(delta0[j]),
+                "transformed_share": float(s_tilde[j]),
+                "enp_sincere": float(enp_orig),
+                "enp_transformed": float(_enp_local(s_tilde)),
+                "delta_enp": float(d_enp),
+                "shown_in_figure": theta in SHOW_THETAS_E,
+            })
+    return pd.DataFrame(rows).sort_values(["theta", "party"]).reset_index(drop=True)
+
+
+def table_panel_F(df_agg: pd.DataFrame) -> pd.DataFrame:
+    """Panel F: conditional switching by mu and width regime."""
+    out = df_agg.copy()
+    out["n_reps"] = N_REPS_F
+    out["K"] = K_F
+    out["tau_hat"] = TAU_HAT_F
+    keep = [c for c in ["regime", "c", "K", "tau_hat", "mu", "n_reps",
+                        "cond_sw_mean", "cond_sw_se"] if c in out.columns]
+    return out[keep].sort_values(["regime", "mu"]).reset_index(drop=True)
+
+
+_TABLE_BUILDERS = {
+    "A": table_panel_A,
+    "B": table_panel_B,
+    "C": table_panel_C,
+    "D": table_panel_D,
+    "F": table_panel_F,
+}
+
+
+def write_panel_table(panel: str, df) -> Path:
+    """Write one panel summary to results/tables/robustness_panel_<panel>.csv."""
+    TABLES_DIR.mkdir(parents=True, exist_ok=True)
+    out = TABLES_DIR / f"robustness_panel_{panel}.csv"
+    df.to_csv(out, index=False)
+    print(f"  -> {out.name}  ({len(df)} rows)")
+    return out
+
+
+# =========================================================================== #
 #  COMBINED 2×2 GRID (PANELS A–D)                                             #
 # =========================================================================== #
 
@@ -816,6 +971,7 @@ def main(panels: list = None) -> None:
             # Analytical — no simulation
             print("Panel E — signal temperature (analytical) …")
             _save(_plot_theta_mechanical(), "panel_E_signal_temperature.png")
+            write_panel_table("E", table_panel_E())
             continue
 
         if panel not in _SIMULATE:
@@ -827,6 +983,8 @@ def main(panels: list = None) -> None:
         df = simulate_fn()
         df.to_csv(OUT_DIR / f"panel_{panel}_raw.csv", index=False)
         _save(plot_fn(df), fname)
+        if panel in _TABLE_BUILDERS:
+            write_panel_table(panel, _TABLE_BUILDERS[panel](df))
 
     if all(p in panels for p in ["A", "B", "C", "D"]):
         _assemble_protocol_grid()

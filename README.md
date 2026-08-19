@@ -109,7 +109,7 @@ strategic-voting-abm-2RS/
 ├── analysis/
 │   ├── synthetic/              Abstract model on random inputs
 │   │   ├── saltelli_sensitivity.py Global Sobol sensitivity across
-│   │   │                           K ∈ {6, 8, 9}  (~55 000 runs)
+│   │   │                           K ∈ {6, 8, 9}  (30 720 runs)
 │   │   ├── robustness_checks.py    Protocol checks: N, Tmax, εs, ξ (A–D);
 │   │   │                           signal mechanism (E); μ sweep (F)
 │   │   └── main_results.py         Four main paper figures: heatmap, c-sweep,
@@ -202,16 +202,39 @@ python illustration_figures/fr_elections.py --save     # one PNG per election ye
 python illustration_figures/fr_vote_transfers.py       # PNG + PDF per year
 ```
 
-**Re-run the full Saltelli analysis** (overwrites included CSVs; ~1.5 hours):
+**Re-run the full Saltelli analysis** (overwrites included CSVs; ~50 minutes).
+Only needed to regenerate the raw evaluations — the Sobol indices themselves
+come from `--analyze-existing` above:
 ```bash
 python analysis/synthetic/saltelli_sensitivity.py
-# Edit K_VALUES or set N_SALTELLI = 64 for a quick test run (1152 runs per K).
+# Edit K_VALUES or set N_SALTELLI = 64 for a quick test run (640 runs per K).
 ```
 
 **Tests**:
 ```bash
 pytest
 ```
+
+---
+
+## Numerical result tables
+
+The numbers behind the thesis figures are committed as small, reproducible
+tables under [`results/tables/`](results/tables/) — see
+[`results/README.md`](results/README.md) for the full description of each.
+
+| Table | Contents | Reproduce with |
+|-------|----------|----------------|
+| [`sobol_indices.csv`](results/tables/sobol_indices.csv) | **Formal** Sobol S1/ST + confidence intervals, 3 *K* × 5 outcomes × 8 parameters | `python analysis/synthetic/saltelli_sensitivity.py --analyze-existing` |
+| `robustness_panel_{A–F}.csv` | Protocol robustness summaries, one table per panel | `python analysis/synthetic/robustness_checks.py` |
+| `lhs_parameter_importance.csv` | **Exploratory** LHS surrogate importance (not Sobol) | `python analysis/empirical/lhs_importance.py` |
+
+`--analyze-existing` recomputes the Sobol indices from the committed
+`data/saltelli_results_K{6,8,9}.csv` **without re-running a single
+simulation** — those files already contain all 30 720 model evaluations.
+
+> Raw simulation output and figures stay intentionally uncommitted; only the
+> derived tables are tracked.
 
 ---
 

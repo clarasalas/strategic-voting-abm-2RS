@@ -136,6 +136,12 @@ def fit_and_importance(X, y, label):
         "importance_std": perm.importances_std,
         "std_coef": lin.coef_,
     }).sort_values("importance", ascending=True).reset_index(drop=True)
+
+    # Carried alongside the per-parameter rows so the exported table can report
+    # the surrogate quality that qualifies them.  Constant within a scope.
+    out["cv_r2_mean"] = cv_r2.mean()
+    out["cv_r2_std"] = cv_r2.std()
+    out["n_rows"] = len(X)
     return out, cv_r2.mean()
 
 
@@ -288,10 +294,78 @@ def run_paper():
     fig.savefig(OUT_DIR / "lhs_importance_by_year.pdf", bbox_inches="tight")
     print(f"Saved {OUT_DIR/'lhs_importance_by_year.png'} (+ .pdf)")
 
+    write_importance_table(results)
+
     print("\nInterpretation suggestion:")
     print("  Structural parameters explain most variation in the baseline "
           "simulations;\n  behavioral parameters matter less until the electoral "
           "structure is better specified.")
+
+
+# =========================================================================== #
+# Exported table
+# =========================================================================== #
+#
+# EXPLORATORY LHS SURROGATE IMPORTANCE -- NOT a formal Sobol/Saltelli analysis.
+# The design is a Latin hypercube, not a Saltelli sequence, so these numbers
+# rank parameters; they do not decompose variance.  results/tables/sobol_indices.csv
+# is the formal variance decomposition, and it covers the synthetic model only.
+
+TABLES_DIR = Path(__file__).resolve().parent.parent.parent / "results" / "tables"
+
+IMPORTANCE_TABLE_COLUMNS = [
+    "scope", "parameter", "permutation_importance", "importance_std",
+    "relative_importance_pct", "standardized_coefficient",
+    "cv_r2_mean", "cv_r2_std", "n_rows", "seed",
+]
+
+# Analysis label -> scope value in the exported table.
+_SCOPE_NAMES = {
+    "Pooled (2002 + 2022)": "pooled",
+    "2002": "2002",
+    "2022": "2022",
+}
+
+
+def build_importance_table(results: dict) -> pd.DataFrame:
+    """
+    Assemble the exported table from the SAME per-scope frames the figures use.
+
+    relative_importance_pct is computed with _importance_pct, the identical
+    helper the slide figure uses, so a bar and its table row cannot disagree.
+    """
+    rows = []
+    for label, (imp_df, _) in results.items():
+        scope = _SCOPE_NAMES.get(label, label)
+        pct = _importance_pct(imp_df)          # same helper as the slide figure
+        for _, r in imp_df.iterrows():
+            rows.append({
+                "scope": scope,
+                "parameter": r["param"],
+                "permutation_importance": float(r["importance"]),
+                "importance_std": float(r["importance_std"]),
+                "relative_importance_pct": float(pct[r["param"]]),
+                "standardized_coefficient": float(r["std_coef"]),
+                "cv_r2_mean": float(r["cv_r2_mean"]),
+                "cv_r2_std": float(r["cv_r2_std"]),
+                "n_rows": int(r["n_rows"]),
+                "seed": SEED,
+            })
+    df = pd.DataFrame(rows, columns=IMPORTANCE_TABLE_COLUMNS)
+    # Stable order so regeneration is byte-identical.
+    return df.sort_values(["scope", "parameter"]).reset_index(drop=True)
+
+
+def write_importance_table(results: dict) -> Path:
+    TABLES_DIR.mkdir(parents=True, exist_ok=True)
+    out = TABLES_DIR / "lhs_parameter_importance.csv"
+    df = build_importance_table(results)
+    df.to_csv(out, index=False)
+    print(f"\nSaved {out}  ({len(df)} rows)")
+    print("  NOTE: exploratory LHS surrogate importance, not formal Sobol.")
+    print("  Only commit this table once the behavioural sweeps have been")
+    print("  regenerated with the corrected tau_hat conversion.")
+    return out
 
 
 # =========================================================================== #

@@ -223,3 +223,15 @@ figures/
 data/empirical_*
 data/behavioral_*
 data/sweep_*
+
+# Raw / intermediate analysis output: bulky, regenerable, never reader-facing.
+outputs/
+analysis/**/outputs/
+analysis/**/*.png
+analysis/**/*.pdf
+data/saltelli_samples_K*.csv
+analysis/synthetic/saltelli_sobol_*.csv
+
+# results/tables/ is deliberately NOT ignored: it holds the small, committed,
+# reader-facing summary tables (see results/README.md).  Raw simulations and
+# figures stay out of the repository; only the derived tables go in.

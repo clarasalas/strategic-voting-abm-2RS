@@ -216,6 +216,11 @@ PANEL_SCHEMAS = {
           ["theta", "party"]),
     "F": (["regime", "mu", "n_reps", "cond_sw_mean", "cond_sw_se"],
           ["regime", "mu"]),
+    "G": (["regime", "c", "K", "N_electors", "metric", "n_reps",
+           "T_cut", "T_long", "mean_at_cut", "mean_at_long",
+           "mean_abs_drift", "max_abs_drift", "sd_between_seeds",
+           "drift_over_sd", "prop_intentions_moving_at_cut"],
+          ["regime", "metric"]),
 }
 
 
@@ -355,3 +360,23 @@ def test_importance_builder_is_deterministic_on_fixed_input():
 
     # Negative importances are clipped to zero before scaling, not dropped.
     assert got["mu"] == pytest.approx(0.0, abs=1e-12)
+
+
+def test_panel_G_reports_the_ceiling_actually_used():
+    """
+    Panel G exists to justify Tmax in the main analyses, so its T_cut must be
+    the ceiling those analyses actually use.  If one moves, the other has to.
+    """
+    import robustness_checks as rc
+
+    df = _require(_panel_table("G"))
+    assert (df["T_cut"] == rc.BASE_TMAX).all(), (
+        "panel G measures truncation at a ceiling the main analyses do not use")
+    assert (df["T_long"] > df["T_cut"]).all()
+
+
+def test_panel_G_drift_is_non_negative():
+    df = _require(_panel_table("G"))
+    assert (df["mean_abs_drift"] >= 0).all()
+    assert (df["max_abs_drift"] >= df["mean_abs_drift"]).all()
+    assert (df["prop_intentions_moving_at_cut"].between(0, 1)).all()

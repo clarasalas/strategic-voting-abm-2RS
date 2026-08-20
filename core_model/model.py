@@ -202,10 +202,23 @@ def run_simulation(
 
             s~_i = (delta_i + signal_epsilon)^(1/theta) / sum_j (...)
 
-        Its only job is to keep 0^(1/theta) finite when theta < 1 and a party
-        has no support.  It is not a behavioural parameter and it is NOT the
-        uniform floor weight eps_F (``floor_weight``), which is a different
-        quantity swept by the Saltelli design.
+        Its job is to give ZERO-SUPPORT COMPONENTS a strictly positive
+        Dirichlet concentration.  The signal is drawn as s ~ Dirichlet(rho*s~),
+        so without the floor a party at zero support has concentration exactly
+        zero and its sampled signal share is pinned at exactly zero -- it can
+        never be reported as viable, however the race moves.  (0^(1/theta) is
+        finite, so that is not the failure being guarded against.)
+
+        The separate degenerate case of an ALL-zero support vector is handled by
+        generate_signal's existing uniform fallback (delta = ones/K when the
+        total is zero), not by this parameter.
+
+        signal_epsilon = 1e-12 is the fixed synthetic specification: it is the
+        value every committed synthetic result was produced under.
+
+        It is not a behavioural parameter, and it is NOT the Saltelli parameter
+        named ``epsilon``, which is the electorate floor weight eps_F passed as
+        ``floor_weight``.
 
         Must be finite and non-negative.  The default 1e-12 is the value every
         result in this repository was produced under; changing it changes the

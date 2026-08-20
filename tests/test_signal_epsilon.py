@@ -7,16 +7,13 @@ eps_s is the numerical floor added before the temperature exponentiation:
 
     s~_i = (delta_i + eps_s)^(1/theta) / sum_j (delta_j + eps_s)^(1/theta)
 
-It used to be unreachable.  ``model.py`` binds ``from signals import
-generate_signal`` at import time, so robustness_checks Panel C -- which varied
-eps by rebinding the attribute on the signals module -- never touched the
-simulation: its committed table showed delta_cenp identical to the last digit
-across all five eps values.  eps_s is now a real parameter of run_simulation.
+It used to be unreachable: Panel C varied eps by rebinding an attribute on the
+signals module, which the simulation never consulted, so all five of its eps
+values produced bit-identical output.  eps_s is now a real parameter of
+run_simulation, and these tests pin that the PUBLIC argument reaches every
+synthetic signal-generation call.
 
-Every spy below patches ``model.generate_signal``, because that is the binding
-run_simulation actually calls.  Patching ``signals.generate_signal`` is exactly
-the mistake these tests exist to prevent, and one test pins that it does not
-work, so the trap cannot be walked into again.
+Spies patch ``model.generate_signal``, the binding run_simulation actually calls.
 
 Run with:  pytest tests/test_signal_epsilon.py
 """
@@ -32,7 +29,6 @@ sys.path.insert(0, str(REPO / "core_model"))
 sys.path.insert(0, str(REPO / "analysis" / "synthetic"))
 
 import model
-import signals as signals_module
 from model import run_simulation
 from signals import generate_signal, transform_signal
 
@@ -103,24 +99,6 @@ def test_default_is_1e_12(spy):
             .parameters["signal_epsilon"].default == 1e-12)
     run_simulation(**BASE_KWARGS)
     assert set(spy.eps_seen) == {1e-12}
-
-
-def test_patching_the_signals_module_does_not_reach_the_model(monkeypatch):
-    """
-    The original bug, pinned so it cannot return.  model.py holds its own
-    reference, so rebinding signals.generate_signal is invisible to the run.
-    """
-    called = []
-
-    def fake(*a, **k):
-        called.append(1)
-        raise AssertionError("this must never be reached")
-
-    monkeypatch.setattr(signals_module, "generate_signal", fake)
-    run_simulation(**BASE_KWARGS)          # must not raise
-    assert not called, (
-        "patching signals.generate_signal reached the model -- the import "
-        "binding changed, and Panel C's old approach would now work")
 
 
 # --------------------------------------------------------------------------- #

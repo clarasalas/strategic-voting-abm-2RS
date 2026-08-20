@@ -63,15 +63,19 @@ Neither mode runs without an explicit --quick or --full.
 
 Signal offset eps_s
 -------------------
-eps_s is the numerical floor added before the temperature exponentiation.  It is
-now a real parameter of run_simulation (``signal_epsilon``), so this script sets
-it explicitly and records it in every raw and summary row.  --full REQUIRES
+eps_s gives zero-support components a strictly positive Dirichlet
+concentration, so they are not pinned at zero signal share.  1e-12 is the fixed
+synthetic specification.  It is distinct from the Saltelli parameter named
+``epsilon``, which is the electorate floor weight.  It is a real parameter of
+run_simulation (``signal_epsilon``), so this script sets it
+explicitly and records it in every raw and summary row.  --full REQUIRES
 --signal-epsilon: a validation whose epsilon is inherited silently is a
 validation of an undocumented protocol.
 
 The value every result in this repository was produced under is 1e-12.  The
-corrected Panel C shows outcomes are bit-identical across 1e-12, 1e-6 and 1e-4,
-so that choice is not load-bearing -- but it must still be stated.
+corrected Panel C found identical voting outcomes across 1e-12, 1e-6 and 1e-4 in
+the four configurations it tests -- local robustness at those points, not
+invariance across the Saltelli space.
 """
 
 from __future__ import annotations

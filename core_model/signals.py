@@ -60,8 +60,12 @@ def generate_signal(
         Higher values → signal closer to s̃ (less noise).
         Lower values  → noisier, more diffuse signal.
     eps : float
-        Small constant added before exponentiation to avoid 0^(1/θ) issues
-        when θ < 1 and a party has no support.  Default 1e-12.
+        Numerical floor added before exponentiation, so that a party with ZERO
+        support still gets a strictly positive Dirichlet concentration ρ·s̃_i.
+        Without it such a party is pinned at exactly zero signal share for the
+        whole run.  The all-zero support vector is a different case, handled by
+        the uniform fallback below.  Default 1e-12 — the fixed synthetic
+        specification.
     rng : np.random.Generator or None
 
     Returns
@@ -111,7 +115,8 @@ def transform_signal(
     theta : float
         Temperature parameter.  Same semantics as generate_signal.
     eps : float
-        Floor before exponentiation.  Default 1e-12.
+        Numerical floor before exponentiation; see generate_signal.
+        Default 1e-12.
 
     Returns
     -------

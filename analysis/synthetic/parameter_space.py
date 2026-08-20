@@ -14,13 +14,14 @@ Two different quantities are spelled "epsilon" in this project.  They are not
 related and confusing them is easy:
 
     epsilon   (in PROBLEM, swept over [0.05, 0.5])
-              The uniform FLOOR WEIGHT eps_F, passed to
-              run_simulation(floor_weight=...).  Properly plumbed.
+              The ELECTORATE FLOOR WEIGHT eps_F, passed to
+              run_simulation(floor_weight=...).  This is the one the Saltelli
+              design sweeps.  It is NOT signal_epsilon.
 
-    eps_s     (NOT in PROBLEM, a fixed protocol constant)
-              The signal OFFSET added before the temperature exponentiation,
-              signals.generate_signal(eps=...).  There is currently no way to
-              set it through run_simulation -- see signal_epsilon_in_force().
+    eps_s     (NOT in PROBLEM, the fixed synthetic specification)
+              run_simulation(signal_epsilon=...), fixed at 1e-12.  It gives
+              zero-support components a strictly positive Dirichlet
+              concentration so they are not pinned at zero signal share.
 """
 
 from __future__ import annotations
@@ -129,11 +130,9 @@ def signal_epsilon_in_force() -> float:
     The signal offset eps_s the model actually applies, read from the default
     of ``signals.generate_signal`` rather than assumed.
 
-    This is deliberately a lookup and not a constant.  ``run_simulation`` has no
-    eps_s parameter and never passes one, so the value in force is whatever that
-    default happens to be -- currently 1e-12, NOT the 1e-4 quoted as a fixed
-    protocol constant in the Saltelli docstring.  Any analysis that wants to
-    report the epsilon it ran under has to ask, not assume.
+    A lookup rather than a constant, so it cannot drift out of step with the
+    function it describes.  This is the value a caller gets by NOT passing
+    ``signal_epsilon``; a caller that passes one should record what it passed.
     """
     import inspect
 
@@ -145,13 +144,9 @@ def signal_epsilon_in_force() -> float:
 
 def signal_epsilon_is_settable() -> bool:
     """
-    True once eps_s can be set through run_simulation.
-
-    Today it cannot: model.py binds ``from signals import generate_signal`` at
-    import time, so rebinding the attribute on the signals module does not reach
-    the simulation.  Analyses that need to VARY eps_s must wait for that
-    plumbing; analyses that only need to RECORD it can use
-    signal_epsilon_in_force().
+    True when eps_s can be set through run_simulation.  It can, since the
+    signal_epsilon parameter was added; kept so callers can check rather than
+    assume.
     """
     import inspect
 

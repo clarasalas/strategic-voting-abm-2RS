@@ -21,11 +21,19 @@ from the COMPLETED horizon run.  This module launches no simulations.
    What that ratio does and does not license: a high ICC supports reading the
    broad importance structure with confidence.  It is NOT a replication audit of
    individual Saltelli rows, and it does not establish that any individual Sobol
-   estimate is unbiased.  Independent stochastic variation tends to attenuate
-   population first-order effects by inflating total outcome variance; total-order
-   estimates are not guaranteed to be affected the same way; and closely-spaced
-   rankings can therefore change even when clearly separated importance groups
-   are credible.
+   estimate is unbiased.
+
+   More precisely.  When stochastic variation is independent of the parameters,
+   it generally lowers first-order indices by adding unexplained outcome
+   variance; if the amount of stochastic variation changes across the parameter
+   space, as it may here, its effect can be more complex.  With one realisation
+   per row, stochastic variation contributes to uncertainty in the estimated
+   indices -- the bootstrap S1_conf and ST_conf columns describe uncertainty in
+   the Sobol estimates from the observed design, but they do not isolate seed
+   uncertainty or constitute a replication-based estimate of stochastic noise.
+   Total-order estimates carry no guarantee of the same attenuation, so
+   closely-spaced rankings can change while clearly separated importance groups
+   remain the credible reading.
 
 A "configuration" here is one fixed combination of ALL synthetic parameters --
 K, c, tau_hat, mu, theta, rho_s, rho_pi, alpha, epsilon.  The eight seeds are

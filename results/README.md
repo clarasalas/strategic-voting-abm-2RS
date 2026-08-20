@@ -117,6 +117,81 @@ plotted point are computed once, not twice.
 
 ---
 
+## `protocol_horizon_validation.csv` / `protocol_horizon_stability_by_c.csv`
+
+Does the *T*<sub>max</sub> = 25 ceiling hold across the Saltelli parameter
+domain, rather than only at the baseline the A–F panels use?
+
+| | |
+|---|---|
+| **Reproduce** | `python analysis/synthetic/protocol_validation.py --mode horizon --full` |
+| **Inputs** | `data/saltelli_results_K{6,8,9}.csv` (committed) — the design is a stratified subset of their rows |
+| **Raw** | `analysis/synthetic/outputs/protocol_validation/horizon_raw.csv` (ignored) |
+
+Key columns, per `(K, c_stratum, outcome)` in the first table and
+`(c_stratum, outcome)` in the second:
+
+```
+n_configurations, n_runs, reference_horizon, stability_threshold,
+median_endpoint_abs_change_T25_to_T{50,100}
+p95_endpoint_abs_change_T25_to_T{50,100}
+median_tail_abs_change_T25_to_T{50,100}
+p95_tail_abs_change_T25_to_T{50,100}
+prop_within_threshold_...          (flag only, see below)
+```
+
+Outcomes: `delta_cenp`, `enp`, `trigger_rate`, `switching_rate`.
+
+**Endpoint vs tail.** The synthetic model keeps drawing noisy signals forever, so
+a single endpoint can move even when the process is stationary. Tail columns
+average the last *W* iterations ending at each horizon (default 10), which
+separates genuine drift from signal noise. Both are reported.
+
+**One trajectory, three horizons.** Each run goes to *T* = 100 once and the
+states at 25, 50 and 100 are read from it, so the horizons lie on the same
+stochastic path. A test pins that reading iteration *t* out of a long run gives
+exactly the state a run stopping at *t* produces.
+
+**Thresholds are flags, not findings.** `prop_within_threshold_*` uses
+`--stability-threshold` (default 0.01) and is reported *beside* the continuous
+medians and p95s, which are the actual result. Changing the threshold moves only
+the flag columns.
+
+---
+
+## `protocol_population_validation.csv` / `protocol_population_stability_by_c.csv`
+
+Same question for *N* = 2000, using *N* = 5000 as the higher-resolution
+reference.
+
+| | |
+|---|---|
+| **Reproduce** | `python analysis/synthetic/protocol_validation.py --mode population --full` |
+| **Raw** | `analysis/synthetic/outputs/protocol_validation/population_raw.csv` (ignored) |
+
+```
+reference_N, compare_N, n_configurations, n_pairs,
+median_abs_diff, p95_abs_diff,
+median_abs_diff_tail, p95_abs_diff_tail,
+mean_seed_sd_at_reference, stability_threshold, prop_within_threshold
+```
+
+Differences are paired on `(config_id, seed)`. **They are not pure
+finite-population error**: two runs at different *N* consume different numbers of
+random draws, so the difference is total stochastic run-to-run variation between
+the two settings, of which population size is one component.
+`mean_seed_sd_at_reference` gives the seed-to-seed dispersion at *N* = 2000 for
+scale.
+
+`--horizon` is configurable and should **not** be left at 25 if the horizon
+validation shows the relevant configurations are unstable there.
+
+> ⚠️ **Not yet generated.** Only the quick smoke configuration has been run, and
+> its output is far too small to report. These four tables appear once the full
+> runs have been done.
+
+---
+
 ## `lhs_parameter_importance.csv`
 
 Exploratory parameter importance for ΔCENP under the empirical structure,

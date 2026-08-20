@@ -81,6 +81,22 @@ quantities, and a common schema would obscure all of them.
 | D | ξ ∈ [−0.75, 0.75], 9 values | *K* = 6, θ = 1 | 20 | mean sincere and final ENP ± SE |
 | E | θ ∈ {0.3 … 3.0} | analytic, *K* = 8 | — | transformed share per party, ΔENP |
 | F | μ ∈ {0 … 1}, 8 values | *K* = 8, τ̂ = 1.75, 2 width regimes | 30 | mean conditional switching ± SE |
+| G | ceiling *T* = 25 vs 60 | *K* = 6, 3 width regimes, *N* = 500 | 20 | outcome drift ÷ between-seed SD |
+
+**Panel G** exists because panel B shows the diffuse regime (*c* = 2.5) never
+reaches a fixed point: 70 % of runs are still moving at the ceiling. Since the
+main analyses and the Saltelli design both cap at *T*<sub>max</sub> = 25 and both
+sweep *c* up to 3.0, panel G measures whether that truncation reaches the
+*reported outcomes* — a different question from whether individual vote
+intentions have settled. `drift_over_sd` is the headline: mean absolute drift
+between *T* = 25 and *T* = 60, divided by the between-seed SD, which is the
+dispersion the Sobol analysis already integrates over.
+
+Result, in short: at high width a **single run's** outcome moves by more than the
+seed-to-seed SD (`drift_over_sd` ≈ 1.2–1.4 at *c* = 2.5), but the **mean across
+seeds** barely moves — 0.3 % for ΔCENP, 0.04 % for final ENP. The trajectory
+oscillates around a stable centre rather than still trending toward one. So
+aggregate results are robust to the ceiling; individual trajectories are not.
 
 Each table carries the varied condition, the fixed regime, the repetition count
 and the dispersion statistic, so every plotted point can be reconstructed from

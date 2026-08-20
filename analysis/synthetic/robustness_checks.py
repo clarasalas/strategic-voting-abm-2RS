@@ -778,6 +778,170 @@ def _plot_mu(df: pd.DataFrame) -> plt.Figure:
 
 
 # =========================================================================== #
+#  PANEL G — OUTCOME STABILITY UNDER TRUNCATION                               #
+# =========================================================================== #
+#
+# Panel B shows that the diffuse regime (c = 2.5) does NOT reach a hard fixed
+# point: ~70% of runs are still moving when the ceiling arrives.  The main
+# analyses and the Saltelli design both cap at Tmax = 25 and both sweep c up to
+# 3.0, so a share of those evaluations are truncated trajectories.
+#
+# That only matters if the REPORTED OUTCOMES are still moving at the cut, which
+# is a different question from whether individual vote intentions are.  A
+# handful of voters flipping back and forth between two parties keeps the
+# intention vector churning forever while leaving the aggregate untouched.
+#
+# This panel measures the difference directly: run to a generous ceiling, then
+# compare each outcome at T = 25 against its value at T = 60.  The drift is
+# reported against the between-seed standard deviation, because that is the
+# dispersion the Sobol analysis already integrates over -- a drift far below it
+# cannot change a variance decomposition.
+
+T_CUT_G   = 25    # the ceiling actually used by the main analyses
+T_LONG_G  = 60    # generous ceiling for this diagnostic
+N_G       = 500
+N_REPS_G  = 20
+K_G       = BASE_K
+
+# Widest regimes first: this is a question about high electorate width.
+REGIMES_G: dict = {
+    "Diffuse ($c=2.5$)":  2.5,
+    "Active B ($c=1.5$)": 1.5,
+    "Low ($c=0.5$)":      0.5,
+}
+
+
+def _cenp_of_counts(counts, K: int) -> float:
+    """CENP of one iteration's vote counts."""
+    s = np.asarray(counts, dtype=float)
+    total = s.sum()
+    if total <= 0:
+        return float("nan")
+    s = s / total
+    return (K - 1.0 / (s ** 2).sum()) / (K - 1)
+
+
+def _simulate_truncation() -> pd.DataFrame:
+    """One row per (regime, seed): outcomes at T_CUT vs at T_LONG."""
+    rows  = []
+    total = len(REGIMES_G) * N_REPS_G
+    done  = 0
+
+    for regime_label, c_val in REGIMES_G.items():
+        for seed in range(N_REPS_G):
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                res = run_simulation(
+                    K=K_G, n_modes=1, width_factor=c_val,
+                    mode_position=0.0, floor_weight=BASE_FLOOR,
+                    theta=BASE_THETA, rho=BASE_RHO_S, rho_pi=BASE_RHO_PI,
+                    n_electors=N_G,
+                    tau=BASE_TAU_ABS, mu=BASE_MU, alpha_prior=BASE_ALPHA,
+                    K_runoff=2, max_iterations=T_LONG_G,
+                    seed=seed, verbose=False, collect_diagnostics=False,
+                )
+
+            sincere = np.asarray(res["sincere_shares"], dtype=float)
+            cenp_sincere = _cenp_of_counts(sincere, K_G)
+            hist = res["history"]
+
+            def _at(t):
+                """Outcomes as they would be reported with a ceiling of t."""
+                idx = min(t, len(hist) - 1)
+                counts = np.asarray(hist[idx], dtype=float)
+                shares = counts / counts.sum()
+                return {
+                    "delta_cenp": _cenp_of_counts(counts, K_G) - cenp_sincere,
+                    "enp_final": 1.0 / (shares ** 2).sum(),
+                    "total_switching": (res["sw_history"][min(t, len(res["sw_history"]) - 1)]
+                                        / 100.0),
+                }
+
+            cut, long = _at(T_CUT_G), _at(T_LONG_G)
+
+            # Is the intention vector still moving at the cut?
+            ih = res["intention_history"]
+            i = min(T_CUT_G, len(ih) - 2)
+            still_moving = bool(np.any(np.asarray(ih[i]) != np.asarray(ih[i + 1])))
+
+            for metric in ("delta_cenp", "enp_final", "total_switching"):
+                rows.append({
+                    "regime": regime_label,
+                    "c": c_val,
+                    "seed": seed,
+                    "metric": metric,
+                    "value_at_cut": cut[metric],
+                    "value_at_long": long[metric],
+                    "abs_drift": abs(long[metric] - cut[metric]),
+                    "intentions_moving_at_cut": still_moving,
+                })
+            done += 1
+            if done % 10 == 0:
+                print(f"    Panel G: {done}/{total}")
+
+    return pd.DataFrame(rows)
+
+
+def _agg_truncation(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Grouped statistics behind panel G, shared by the plot and the table.
+
+    drift_over_sd is the headline: mean absolute drift between T=25 and T=60,
+    divided by the between-seed SD at T=60.  Well below 1 means truncation is
+    immaterial next to the run-to-run dispersion the analysis already carries.
+    """
+    g = df.groupby(["regime", "c", "metric"]).agg(
+        n_reps=("seed", "size"),
+        mean_at_cut=("value_at_cut", "mean"),
+        mean_at_long=("value_at_long", "mean"),
+        mean_abs_drift=("abs_drift", "mean"),
+        max_abs_drift=("abs_drift", "max"),
+        sd_between_seeds=("value_at_long", "std"),
+        prop_intentions_moving_at_cut=("intentions_moving_at_cut", "mean"),
+    ).reset_index()
+    g["drift_over_sd"] = g["mean_abs_drift"] / g["sd_between_seeds"]
+    return g.sort_values(["metric", "c"], ascending=[True, False]).reset_index(drop=True)
+
+
+def table_panel_G(df_raw: pd.DataFrame) -> pd.DataFrame:
+    out = _agg_truncation(df_raw)            # same call the plot makes
+    out["T_cut"] = T_CUT_G
+    out["T_long"] = T_LONG_G
+    out["K"] = K_G
+    out["N_electors"] = N_G
+    return out[["regime", "c", "K", "N_electors", "metric", "n_reps",
+                "T_cut", "T_long", "mean_at_cut", "mean_at_long",
+                "mean_abs_drift", "max_abs_drift", "sd_between_seeds",
+                "drift_over_sd", "prop_intentions_moving_at_cut"]]
+
+
+def _plot_truncation(df_raw: pd.DataFrame) -> plt.Figure:
+    agg = _agg_truncation(df_raw)
+    metrics = ["delta_cenp", "enp_final", "total_switching"]
+    labels = {"delta_cenp": r"$\Delta C_{\mathrm{ENP}}$",
+              "enp_final": "Final ENP",
+              "total_switching": "Total switching"}
+
+    fig, axes = plt.subplots(1, len(metrics), figsize=(11, 3.6), sharey=True)
+    colors = {2.5: SPECTRAL(0.85), 1.5: SPECTRAL(0.70), 0.5: SPECTRAL(0.15)}
+
+    for ax, metric in zip(axes, metrics):
+        sub = agg[agg["metric"] == metric].sort_values("c")
+        ax.bar([f"$c={c}$" for c in sub["c"]], sub["drift_over_sd"],
+               color=[colors[c] for c in sub["c"]], alpha=0.85)
+        ax.axhline(1.0, color="#c0392b", linewidth=1.0, linestyle="--",
+                   label="drift = between-seed SD")
+        ax.set_title(labels[metric])
+        ax.set_ylabel("mean |drift| / between-seed SD" if metric == metrics[0] else "")
+
+    axes[0].legend(fontsize=7)
+    fig.suptitle(f"Outcome drift between $T={T_CUT_G}$ and $T={T_LONG_G}$",
+                 fontsize=10, fontweight="bold")
+    fig.tight_layout()
+    return fig
+
+
+# =========================================================================== #
 #  APPENDIX SUMMARY TABLES                                                     #
 # =========================================================================== #
 #
@@ -896,6 +1060,7 @@ _TABLE_BUILDERS = {
     "C": table_panel_C,
     "D": table_panel_D,
     "F": table_panel_F,
+    "G": table_panel_G,
 }
 
 
@@ -946,7 +1111,7 @@ def _assemble_protocol_grid() -> None:
 #  ENTRY POINT                                                                 #
 # =========================================================================== #
 
-ALL_PANELS = ["A", "B", "C", "D", "E", "F"]
+ALL_PANELS = ["A", "B", "C", "D", "E", "F", "G"]
 
 _SIMULATE = {
     "A": (_simulate_N_robustness, _plot_N_robustness,   "panel_A_N_robustness.png"),
@@ -954,6 +1119,7 @@ _SIMULATE = {
     "C": (_simulate_epsilon,      _plot_epsilon,        "panel_C_epsilon_stability.png"),
     "D": (_simulate_xi,           _plot_xi,             "panel_D_xi_analysis.png"),
     "F": (_simulate_mu,           _plot_mu,             "panel_F_mu_analysis.png"),
+    "G": (_simulate_truncation,   _plot_truncation,     "panel_G_truncation.png"),
 }
 
 

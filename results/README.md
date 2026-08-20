@@ -65,6 +65,40 @@ positionally — a re-sorted file would produce plausible-looking nonsense.
 The plots and this table are built from the same `Si` objects, so their numbers
 cannot diverge.
 
+### Limitation: one stochastic realisation per row
+
+The Saltelli design evaluates the model **once per parameter row**. The model is
+stochastic, so each Y value carries run-to-run variation as well as the effect of
+its parameters. Four consequences, stated precisely:
+
+- When stochastic variation is **independent of the parameters**, it generally
+  lowers first-order indices by adding unexplained outcome variance. If the
+  amount of stochastic variation **changes across the parameter space**, as it
+  may here, its effect can be more complex.
+- With one realisation per row, stochastic variation contributes to
+  **uncertainty in the estimated indices**. The bootstrap `S1_conf` and `ST_conf`
+  columns describe uncertainty in the Sobol estimates from the observed design,
+  but they **do not isolate seed uncertainty** or constitute a replication-based
+  estimate of stochastic noise.
+- **Total-order estimates carry no guarantee of the same attenuation.** ST is
+  estimated differently from S1 and may be affected differently; it should not be
+  assumed to move in the same direction or by the same amount.
+- Consequently **closely-spaced rankings can change**, while clearly separated
+  importance groups are the credible reading. Where confidence intervals overlap,
+  treat the ordering as *unresolved*, not established.
+
+The protocol validation puts a scale on the noise: on a balanced 54 × 8 design,
+the intraclass correlation is **0.87–0.997** across outcomes, so variation between
+parameter configurations dominates variation between seeds. That supports reading
+the broad importance structure with confidence — but it is **not a replication
+audit of every Saltelli row**, and it is **not a guarantee that any individual
+Sobol estimate is unbiased**. Exact index magnitudes and close rankings should be
+interpreted cautiously.
+
+Agreement of the ranking across *K* = 6, 8 and 9 is **structural robustness**
+across party-system sizes; those are not independent statistical replications of
+the same quantity.
+
 ---
 
 ## `robustness_panel_{A,B,C,D,E,F}.csv`
@@ -77,7 +111,7 @@ quantities, and a common schema would obscure all of them.
 |---|---|---|---|---|
 | A | *N* ∈ {250, 500, 1000, 2000, 5000} | *K* = 6, 4 width regimes | 30 | SE of ΔCENP |
 | B | — (convergence timing) | *K* = 6, 4 width regimes, *N* = 500 | 20 | median / p95 convergence iteration, count hitting the ceiling |
-| C | ε<sub>s</sub> ∈ {10⁻⁶ … 10⁻¹} | 4 configs | 10 | mean ΔCENP ± SD |
+| C | ε<sub>s</sub> ∈ {10⁻¹², 10⁻⁶ … 10⁻¹} | 4 configs | 10 | mean ΔCENP ± SD |
 | D | ξ ∈ [−0.75, 0.75], 9 values | *K* = 6, θ = 1 | 20 | mean sincere and final ENP ± SE |
 | E | θ ∈ {0.3 … 3.0} | analytic, *K* = 8 | — | transformed share per party, ΔENP |
 | F | μ ∈ {0 … 1}, 8 values | *K* = 8, τ̂ = 1.75, 2 width regimes | 30 | mean conditional switching ± SE |
@@ -97,6 +131,17 @@ seed-to-seed SD (`drift_over_sd` ≈ 1.2–1.4 at *c* = 2.5), but the **mean acr
 seeds** barely moves — 0.3 % for ΔCENP, 0.04 % for final ENP. The trajectory
 oscillates around a stable centre rather than still trending toward one. So
 aggregate results are robust to the ceiling; individual trajectories are not.
+
+**Panel C was invalid before this and has been regenerated.** Its ε
+never reached the simulation, so all five values produced bit-identical output.
+ε<sub>s</sub> is now a real parameter (`run_simulation(signal_epsilon=...)`), the
+grid includes the historical **10⁻¹²** actually in force, and the results
+genuinely vary.
+
+What the corrected panel establishes: **10⁻¹², 10⁻⁶ and 10⁻⁴ produce identical
+voting outcomes in the four configurations tested**. That is local robustness at
+those four points — it is not invariance across the Saltelli parameter space,
+which this panel does not sample.
 
 Each table carries the varied condition, the fixed regime, the repetition count
 and the dispersion statistic, so every plotted point can be reconstructed from
@@ -189,6 +234,43 @@ validation shows the relevant configurations are unstable there.
 > ⚠️ **Not yet generated.** Only the quick smoke configuration has been run, and
 > its output is far too small to report. These four tables appear once the full
 > runs have been done.
+
+---
+
+## `protocol_horizon_drift_by_config.csv` / `protocol_horizon_drift_summary.csv` / `protocol_seed_noise_decomposition.csv`
+
+Post-hoc analysis of the completed horizon run, answering two questions the
+pooled result cannot: whether positive drift in some configurations cancels
+negative drift in others, and whether parameter-configuration variation is
+distinguishable from seed noise.
+
+| | |
+|---|---|
+| **Reproduce** | `python analysis/synthetic/protocol_posthoc.py` |
+| **Inputs** | `analysis/synthetic/outputs/protocol_validation/horizon_raw.csv` (ignored) |
+| **Launches simulations** | No |
+
+`protocol_horizon_drift_by_config.csv` — one row per (config_id, outcome,
+statistic, interval), 1296 rows. Carries the eight parameter values, the mean
+signed and mean absolute paired change across the 8 seeds, SD, SE, the 95%
+t-interval, p-value, and a **Benjamini–Hochberg q-value computed within each
+(outcome, statistic, interval) family of 54 tests**. `T25→T50` spans 25
+iterations and `T50→T100` spans 50, so per-iteration rates are reported
+alongside the raw changes.
+
+`protocol_horizon_drift_summary.csv` — per (outcome, statistic): how many
+configurations move, how many survive BH, and how many move in the **same
+direction in both intervals** versus reversing. Persistence is the discriminating
+evidence: a drifting configuration keeps going, a fluctuating one is as likely to
+reverse.
+
+`protocol_seed_noise_decomposition.csv` — one-way random-effects decomposition at
+T=25 on the balanced 54 × 8 design: `MS_between`, `MS_within`, σ²_config, σ²_seed,
+ICC with a 95% CI from **2000 bootstrap draws resampling whole configurations**
+(seed 20020422), and the seed-noise fraction. ICCs are pooled across all 54
+configurations; restricting to a stratum or *K* would change the
+between-configuration variance and therefore the ICC, so sub-group ICCs are not
+comparable to these.
 
 ---
 

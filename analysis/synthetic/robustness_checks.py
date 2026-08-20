@@ -46,7 +46,6 @@ All files written to outputs/robustness_checks/
 """
 
 import argparse
-import functools
 import sys
 import warnings
 from pathlib import Path
@@ -60,7 +59,6 @@ _REPO = _ROOT.parent.parent
 sys.path.insert(0, str(_REPO / "core_model"))
 
 import functions
-import signals as _signals
 from metrics import tau_absolute
 from model import run_simulation
 from signals import transform_signal
@@ -377,8 +375,12 @@ def _plot_tmax(df_raw: pd.DataFrame) -> plt.Figure:
 # we temporarily patch signals.generate_signal to inject the desired value.
 # The original function is always restored in the finally block.
 
-EPS_VALUES_C = [1e-6, 1e-4, 1e-3, 1e-2, 1e-1]
-CHOSEN_EPS   = 1e-4   # value adopted in all main analyses
+# 1e-12 is the value every result in this repository was actually produced
+# under -- it is generate_signal's default and, until signal_epsilon was plumbed
+# through run_simulation, the only value any run could have used.  It heads the
+# grid because it is the incumbent, not because it was chosen.
+EPS_VALUES_C = [1e-12, 1e-6, 1e-4, 1e-3, 1e-2, 1e-1]
+CHOSEN_EPS   = 1e-12  # value actually in force in all main analyses
 N_C          = 1000
 N_REPS_C     = 10
 TMAX_C       = 10     # short run is sufficient for a stability check
@@ -391,20 +393,12 @@ CONFIGS_C = [
 ]
 
 
-def _run_with_eps(eps_value: float, **kwargs) -> dict:
-    """Run run_simulation with a patched εs value in signals.generate_signal."""
-    original = _signals.generate_signal
-
-    @functools.wraps(original)
-    def _patched(true_support, theta=1.0, rho=100.0, eps=1e-12, rng=None):
-        return original(true_support, theta=theta, rho=rho,
-                        eps=eps_value, rng=rng)
-
-    _signals.generate_signal = _patched
-    try:
-        return run_simulation(**kwargs)
-    finally:
-        _signals.generate_signal = original   # always restore
+# NOTE: this panel used to vary eps by rebinding signals.generate_signal.  That
+# never worked: model.py binds `from signals import generate_signal` at import
+# time, so it kept its own reference and the patch never reached the simulation.
+# The committed table from that version showed delta_cenp identical to the last
+# digit across all five eps values -- the same computation five times.  eps is
+# now passed through run_simulation(signal_epsilon=...) like any other argument.
 
 
 def _simulate_epsilon() -> pd.DataFrame:
@@ -417,8 +411,8 @@ def _simulate_epsilon() -> pd.DataFrame:
             delta_cenps, trigger_rates, cond_sws, total_sws = [], [], [], []
 
             for seed in range(N_REPS_C):
-                result = _run_with_eps(
-                    eps,
+                result = run_simulation(
+                    signal_epsilon=eps,
                     K=BASE_K, n_modes=1,
                     width_factor=c,
                     mode_position=0.0, floor_weight=BASE_FLOOR,

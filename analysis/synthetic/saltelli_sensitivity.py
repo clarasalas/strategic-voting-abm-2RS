@@ -9,7 +9,10 @@ Fixed parameters (justified by preliminary analyses)
     N          = 2000     (N robustness check)
     M          = 2        (French two-round institutional rule)
     Tmax       = 25       (convergence diagnostic: p95 across regimes)
-    eps_signal = 1e-4     (epsilon stability check)
+    eps_signal = 1e-12    (numerical floor; the value these committed
+                           results were produced under. The 1e-4 quoted
+                           here previously was never in force -- see
+                           robustness_checks Panel C.)
     xi         = 0.0      (symmetric benchmark; xi analysis showed
                            geometric artifact, not behavioral signal)
     K          ∈ {6,8,9}  (run separately; odd/even geometry distinction)

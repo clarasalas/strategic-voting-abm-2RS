@@ -97,6 +97,7 @@ def run_simulation(
         # --- Signal ---
         theta: float = 1.0,
         rho: float = 100.0,
+        signal_epsilon: float = 1e-12,
 
         # --- Prior ---
         rho_pi: float = 10.0,
@@ -195,6 +196,36 @@ def run_simulation(
     collect_mu_calibration : bool
         Extract per-triggered-voter data for mu range calibration.
         Should be used with mu=0.
+    signal_epsilon : float, default 1e-12
+        Numerical FLOOR added to each share before the temperature
+        exponentiation in the signal transform:
+
+            s~_i = (delta_i + signal_epsilon)^(1/theta) / sum_j (...)
+
+        Its job is to give ZERO-SUPPORT COMPONENTS a strictly positive
+        Dirichlet concentration.  The signal is drawn as s ~ Dirichlet(rho*s~),
+        so without the floor a party at zero support has concentration exactly
+        zero and its sampled signal share is pinned at exactly zero -- it can
+        never be reported as viable, however the race moves.  (0^(1/theta) is
+        finite, so that is not the failure being guarded against.)
+
+        The separate degenerate case of an ALL-zero support vector is handled by
+        generate_signal's existing uniform fallback (delta = ones/K when the
+        total is zero), not by this parameter.
+
+        signal_epsilon = 1e-12 is the fixed synthetic specification: it is the
+        value every committed synthetic result was produced under.
+
+        It is not a behavioural parameter, and it is NOT the Saltelli parameter
+        named ``epsilon``, which is the electorate floor weight eps_F passed as
+        ``floor_weight``.
+
+        Must be finite and non-negative.  The default 1e-12 is the value every
+        result in this repository was produced under; changing it changes the
+        signal and therefore the run.
+
+        Synthetic runs only: with ``exogenous_signals`` the polls are supplied,
+        no signal is generated, and this parameter has no effect.
 
     Returns
     -------
@@ -250,6 +281,13 @@ def run_simulation(
     # separate from voter placement (rng) and signal/prior draws (signal_rng)
     # so a fixed seed makes the initialization fully reproducible.
     init_rng = np.random.default_rng(seed + 2 if seed is not None else None)
+
+    if not np.isfinite(signal_epsilon) or signal_epsilon < 0:
+        raise ValueError(
+            f"signal_epsilon must be finite and non-negative, got "
+            f"{signal_epsilon!r}. It is a numerical floor on the signal "
+            f"transform, not a behavioural parameter."
+        )
 
     if tau >= 2.0:
         warnings.warn(
@@ -351,12 +389,14 @@ def run_simulation(
             s_tilde_0 = signal.copy()
     else:
         if collect_diagnostics:
-            s_tilde_0 = transform_signal(true_support, theta=theta)
+            s_tilde_0 = transform_signal(true_support, theta=theta,
+                                         eps=signal_epsilon)
 
         signal = generate_signal(
             true_support,
             theta=theta,
             rho=rho,
+            eps=signal_epsilon,
             rng=signal_rng,
         )
 
@@ -447,7 +487,8 @@ def run_simulation(
             total = cur.sum()
             cur_shares = cur / total if total > 0 else true_support
             signal = generate_signal(
-                cur_shares, theta=theta, rho=rho, rng=signal_rng,
+                cur_shares, theta=theta, rho=rho,
+                eps=signal_epsilon, rng=signal_rng,
             )
 
         # Belief update:

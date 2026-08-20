@@ -1,0 +1,9 @@
+outcome,statistic,n_configurations,n_ci_excludes_zero_T25_T50,n_ci_excludes_zero_T50_T100,n_ci_excludes_zero_T25_T100,n_bh_significant_T25_T50,n_bh_significant_T50_T100,n_bh_significant_T25_T100,n_same_direction_both_intervals,n_reversing_direction,n_moving_and_persistent,expected_false_positives_at_5pct
+delta_cenp,endpoint,54,0,1,1,0,0,0,23,31,0,2.7
+delta_cenp,tail,54,1,1,2,0,0,0,23,31,0,2.7
+enp,endpoint,54,0,1,1,0,0,0,23,31,0,2.7
+enp,tail,54,1,1,2,0,0,0,23,31,0,2.7
+switching_rate,endpoint,54,1,5,0,0,0,0,13,41,0,2.7
+switching_rate,tail,54,4,3,3,0,0,0,20,34,0,2.7
+trigger_rate,endpoint,54,3,4,1,0,0,0,22,32,0,2.7
+trigger_rate,tail,54,3,1,3,0,0,0,17,37,0,2.7

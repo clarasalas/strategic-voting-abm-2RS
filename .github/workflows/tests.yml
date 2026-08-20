@@ -1,0 +1,47 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The README declares "Python 3.10 or later"; 3.11 is the version every
+      # committed result was produced under, so the suite runs on 3.11 here.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      # requirements.txt lists the packages the MODEL needs.  Two more are
+      # needed to run the test suite and are installed explicitly rather than
+      # added to requirements.txt, which is the model's dependency file:
+      #
+      #   pytest        the test runner itself
+      #   scikit-learn  imported by analysis/empirical/lhs_importance.py, which
+      #                 tests/test_result_tables.py imports to check the
+      #                 importance-table exporter
+      #
+      # See the PR description: whether scikit-learn belongs in requirements.txt
+      # is a real question about the model's declared dependencies, deliberately
+      # left for a separate decision rather than settled by CI convenience.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest scikit-learn
+
+      # -ra reports the reason for every skip, so a test that silently stops
+      # running is visible in the log rather than hiding inside a pass count.
+      # No continue-on-error and no "|| true": a failure fails the job.
+      - name: Run tests
+        run: pytest -ra

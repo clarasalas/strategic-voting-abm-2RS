@@ -50,13 +50,18 @@ PR #11 is additive and its default is still `1e-12` (`core_model/model.py:100`).
 - `behavioral_sweep.py` has a validated `--resume`.
 - Evidence archived and verified: `data/archive/pre_rerun_2026-08-21/`,
   153 files.
-- `pytest -ra` → **312 passed, 6 skipped**.
+- Both runners refuse to touch an existing output unless `--overwrite` is
+  given. Existence is the whole test; size is not consulted.
+- `pytest -ra` → **477 passed, 6 skipped**.
 
-**Open decision.** The probabilistic variants below use `--draws 800`, matching
-the archived June runs and the fiche's "800 draws each", so the before/after
-comparison is like-for-like. The runner's own default is 300. At 300 the runs
-would need `--overwrite`, because the guard refuses to replace an 800-row file
-with a 300-row one.
+**Approved.** The probabilistic variants use `--draws 800`, matching the
+archived June runs and the fiche's "800 draws each", so the before/after
+comparison is like-for-like.
+
+**Overwrite policy.** Every intentional replacement below passes `--overwrite`
+explicitly, because every target already exists and is archived. No command
+combines `--overwrite` with `--resume`: the sweep CLI refuses that pairing, and
+the replay has no resume mechanism to conflict with.
 
 ---
 
@@ -99,8 +104,12 @@ Ranges: `tau_hat [0.5, 3.0]`, `rho_pi [5, 200]`, `alpha [0.0, 0.9]`,
 
 ```bash
 run 01_replay_nearest \
-    python analysis/empirical/empirical_2002_2022.py
+    python analysis/empirical/empirical_2002_2022.py --overwrite
 ```
+
+`--overwrite` is required: the replay refuses to touch any existing output
+whatever its size. The 15-row smoke run currently on disk is being replaced
+deliberately, and it is archived.
 
 Writes `data/empirical_runs_{2002,2022}.csv`,
 `data/empirical_candidate_shares_{2002,2022}.csv`,
@@ -139,6 +148,8 @@ run 01_check_draws_2022 \
 ### Step 2 — probabilistic-initialisation variants
 
 800 draws per year per variant; 1,600 simulations each, 4,800 total; ~65 min.
+`--overwrite` is required: the pre-fix June outputs hold 800 rows each and are
+archived and verified.
 Beta enters the design here, range `[0, 20]`. Robustness is skipped
 automatically: the runner restricts it to `--sincere-init nearest`.
 
@@ -146,17 +157,17 @@ automatically: the runner restricts it to `--sincere-init nearest`.
 run 02a_prob_signal \
     python analysis/empirical/empirical_2002_2022.py \
         --sincere-init probabilistic --salience-source signal \
-        --draws 800
+        --draws 800 --overwrite
 
 run 02b_prob_prior \
     python analysis/empirical/empirical_2002_2022.py \
         --sincere-init probabilistic --salience-source prior \
-        --draws 800
+        --draws 800 --overwrite
 
 run 02c_prob_signal_mu0 \
     python analysis/empirical/empirical_2002_2022.py \
         --sincere-init probabilistic --salience-source signal --mu-zero \
-        --draws 800
+        --draws 800 --overwrite
 ```
 
 Writes `data/empirical_runs_prob_{signal,prior,signal_mu0}_{2002,2022}.csv`

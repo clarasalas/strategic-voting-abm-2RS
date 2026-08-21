@@ -8,9 +8,8 @@ the filenames holding the 300-draw experiment.  data/ is git-ignored and the
 outputs had never been committed, so the full pre-fix results are simply gone.
 
 The fix is structural rather than procedural: a quick run writes to data/smoke/,
-never to data/.  A second guard catches the other route to the same loss -- an
-explicit --draws N smaller than what is already on disk -- by refusing to
-replace a result file with a smaller one unless --overwrite says so.
+never to data/.  The complementary guard -- refusing to replace any existing
+output without --overwrite -- lives in tests/test_overwrite_protection.py.
 
 Run with:  pytest tests/test_quick_run_isolation.py
 """
@@ -135,48 +134,3 @@ def test_explicit_out_dir_overrides_the_quick_redirect(sandbox, monkeypatch,
 
     assert (elsewhere / "empirical_runs_2002.csv").exists()
     assert not smoke.exists() or not list(smoke.glob("*.csv"))
-
-
-# --------------------------------------------------------------------------- #
-#  The shrink guard: the other route to the same loss                          #
-# --------------------------------------------------------------------------- #
-
-def test_shrink_guard_refuses_a_smaller_replacement(tmp_path):
-    path = tmp_path / "empirical_runs_2002.csv"
-    _fake_full_run(path, n_rows=300)
-    with pytest.raises(SystemExit, match="Refusing to overwrite"):
-        runner._refuse_to_shrink(path, n_new_rows=15, overwrite=False)
-
-
-def test_shrink_guard_allows_an_equal_or_larger_replacement(tmp_path):
-    path = tmp_path / "empirical_runs_2002.csv"
-    _fake_full_run(path, n_rows=300)
-    runner._refuse_to_shrink(path, n_new_rows=300, overwrite=False)
-    runner._refuse_to_shrink(path, n_new_rows=500, overwrite=False)
-
-
-def test_shrink_guard_yields_to_explicit_overwrite(tmp_path):
-    path = tmp_path / "empirical_runs_2002.csv"
-    _fake_full_run(path, n_rows=300)
-    runner._refuse_to_shrink(path, n_new_rows=15, overwrite=True)
-
-
-def test_shrink_guard_is_silent_on_a_fresh_path(tmp_path):
-    runner._refuse_to_shrink(tmp_path / "absent.csv", n_new_rows=1,
-                             overwrite=False)
-
-
-def test_shrink_guard_stops_a_small_run_into_the_data_dir(sandbox, monkeypatch):
-    """
-    End to end: --draws 1 aimed at data/, where a 300-row file already sits.
-
-    The run must abort rather than truncate the experiment.
-    """
-    data, _ = sandbox
-    full = data / "empirical_runs_2002.csv"
-    before = _fake_full_run(full)
-
-    with pytest.raises(SystemExit, match="Refusing to overwrite"):
-        _run_cli(monkeypatch, ["--draws", "1", "--no-robustness"])
-
-    assert _sha256(full) == before

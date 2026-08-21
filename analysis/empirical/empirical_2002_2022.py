@@ -229,29 +229,56 @@ def _scalar_row(params: dict, outcome: dict) -> dict:
     return row
 
 
-def _refuse_to_shrink(path: Path, n_new_rows: int, overwrite: bool) -> None:
-    """
-    Stop before replacing an existing result file with a smaller one.
-
-    The smoke/full split above stops --quick from landing in DATA_DIR at all.
-    This is the second line of defence, for the other way to lose a long run:
-    an explicit --draws N that is smaller than what is already on disk.  Pass
-    --overwrite to go ahead.
-    """
-    if overwrite or not path.exists():
-        return
+def _row_count(path: Path):
+    """Data rows in a CSV, or None if it cannot be read."""
     try:
-        n_existing = sum(1 for _ in path.open()) - 1
+        return sum(1 for _ in path.open()) - 1
     except OSError:
+        return None
+
+
+def _refuse_existing_outputs(targets: list, overwrite: bool) -> None:
+    """
+    Refuse to start if ANY target output already exists.
+
+    Existence is the whole test.  Size is not consulted: replacing a 300-row
+    file with a 300-row file still destroys a result that took twenty minutes
+    to produce, and "the new one has at least as many rows" is not a reason to
+    do it silently.  This is the same policy behavioral_sweep.py applies, and
+    for the same reason -- re-running the command is the obvious thing to do
+    and it must not be the destructive thing to do.
+
+    All targets are checked BEFORE any of them is written, so a refusal leaves
+    every existing file untouched rather than aborting halfway through a year.
+    A partially present set is refused too, and reported as partial: it usually
+    means an earlier run died, and quietly filling the gaps would produce a
+    directory whose files came from two different runs.
+
+    The empirical replay has no resume mechanism -- each invocation rewrites
+    its outputs from the start -- so --overwrite has nothing to conflict with
+    here.  (behavioral_sweep.py does have one, and refuses --resume together
+    with --overwrite.)
+    """
+    if overwrite:
         return
-    if n_existing > n_new_rows:
-        raise SystemExit(
-            f"Refusing to overwrite {path.name}: it holds {n_existing} rows and "
-            f"this run would write {n_new_rows}.\n"
-            f"  --quick and smoke runs belong in {SMOKE_DIR}/ (use --quick, or "
-            f"--out-dir).\n"
-            f"  Pass --overwrite to replace it deliberately."
-        )
+    existing = [p for p in targets if p.exists()]
+    if not existing:
+        return
+
+    lines = [f"    {p.name}  ({n} rows)" if (n := _row_count(p)) is not None
+             else f"    {p.name}" for p in existing]
+    scope = ("all %d target file(s) already exist" % len(existing)
+             if len(existing) == len(targets)
+             else "%d of %d target file(s) already exist (a partial set -- an "
+                  "earlier run may have died)" % (len(existing), len(targets)))
+
+    raise SystemExit(
+        f"Refusing to run: {scope}, and nothing has been touched.\n"
+        + "\n".join(lines)
+        + f"\n  --overwrite   replace them deliberately\n"
+          f"  --quick       write a smoke run to {SMOKE_DIR}/ instead\n"
+          f"  --out-dir DIR write somewhere else entirely"
+    )
 
 
 def output_suffix(cfg: dict) -> str:
@@ -356,6 +383,12 @@ def run_main_experiment(n_draws: int = N_DRAWS, cfg: dict = None,
         n_draws, rng, include_beta=probabilistic, mu_zero=mu_zero
     )
 
+    # Every file this call will write, listed before any of them is opened.
+    targets = [out_dir / f"empirical_{stem}{suffix}_{year}.csv"
+               for year in YEARS
+               for stem in ("runs", "candidate_shares", "candidate_draws")]
+    _refuse_existing_outputs(targets, overwrite)
+
     bundles = {y: load_year(y, signal_mode="weekly") for y in YEARS}
 
     for year in YEARS:
@@ -374,7 +407,6 @@ def run_main_experiment(n_draws: int = N_DRAWS, cfg: dict = None,
             outcomes.append(outcome)
 
         runs_path = out_dir / f"empirical_runs{suffix}_{year}.csv"
-        _refuse_to_shrink(runs_path, len(rows), overwrite)
         pd.DataFrame(rows).to_csv(runs_path, index=False)
         aggregate_candidates(bundle, outcomes).to_csv(
             out_dir / f"empirical_candidate_shares{suffix}_{year}.csv",
@@ -400,6 +432,9 @@ def run_robustness(n_draws: int = N_DRAWS_ROBUST, out_dir: Path = None,
     """
     out_dir = Path(out_dir) if out_dir is not None else DATA_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
+    targets = [out_dir / f"empirical_robustness_{year}.csv" for year in YEARS]
+    _refuse_existing_outputs(targets, overwrite)
+
     rng = np.random.default_rng(MASTER_SEED + 1)
     design = sample_parameter_design(n_draws, rng)
     base = {y: load_year(y, signal_mode="weekly") for y in YEARS}
@@ -441,7 +476,6 @@ def run_robustness(n_draws: int = N_DRAWS_ROBUST, out_dir: Path = None,
                          **_scalar_row(params, o3)})
 
         rob_path = out_dir / f"empirical_robustness_{year}.csv"
-        _refuse_to_shrink(rob_path, len(rows), overwrite)
         pd.DataFrame(rows).to_csv(rob_path, index=False)
         print(f"[robustness] {year}: wrote {len(rows)} rows "
               f"({n_draws} draws x 3 variants).")
@@ -530,8 +564,8 @@ def main() -> None:
                     help="directory for output CSVs (default: data/, or "
                          "data/smoke/ under --quick)")
     ap.add_argument("--overwrite", action="store_true",
-                    help="allow replacing an existing result file with a "
-                         "smaller one")
+                    help="replace existing output files (refused by default, "
+                         "whatever their size)")
 
     # --- Sincere initialization options ---
     ap.add_argument("--sincere-init", choices=["nearest", "probabilistic"],

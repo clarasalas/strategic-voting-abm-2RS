@@ -224,6 +224,10 @@ data/empirical_*
 data/behavioral_*
 data/sweep_*
 
+# Smoke runs.  --quick writes here so it can never land on a full run's
+# filename; see analysis/empirical/empirical_2002_2022.py.
+data/smoke/
+
 # Raw / intermediate analysis output: bulky, regenerable, never reader-facing.
 outputs/
 analysis/**/outputs/

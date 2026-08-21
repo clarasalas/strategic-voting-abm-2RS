@@ -46,6 +46,9 @@ Usage
     python analysis/empirical_2002_2022.py            # main + robustness
     python analysis/empirical_2002_2022.py --quick    # few draws, smoke run
 
+--quick writes to data/smoke/ instead of data/, so a smoke run can never
+overwrite a full experiment.  --out-dir overrides both.
+
 Then build figures with:
     python analysis/empirical_figures.py
 """
@@ -70,6 +73,15 @@ from empirical_outcomes import compute_run_outcomes, initialization_benchmarks
 from metrics import tau_absolute
 
 DATA_DIR = REPO / "data"
+
+# Smoke runs write here, never into DATA_DIR.  A --quick run produces 15 draws
+# under the same stem as a 300-draw run, so sharing a directory means a smoke
+# test silently destroys a full experiment -- which is exactly what happened on
+# 2026-08-19, when a --quick run overwrote the full 2002/2022 replay outputs.
+# Separating the directories makes that structurally impossible rather than a
+# matter of remembering.
+SMOKE_DIR = DATA_DIR / "smoke"
+
 YEARS = (2002, 2022)
 
 # =========================================================================== #
@@ -217,6 +229,31 @@ def _scalar_row(params: dict, outcome: dict) -> dict:
     return row
 
 
+def _refuse_to_shrink(path: Path, n_new_rows: int, overwrite: bool) -> None:
+    """
+    Stop before replacing an existing result file with a smaller one.
+
+    The smoke/full split above stops --quick from landing in DATA_DIR at all.
+    This is the second line of defence, for the other way to lose a long run:
+    an explicit --draws N that is smaller than what is already on disk.  Pass
+    --overwrite to go ahead.
+    """
+    if overwrite or not path.exists():
+        return
+    try:
+        n_existing = sum(1 for _ in path.open()) - 1
+    except OSError:
+        return
+    if n_existing > n_new_rows:
+        raise SystemExit(
+            f"Refusing to overwrite {path.name}: it holds {n_existing} rows and "
+            f"this run would write {n_new_rows}.\n"
+            f"  --quick and smoke runs belong in {SMOKE_DIR}/ (use --quick, or "
+            f"--out-dir).\n"
+            f"  Pass --overwrite to replace it deliberately."
+        )
+
+
 def output_suffix(cfg: dict) -> str:
     """
     Build a filename suffix encoding the initialization mode, salience source
@@ -305,8 +342,11 @@ def per_draw_candidate_table(bundle: dict, design: pd.DataFrame,
     return pd.DataFrame(rows)
 
 
-def run_main_experiment(n_draws: int = N_DRAWS, cfg: dict = None) -> None:
+def run_main_experiment(n_draws: int = N_DRAWS, cfg: dict = None,
+                        out_dir: Path = None, overwrite: bool = False) -> None:
     cfg = cfg or {}
+    out_dir = Path(out_dir) if out_dir is not None else DATA_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
     probabilistic = cfg.get("sincere_init_mode", "nearest") == "probabilistic"
     mu_zero = cfg.get("mu_zero", False)
     suffix = output_suffix(cfg)
@@ -333,13 +373,14 @@ def run_main_experiment(n_draws: int = N_DRAWS, cfg: dict = None) -> None:
             rows.append(_scalar_row(params, outcome))
             outcomes.append(outcome)
 
-        pd.DataFrame(rows).to_csv(
-            DATA_DIR / f"empirical_runs{suffix}_{year}.csv", index=False)
+        runs_path = out_dir / f"empirical_runs{suffix}_{year}.csv"
+        _refuse_to_shrink(runs_path, len(rows), overwrite)
+        pd.DataFrame(rows).to_csv(runs_path, index=False)
         aggregate_candidates(bundle, outcomes).to_csv(
-            DATA_DIR / f"empirical_candidate_shares{suffix}_{year}.csv",
+            out_dir / f"empirical_candidate_shares{suffix}_{year}.csv",
             index=False)
         per_draw_candidate_table(bundle, design, outcomes).to_csv(
-            DATA_DIR / f"empirical_candidate_draws{suffix}_{year}.csv",
+            out_dir / f"empirical_candidate_draws{suffix}_{year}.csv",
             index=False)
         print(f"[main{suffix or ' nearest'}] {year}: wrote {len(rows)} runs "
               f"+ candidate aggregates + per-draw candidate table.")
@@ -349,13 +390,16 @@ def run_main_experiment(n_draws: int = N_DRAWS, cfg: dict = None) -> None:
 #  ROBUSTNESS                                                                  #
 # =========================================================================== #
 
-def run_robustness(n_draws: int = N_DRAWS_ROBUST) -> None:
+def run_robustness(n_draws: int = N_DRAWS_ROBUST, out_dir: Path = None,
+                   overwrite: bool = False) -> None:
     """
     Three robustness variants, each applied to both years:
         individual_signals : every poll is its own signal (no weekly mean)
         perturbed_positions: equal-size jitter of party positions
         resampled_voters   : fresh voter sample per draw (different seed)
     """
+    out_dir = Path(out_dir) if out_dir is not None else DATA_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(MASTER_SEED + 1)
     design = sample_parameter_design(n_draws, rng)
     base = {y: load_year(y, signal_mode="weekly") for y in YEARS}
@@ -396,8 +440,9 @@ def run_robustness(n_draws: int = N_DRAWS_ROBUST) -> None:
             rows.append({"variant": "resampled_voters",
                          **_scalar_row(params, o3)})
 
-        pd.DataFrame(rows).to_csv(
-            DATA_DIR / f"empirical_robustness_{year}.csv", index=False)
+        rob_path = out_dir / f"empirical_robustness_{year}.csv"
+        _refuse_to_shrink(rob_path, len(rows), overwrite)
+        pd.DataFrame(rows).to_csv(rob_path, index=False)
         print(f"[robustness] {year}: wrote {len(rows)} rows "
               f"({n_draws} draws x 3 variants).")
 
@@ -481,6 +526,12 @@ def main() -> None:
                     help="number of robustness draws per variant "
                          "(overrides default / --quick)")
     ap.add_argument("--no-robustness", action="store_true")
+    ap.add_argument("--out-dir", type=str, default=None,
+                    help="directory for output CSVs (default: data/, or "
+                         "data/smoke/ under --quick)")
+    ap.add_argument("--overwrite", action="store_true",
+                    help="allow replacing an existing result file with a "
+                         "smaller one")
 
     # --- Sincere initialization options ---
     ap.add_argument("--sincere-init", choices=["nearest", "probabilistic"],
@@ -515,11 +566,21 @@ def main() -> None:
     if args.robust_draws is not None:
         n_rob = args.robust_draws
 
-    run_main_experiment(n_main, cfg)
+    # An explicit --out-dir wins; otherwise --quick redirects to data/smoke/ so
+    # a smoke run can never land on a full-run filename.
+    if args.out_dir is not None:
+        out_dir = Path(args.out_dir)
+    elif args.quick:
+        out_dir = SMOKE_DIR
+    else:
+        out_dir = DATA_DIR
+    print(f"[out] writing to {out_dir}")
+
+    run_main_experiment(n_main, cfg, out_dir=out_dir, overwrite=args.overwrite)
     # Robustness is defined for the nearest-party baseline only; probabilistic
     # variants write their own suffixed main outputs and skip robustness.
     if not args.no_robustness and args.sincere_init == "nearest":
-        run_robustness(n_rob)
+        run_robustness(n_rob, out_dir=out_dir, overwrite=args.overwrite)
 
 
 if __name__ == "__main__":

@@ -70,6 +70,17 @@ NON_PREDICTOR_PATTERNS = [
     "cenp_s0", "cenp_real", "observed", "result", "mean_", "_real",
 ]
 
+# Exact column names to exclude, matched whole rather than as substrings.
+# Both are recorded for traceability but neither is an independently swept
+# parameter, and including them would corrupt the ranking:
+#
+#   tau_absolute  is tau_hat * (2 / K), i.e. perfectly collinear with tau_hat
+#                 within a year -- permutation importance would split one
+#                 parameter's importance across two columns.
+#   K             is constant within a year's sweep, so it carries no variance
+#                 and would only add an empty row to the table.
+NON_PREDICTOR_EXACT = {"tau_absolute", "k"}
+
 
 # --------------------------------------------------------------------------- #
 # Surrogate-fitting core (shared)
@@ -91,6 +102,8 @@ def find_predictor_columns(df, outcome_col):
         if col == outcome_col:
             continue
         name = col.lower()
+        if name in NON_PREDICTOR_EXACT:
+            continue
         if any(pat in name for pat in NON_PREDICTOR_PATTERNS):
             continue
         if not np.issubdtype(df[col].dtype, np.number):

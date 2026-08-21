@@ -152,14 +152,19 @@ def run_one(params: dict, bundle: dict, voters: np.ndarray, seed: int) -> dict:
     K = len(positions)
     s0 = np.asarray(signals[0], dtype=float)            # baseline poll, fixed per year
 
+    # tau_hat is normalised; run_simulation wants absolute units (2/K).
+    # This is the ONLY tau conversion on the sweep path: the value written to
+    # the CSV is read back out of this function's return value, so it is
+    # literally the value handed to run_simulation.
+    tau_abs = tau_absolute(params["tau_hat"], K)
+
     res = run_simulation(
         K=K,
         party_ids=bundle["parties"],
         party_positions_override=positions,
         voter_positions_override=voters,
         exogenous_signals=signals,
-        # tau_hat is normalised; run_simulation wants absolute units (2/K).
-        tau=tau_absolute(params["tau_hat"], K),
+        tau=tau_abs,
         mu=params["mu"],
         alpha_prior=params["alpha"],
         rho_pi=params["rho_pi"],
@@ -178,7 +183,8 @@ def run_one(params: dict, bundle: dict, voters: np.ndarray, seed: int) -> dict:
     delta_cenp = cenp(final, K) - cenp(s0, K)           # CENP(δ_final) − CENP(s⁰)
     # final_enp computed the same way as main_results.enp: 1 / Σ δ²
     final_enp = 1.0 / float(((final / final.sum()) ** 2).sum()) if final.sum() > 0 else np.nan
-    return {"delta_cenp": delta_cenp, "final_enp": final_enp}
+    return {"delta_cenp": delta_cenp, "final_enp": final_enp,
+            "tau_absolute": tau_abs, "K": K}
 
 
 # --------------------------------------------------------------------------- #

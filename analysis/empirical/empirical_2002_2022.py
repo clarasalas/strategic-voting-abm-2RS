@@ -161,13 +161,19 @@ def run_single(params: dict, positions: np.ndarray, voters: np.ndarray,
     # tau_hat is normalised (zone lengths); the model wants absolute units.
     # K differs by year, so one shared tau_hat draw becomes a different
     # absolute tau in 2002 (K=15) and 2022 (K=12).
+    #
+    # This is the ONLY tau conversion on the replay path.  Every CSV column
+    # downstream reads tau_absolute back out of the returned outcome dict, so
+    # the number written to disk is literally the number handed to
+    # run_simulation -- it cannot drift from it, and it cannot be applied twice.
+    tau_abs = tau_absolute(params["tau_hat"], K)
     res = run_simulation(
         K=K,
         party_ids=party_ids,
         party_positions_override=positions,
         voter_positions_override=voters,
         exogenous_signals=signals,
-        tau=tau_absolute(params["tau_hat"], K),
+        tau=tau_abs,
         mu=params["mu"],
         alpha_prior=params["alpha"],
         rho_pi=params["rho_pi"],
@@ -180,7 +186,10 @@ def run_single(params: dict, positions: np.ndarray, voters: np.ndarray,
         verbose=False,
         collect_diagnostics=True,
     )
-    return compute_run_outcomes(res, results, signals[0])
+    outcome = compute_run_outcomes(res, results, signals[0])
+    outcome["tau_absolute"] = tau_abs
+    outcome["K"] = K
+    return outcome
 
 
 # =========================================================================== #
@@ -196,7 +205,12 @@ _SCALAR_KEYS = [
 
 
 def _scalar_row(params: dict, outcome: dict) -> dict:
+    # tau_absolute and K come from the outcome, not from a second conversion:
+    # see run_single.  K is recorded so the row is self-describing -- the
+    # relation tau_absolute = tau_hat * (2 / K) is checkable from the CSV alone,
+    # without knowing which year the file belongs to.
     row = {"draw": params["draw"], "tau_hat": params["tau_hat"],
+           "tau_absolute": outcome["tau_absolute"], "K": outcome["K"],
            "rho_pi": params["rho_pi"], "alpha": params["alpha"],
            "mu": params["mu"], "beta": params.get("beta", 0.0)}
     row.update({k: outcome[k] for k in _SCALAR_KEYS})
@@ -275,6 +289,8 @@ def per_draw_candidate_table(bundle: dict, design: pd.DataFrame,
             rows.append({
                 "draw": int(prow["draw"]),
                 "tau_hat": prow["tau_hat"],
+                "tau_absolute": o["tau_absolute"],
+                "K": o["K"],
                 "rho_pi": prow["rho_pi"],
                 "alpha": prow["alpha"],
                 "mu": prow["mu"],

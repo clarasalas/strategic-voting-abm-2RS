@@ -55,6 +55,10 @@ YEAR_FILES = {
 
 # Candidate names for the outcome column, in priority order. The script is
 # robust to naming differences across CSVs.
+# lhs_importance reads the behavioural-sweep outputs (see YEAR_FILES), so that
+# is the design whose predictor set applies here.
+DESIGN = "behavioral_sweep"
+
 OUTCOME_CANDIDATES = [
     "delta_cenp", "mean_delta_cenp", "dcenp", "coordination_gain", "cenp_gain",
 ]
@@ -70,16 +74,83 @@ NON_PREDICTOR_PATTERNS = [
     "cenp_s0", "cenp_real", "observed", "result", "mean_", "_real",
 ]
 
-# Exact column names to exclude, matched whole rather than as substrings.
-# Both are recorded for traceability but neither is an independently swept
-# parameter, and including them would corrupt the ranking:
+# --------------------------------------------------------------------------- #
+#  Canonical predictor sets                                                    #
+# --------------------------------------------------------------------------- #
 #
-#   tau_absolute  is tau_hat * (2 / K), i.e. perfectly collinear with tau_hat
-#                 within a year -- permutation importance would split one
-#                 parameter's importance across two columns.
-#   K             is constant within a year's sweep, so it carries no variance
-#                 and would only add an empty row to the table.
-NON_PREDICTOR_EXACT = {"tau_absolute", "k"}
+# The predictors are declared, not inferred.  Detection by exclusion is the
+# wrong default here: it treats every numeric column as a predictor unless
+# somebody remembered to exclude it, so adding a provenance column to an output
+# silently adds a parameter to the analysis.  That is exactly what happened when
+# tau_absolute and K were introduced -- both would have been picked up as swept
+# parameters, and tau_absolute is perfectly collinear with tau_hat within a
+# year, so permutation importance would have split one parameter's importance
+# across two columns and changed the ranking.
+#
+# Each design sweeps a different set, so each set is named separately rather
+# than merged into one permissive union:
+#
+#   behavioral_sweep      analysis/empirical/behavioral_sweep.py -- always
+#                         probabilistic initialisation, so beta is swept.
+#   replay_nearest        empirical_2002_2022.py with --sincere-init nearest.
+#                         beta is written as a constant 0.0 and is NOT swept.
+#   replay_probabilistic  the same runner with --sincere-init probabilistic:
+#                         beta enters the design.
+#   replay_prob_mu0       the --mu-zero variant, where mu is pinned to 0 and so
+#                         is not a swept parameter either.
+#
+# ORDER IS PART OF THE CONTRACT.  The surrogate's feature subsampling is seeded,
+# so permuting these lists changes the fitted forest and therefore the reported
+# importances.  Do not reorder them to tidy them up.
+SWEPT_PREDICTORS = {
+    "behavioral_sweep":     ["tau_hat", "mu", "alpha", "rho_pi", "beta"],
+    "replay_nearest":       ["tau_hat", "rho_pi", "alpha", "mu"],
+    "replay_probabilistic": ["tau_hat", "rho_pi", "alpha", "mu", "beta"],
+    "replay_prob_mu0":      ["tau_hat", "rho_pi", "alpha", "beta"],
+}
+
+# Columns that are recorded for traceability and must never be predictors, no
+# matter what a future output adds.  Listed for the error message and for the
+# test that pins the contract; the allowlist is what actually decides.
+NEVER_PREDICTORS = frozenset({
+    "draw", "run_id", "seed", "year", "n_repeats", "repeat",
+    "k", "tau_absolute", "n_rows", "config_id",
+})
+
+
+def resolve_predictors(df, design: str = "behavioral_sweep") -> list:
+    """
+    The declared predictor columns for ``design``, in their declared order.
+
+    Raises rather than silently dropping: a missing swept parameter means the
+    file is not what the caller thinks it is, and quietly fitting a surrogate on
+    the remaining columns would produce a plausible, wrong ranking.
+    """
+    if design not in SWEPT_PREDICTORS:
+        raise ValueError(f"Unknown design {design!r}. "
+                         f"Known: {sorted(SWEPT_PREDICTORS)}")
+    wanted = SWEPT_PREDICTORS[design]
+
+    missing = [c for c in wanted if c not in df.columns]
+    if missing:
+        raise ValueError(
+            f"Design {design!r} sweeps {wanted}, but the data is missing "
+            f"{missing}. Columns present: {list(df.columns)}")
+
+    # pd.api.types.is_numeric_dtype, not np.issubdtype: the latter raises
+    # TypeError on pandas extension dtypes (StringDtype, nullable Int64)
+    # instead of returning False, turning a clear refusal into a numpy
+    # traceback from somewhere else entirely.
+    non_numeric = [c for c in wanted
+                   if not pd.api.types.is_numeric_dtype(df[c])]
+    if non_numeric:
+        raise ValueError(f"Predictor column(s) {non_numeric} are not numeric.")
+
+    overlap = sorted(set(w.lower() for w in wanted) & NEVER_PREDICTORS)
+    if overlap:
+        raise ValueError(f"Design {design!r} lists metadata as predictors: "
+                         f"{overlap}")
+    return list(wanted)
 
 
 # --------------------------------------------------------------------------- #
@@ -96,17 +167,23 @@ def find_outcome_column(df):
 
 
 def find_predictor_columns(df, outcome_col):
-    """Return the numeric parameter columns, excluding ids/seeds/outputs."""
+    """
+    What exclusion-based detection WOULD have selected.  Diagnostic only.
+
+    Kept so the two answers can be printed side by side: if detection picks up
+    something the allowlist does not, that is a new column in the outputs and
+    somebody has to decide what it is.  It no longer feeds the surrogate.
+    """
     predictors = []
     for col in df.columns:
         if col == outcome_col:
             continue
         name = col.lower()
-        if name in NON_PREDICTOR_EXACT:
+        if name in NEVER_PREDICTORS:
             continue
         if any(pat in name for pat in NON_PREDICTOR_PATTERNS):
             continue
-        if not np.issubdtype(df[col].dtype, np.number):
+        if not pd.api.types.is_numeric_dtype(df[col]):
             continue
         predictors.append(col)
     return predictors
@@ -242,16 +319,22 @@ def run_paper():
     )
 
     outcome_col = find_outcome_column(all_df)
-    predictor_cols = find_predictor_columns(all_df, outcome_col)
+    predictor_cols = resolve_predictors(all_df, DESIGN)
+    detected = find_predictor_columns(all_df, outcome_col)
 
     print("=" * 60)
-    print("Detected columns")
+    print("Columns")
     print("=" * 60)
     print(f"Outcome column   : {outcome_col}")
     print(f"Year column      : year")
-    print(f"Predictor columns: {predictor_cols}")
+    print(f"Design           : {DESIGN}")
+    print(f"Predictor columns: {predictor_cols}   (declared)")
     print(f"Excluded columns : "
           f"{[c for c in all_df.columns if c not in predictor_cols + [outcome_col]]}")
+    if set(detected) != set(predictor_cols):
+        print(f"NOTE: exclusion-based detection would have chosen {detected}. "
+              f"The declared set is used; reconcile SWEPT_PREDICTORS if a new "
+              f"parameter really is being swept.")
     print(f"Rows: total={len(all_df)}  "
           f"({', '.join(f'{y}={len(f)}' for y, f in frames.items())})")
 
@@ -420,7 +503,7 @@ def run_slide():
     frames = load_year_frames()
     sample = next(iter(frames.values()))
     outcome_col = find_outcome_column(sample)
-    predictor_cols = find_predictor_columns(sample, outcome_col)
+    predictor_cols = resolve_predictors(sample, DESIGN)
 
     print("=" * 60)
     print(f"Outcome column   : {outcome_col}")

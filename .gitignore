@@ -228,6 +228,10 @@ data/sweep_*
 # filename; see analysis/empirical/empirical_2002_2022.py.
 data/smoke/
 
+# Pre-rerun evidence archives: bulky point-in-time copies of data/, figures/
+# and results/ kept locally for before/after comparison.  Never committed.
+data/archive/
+
 # Raw / intermediate analysis output: bulky, regenerable, never reader-facing.
 outputs/
 analysis/**/outputs/

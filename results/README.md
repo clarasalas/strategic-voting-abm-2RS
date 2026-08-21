@@ -292,6 +292,17 @@ below 0.1. `standardized_coefficient` is an independent linear-model check on th
 forest's ranking. `relative_importance_pct` uses the same helper as the slide
 figure (negatives clipped to zero, then scaled to 100 within each scope).
 
+**Determinism.** Reproducible, but not byte-identical — unlike the Sobol table
+above. The predictor set is declared rather than inferred
+(`SWEPT_PREDICTORS`), and every seed is fixed: the forest, the cross-validation
+folds and the permutation repeats all take `SEED = 20020422`. Regenerating the
+table reproduces its values to within numerical tolerance and its rankings
+exactly. Differences of the order of the last bit of a double (~1e-16) can
+appear between runs because the surrogate is fitted in parallel and the order
+of floating-point reduction is not fixed. They are far below any digit this
+table is read at and do not move a ranking. Compare regenerated tables
+numerically, not with a checksum.
+
 > ⚠️ **Not yet generated.** The behavioural sweeps currently on disk were
 > produced before the τ̂ unit fix (#6), so any importance table built from them
 > would be stale. The export is implemented and tested; the table will be

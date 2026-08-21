@@ -448,7 +448,26 @@ def build_importance_table(results: dict) -> pd.DataFrame:
                 "seed": SEED,
             })
     df = pd.DataFrame(rows, columns=IMPORTANCE_TABLE_COLUMNS)
-    # Stable order so regeneration is byte-identical.
+    # Stable row order, so a regenerated table lines up with the committed one
+    # and can be diffed.
+    #
+    # Reproducible, but NOT byte-identical -- an earlier comment here claimed it
+    # was, and that is wrong.  Verified by running unchanged code three times:
+    #
+    #   * predictor selection is declared (SWEPT_PREDICTORS) and every seed is
+    #     fixed -- the forest, the CV folds and the permutations all take SEED;
+    #   * values reproduce to within numerical tolerance, far tighter than any
+    #     digit this table is read at;
+    #   * the rankings are stable;
+    #   * differences appear in the last bit of a double (<= ~1e-16) because
+    #     joblib splits the work across workers and the order of floating-point
+    #     reduction is not fixed.
+    #
+    # The estimator is deliberately NOT changed to force byte identity: that
+    # would trade a real property (the surrogate's configuration) for a
+    # cosmetic one.  Rounding the written table would achieve it without
+    # touching the calculation, but nothing depends on byte identity here, so
+    # the honest description is enough.
     return df.sort_values(["scope", "parameter"]).reset_index(drop=True)
 
 

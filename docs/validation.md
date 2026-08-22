@@ -15,37 +15,66 @@ reproducible. Organised **by type of check**, not by chronology.
 
 ## Verification snapshot
 
-A **dated local verification** of the code and result-table state described in
-this guide. It is a record of one run on one machine, not a standing property of
-the repository and not a CI result. Re-run the command to produce a current one.
-
-```bash
-python -m pytest -ra
-```
+An **auditable local verification**, run against a clean checkout of the exact
+tested code tree. It is a record of one run on one machine, not a standing
+property of the repository and not a CI result.
 
 | | |
 |---|---|
-| **Verified on** | 2026-08-22 |
+| **Tested code tree** | `cc5ed19` — checked out clean into a detached worktree; `git status` empty throughout |
+| **Command** | `python -m pytest -ra` |
 | **Result** | **522 passed, 0 skipped, 0 warnings** |
-| **Runtime** | ~18 s |
-| **Environment** | Python 3.11.7, macOS (darwin 25.5.0), single machine |
-| **Dependencies** | `requirements.txt` + `pytest`, `scikit-learn` |
+| **Runtime** | ~10 s |
+| **Date** | 2026-08-22 |
+| **Platform** | Python 3.11.7, Darwin 25.5.0 |
 
-**What was verified.** The state of the code and the committed result tables at
-the point this documentation describes:
+| Dependency | Version |
+|---|---|
+| numpy | 1.26.4 |
+| scipy | 1.17.1 |
+| pandas | 3.0.3 |
+| matplotlib | 3.10.9 |
+| scikit-learn | 1.2.2 |
+| SALib | 1.5.2 |
+| pytest | 7.4.0 |
 
-- `50a2bf5` — introduced `make_empirical_tables.py`, its tests and the seven
-  summary tables. This is the **code and table** commit.
-- `3a3a215` — the **documentation** commit that follows it. It changes no code
-  and no tests.
-- A subsequent **test-hygiene** commit removed two always-skipping tests, closed
-  a file handle in `empirical_2002_2022.py`, and added the warning policy in
-  `pytest.ini`. The result above is from **after** that change.
+### Reproducing this number needs generated data
 
-> The tested working tree is the one that became the hygiene commit, so no
-> single hash listed here is the exact tree that produced the numbers — a
-> document cannot contain its own commit hash. Treat the date, the command and
-> the environment as the identifying facts, and re-run to confirm.
+A checkout alone gives **520 passed, 2 skipped**. Two tests guard on files that
+are git-ignored by design and therefore absent from a fresh clone:
+
+| Test | Needs |
+|---|---|
+| `test_empirical_tables.py::test_regeneration_reproduces_the_committed_tables` | `data/empirical_*.csv`, `data/behavioral_sweep_*.csv` |
+| `test_protocol_posthoc.py::test_real_horizon_raw_passes_validation` | `analysis/synthetic/outputs/protocol_validation/horizon_raw.csv` |
+
+These are **conditional environment guards**, not the always-skipping tests
+removed in the same pass: each runs and asserts as soon as its input exists. The
+522/0/0 result above was taken with those generated inputs present alongside the
+clean `cc5ed19` tree — copying them left `git status` empty, because every one
+of them is git-ignored, so the code under test was still exactly `cc5ed19`.
+
+To reproduce: run the pipeline (or any prior run's outputs) into `data/`, then
+`python -m pytest -ra`. See
+[Reproducibility](reproducibility.md#regenerating-committed-artefacts).
+
+### Commit roles
+
+| Commit | Role |
+|---|---|
+| `50a2bf5` | code and tables — `make_empirical_tables.py`, its tests, seven summary tables |
+| `3a3a215` | documentation — changes no code, no tests |
+| `cc5ed19` | test hygiene — **the tree verified above** |
+
+The commit that records this snapshot is later than `cc5ed19` and
+documentation-only, which is why it can name it. No commit here claims to
+contain its own hash.
+
+### Test discovery
+
+`pytest.ini` sets `testpaths = tests`. All 18 `test_*.py` files in the
+repository are under `tests/`, and collection with and without the repository's
+`pytest.ini` returns the **same 522 test IDs**, so the setting hides nothing.
 
 ### No skipped tests
 
@@ -69,14 +98,35 @@ overflow, an invalid value or a divide-by-zero inside the model is a
 result-changing event, not a note. The suite emits none, so this costs nothing
 and catches the next one.
 
+#### What the audit counted
+
+Two different numbers appear below, and they come from **two different warning
+configurations**. They are not alternative totals of the same thing:
+
+| | Warnings | Configuration |
+|---|---:|---|
+| Reported by a plain `pytest` run | **5 578** | Python's default filters, which **hide `ResourceWarning` entirely** |
+| Additionally exposed by `pytest -W always` | **+34** | `ResourceWarning`s from a leaked file handle, invisible by default |
+| **Complete audit** | **5 612** | every occurrence, nothing suppressed |
+
+The 34 were a real defect — `_row_count` opened a file and never closed it —
+and would never have appeared in ordinary output. Auditing under `-W always`
+rather than trusting the visible count is what surfaced them.
+
+All 5 612 are now fixed, asserted, or narrowly filtered.
+
 <details>
 <summary>What is filtered, and why it cannot simply be fixed</summary>
 
-| Source | Count before | Why filtered |
-|---|---|---|
-| `is_sparse is deprecated` — scikit-learn calling a deprecated pandas API | ~5 500 | Raised inside sklearn's own validation layer during RandomForest fitting. Nothing in this repository calls `is_sparse`; it is fixed by upgrading scikit-learn. Pinned to the message *and* the raising module. |
-| pandas `numexpr` / `bottleneck` version notices | 2 | Emitted once each at import. Neither optional accelerator is used here; pandas falls back to its own implementations. |
-| `salib.sample.saltelli` will be removed | 1 | **Not a drop-in rename.** `SALib.sample.sobol` scrambles the Sobol′ sequence by default and returns a *different* design — comparing the two at *N* = 8, 16 and 1024 gives a maximum deviation of ~1.6 × 10², not zero. Switching would invalidate the committed `saltelli_results_K{6,8,9}.csv`, whose 30 720 evaluations are verified row-by-row against `saltelli.sample`. Migrating means regenerating the design and re-running the analysis. |
+Counts below are from the complete `-W always` audit.
+
+| Source | Count | Disposition |
+|---|---:|---|
+| `is_sparse is deprecated` — scikit-learn calling a deprecated pandas API | 5 572 | **Filtered.** Raised inside sklearn's own validation layer during RandomForest fitting. Nothing in this repository calls `is_sparse`; it is fixed by upgrading scikit-learn. Pinned to the message *and* the raising module. |
+| Unclosed file in `_row_count` | 34 | **Fixed** — now a context manager. Hidden by default filtering; only `-W always` revealed it. |
+| τ ≥ 2 guard warnings in `test_empirical.py` | 3 | **Asserted**, not filtered. `tau=2.0` is deliberate there, so the tests now use `pytest.warns` and fail if the guard stops firing. |
+| pandas `numexpr` / `bottleneck` version notices | 2 | **Filtered.** Emitted once each at import. Neither optional accelerator is used here; pandas falls back to its own implementations. |
+| `salib.sample.saltelli` will be removed | 1 | **Filtered — not a drop-in rename.** `SALib.sample.sobol` scrambles the Sobol′ sequence by default and returns a *different* design: comparing the two at *N* = 8, 16 and 1024 gives a maximum deviation of ~1.6 × 10², not zero. Switching would invalidate the committed `saltelli_results_K{6,8,9}.csv`, whose 30 720 evaluations are verified row-by-row against `saltelli.sample`. Migrating means regenerating the design and re-running the analysis. |
 
 The `is_sparse` filter names the category as `DeprecationWarning` rather than
 its actual class `pandas.errors.Pandas4Warning` (which subclasses it). Naming

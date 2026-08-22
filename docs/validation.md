@@ -445,8 +445,9 @@ pre-fix `tau >= 2.0` warning appears **zero** times in the simulation logs.
 - **No pre-fix baseline exists for the nearest-party replay.** See family 8.
   Comparisons for that specification rest on archived logs and figures as
   historical evidence only.
-- **CI is not yet merged.** The workflow exists on the `add-ci-workflow` branch
-  but is unpushed, pending a token with `workflow` scope.
+- **CI is not yet merged.** The workflow is pushed on the `add-ci-workflow`
+  branch but has never run: it triggers only on `main`, and the branch is
+  neither merged nor in an open pull request.
 
 ---
 

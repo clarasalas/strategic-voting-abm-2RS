@@ -178,12 +178,13 @@ small and diff-readable.
 A workflow is drafted on the `add-ci-workflow` branch — Python 3.11, pip caching
 keyed on `requirements.txt`, `pytest -ra` with no suppressed failures.
 
-> **Not yet pushed.** It needs a token with `workflow` scope:
-> ```bash
-> gh auth refresh -h github.com -s workflow
-> git push -u origin add-ci-workflow
-> ```
-> Until a workflow is actually running, no CI badge belongs in the README.
+The branch **is pushed** — `.github/workflows/tests.yml` is on `origin`. It has
+never run, because the workflow triggers only on pushes to `main` and pull
+requests targeting `main`, and it is neither merged nor in an open PR. GitHub
+therefore has no registered workflow and no run history for this repository.
+
+To activate it, open a PR from `add-ci-workflow` into `main` and merge it. Until
+a workflow is actually running, no CI badge belongs in the README.
 
 ---
 

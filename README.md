@@ -137,10 +137,10 @@ Everything needed to understand, verify or reproduce this project lives under
 [`docs/`](docs/index.md) and reads directly on GitHub — no documentation site,
 no build step, no external service.
 
-An [interactive rendering of the same material](https://claude.ai/code/artifact/af7c9e81-51ed-4411-9e8f-79dd4482aad2)
-is published as a convenience mirror. It is **optional**: it is synchronized
-*from* the Markdown, it is not authoritative, and nothing here depends on access
-to it. Where the two differ, the repository is correct.
+A [navigable single-page rendering](https://clarasalas.github.io/strategic-voting-abm-2RS/guide.html) of the same material is published
+through GitHub Pages as a convenience mirror. It is **optional**: it is
+generated *from* the Markdown, it is not authoritative, and nothing here depends
+on access to it. Where the two differ, the repository is correct.
 
 ## Learn more
 

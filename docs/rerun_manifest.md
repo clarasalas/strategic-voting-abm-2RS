@@ -343,13 +343,15 @@ A genuine raw comparison *is* available for the parts never overwritten:
 
 ### Step 9 — fiche technique (after approval of the comparison)
 
-Not part of the compute. Once the rerun comparison is approved, the fiche at
-`https://claude.ai/code/artifact/af7c9e81-51ed-4411-9e8f-79dd4482aad2` is
-updated in place, from the section-by-section checklist, to carry the corrected
-conversion, the corrected empirical results, the completed synthetic
-validation, and the final test and CI status. A snapshot of the current version
-is preserved at
-`data/archive/pre_rerun_2026-08-21/fiche/fiche_technique_pre_rerun_2026-08-21.html`.
+Not part of the compute. Once the rerun comparison is approved, the fiche is
+updated to carry the corrected conversion, the corrected empirical results, the
+completed synthetic validation, and the final test and CI status.
+
+> **What actually happened.** The standalone fiche was replaced rather than
+> edited: the canonical documentation now lives in this repository under
+> `docs/`, with a generated single-page mirror at
+> <https://clarasalas.github.io/strategic-voting-abm-2RS/guide.html>. A snapshot of the pre-rerun fiche is preserved at
+> `data/archive/pre_rerun_2026-08-21/fiche/fiche_technique_pre_rerun_2026-08-21.html`.
 
 ---
 

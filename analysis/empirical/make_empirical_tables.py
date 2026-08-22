@@ -19,6 +19,33 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+# pandas' default float parser is fast but not correctly rounded: it can return
+# a double one ulp from the value the text denotes, which makes regeneration
+# depend on the platform.  The correctly rounded parser costs a little speed and
+# buys byte-identical tables anywhere.  (Same reasoning, and the same constant,
+# as behavioral_sweep.finalise_output.)
+CSV_READ_KW = dict(float_precision="round_trip")
+
+
+def _read(path):
+    """Read an input CSV exactly, and refuse a corrupt one.
+
+    The finiteness check is on the way IN, not only on the way out. Every
+    summary here goes through a pandas aggregation, and those skip NaN by
+    default -- so a NaN in the raw output would silently become a healthy
+    looking mean over fewer rows, and the output guard would never fire.
+    Catching it at the source is the only place it is visible.
+    """
+    df = pd.read_csv(path, encoding="utf-8", **CSV_READ_KW)
+    num = df.select_dtypes(include=[np.number])
+    if len(num.columns) and not np.isfinite(num.to_numpy()).all():
+        bad = [c for c in num.columns if not np.isfinite(num[c].to_numpy()).all()]
+        raise AssertionError(
+            f"{Path(path).name}: NaN or non-finite value(s) in column(s) {bad}. "
+            f"Refusing to build a summary table from corrupt input.")
+    return df
+
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 DATA = ROOT / "data"
 OUT = ROOT / "results" / "tables"
@@ -75,7 +102,7 @@ def replay_summary() -> pd.DataFrame:
     rows = []
     for spec, infix in SPECS.items():
         for year in YEARS:
-            df = pd.read_csv(DATA / f"empirical_runs{infix}_{year}.csv")
+            df = _read(DATA / f"empirical_runs{infix}_{year}.csv")
             key = {
                 "specification": spec,
                 "year": year,
@@ -96,7 +123,7 @@ def replay_summary() -> pd.DataFrame:
 def robustness_summary() -> pd.DataFrame:
     rows = []
     for year in YEARS:
-        df = pd.read_csv(DATA / f"empirical_robustness_{year}.csv")
+        df = _read(DATA / f"empirical_robustness_{year}.csv")
         for variant, g in df.groupby("variant", sort=True):
             key = {
                 "variant": variant,
@@ -125,7 +152,7 @@ def activation_summary() -> pd.DataFrame:
     rows = []
     for spec, infix in SPECS.items():
         for year in YEARS:
-            df = pd.read_csv(DATA / f"empirical_runs{infix}_{year}.csv")
+            df = _read(DATA / f"empirical_runs{infix}_{year}.csv")
             row = {
                 "specification": spec,
                 "year": year,
@@ -155,11 +182,11 @@ def sweep_quantiles() -> pd.DataFrame:
     CENP(s⁰).  This is *not* the replay's ΔCENP, which is measured against the
     model's own iteration-0 sincere shares.
     """
-    targets = pd.read_csv(DATA / "behavioral_targets.csv").set_index("year")
+    targets = _read(DATA / "behavioral_targets.csv").set_index("year")
     qs = [0.0, 0.05, 0.25, 0.50, 0.75, 0.95, 1.0]
     rows = []
     for year in YEARS:
-        df = pd.read_csv(DATA / f"behavioral_sweep_{year}.csv")
+        df = _read(DATA / f"behavioral_sweep_{year}.csv")
         s = df["mean_delta_cenp"]
         obs = float(targets.loc[year, "delta_cenp_real"])
         row = {
@@ -196,8 +223,8 @@ def year_contrast() -> pd.DataFrame:
     """
     rows = []
     for spec, infix in SPECS.items():
-        a = pd.read_csv(DATA / f"empirical_runs{infix}_2002.csv")
-        b = pd.read_csv(DATA / f"empirical_runs{infix}_2022.csv")
+        a = _read(DATA / f"empirical_runs{infix}_2002.csv")
+        b = _read(DATA / f"empirical_runs{infix}_2022.csv")
         for m in METRICS:
             sd_pooled = np.sqrt((a[m].var() + b[m].var()) / 2.0)
             defined = bool(sd_pooled > 0)
@@ -226,7 +253,7 @@ def candidate_fit() -> pd.DataFrame:
     rows = []
     for spec, infix in SPECS.items():
         for year in YEARS:
-            df = pd.read_csv(DATA / f"empirical_candidate_shares{infix}_{year}.csv")
+            df = _read(DATA / f"empirical_candidate_shares{infix}_{year}.csv")
             for _, r in df.iterrows():
                 rows.append({
                     "specification": spec,

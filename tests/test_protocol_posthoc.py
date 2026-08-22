@@ -22,6 +22,7 @@ sys.path.insert(0, str(REPO / "core_model"))
 sys.path.insert(0, str(REPO / "analysis" / "synthetic"))
 
 import protocol_posthoc as ph
+import parameter_space as ps
 
 RAW = REPO / "analysis" / "synthetic" / "outputs" / "protocol_validation" / "horizon_raw.csv"
 
@@ -374,13 +375,66 @@ def test_decomposition_table_schema():
 #  Against the real run, when it is present                                    #
 # --------------------------------------------------------------------------- #
 
-def test_real_horizon_raw_passes_validation():
-    if not RAW.exists():
-        pytest.skip("horizon_raw.csv not generated in this working tree")
-    info = ph.validate_horizon_raw(pd.read_csv(RAW))
+def _horizon_frame(n_configs=54, n_seeds=8, **overrides):
+    """A synthetic horizon_raw frame with the real schema.
+
+    Built here rather than read from disk: the real file is a 213 KB generated
+    output that is git-ignored, so a test depending on it can only skip in CI.
+    The validator's contract does not need the real numbers -- it needs the
+    real *shape*, which this reproduces exactly.
+    """
+    rng = np.random.default_rng(0)
+    rows = []
+    for cfg in range(n_configs):
+        for seed in range(n_seeds):
+            row = {
+                "config_id": f"K6-c1.25-{cfg:03d}",
+                "K": 6,
+                "c_stratum": "Active B",
+                "seed": seed,
+                "n_electors": 2000,
+                "t_max": 100,
+                "tail_window": 5,
+                "signal_epsilon": 1e-12,
+            }
+            for name in ps.PROBLEM["names"]:
+                lo, hi = ps.bounds_for(name)
+                row[name] = float(rng.uniform(lo, hi))
+            for o in ph.OUTCOMES:
+                for st in ph.STATISTICS:
+                    for h in ph.HORIZONS:
+                        row[ph.column_for(o, st, h)] = float(rng.normal())
+            row.update(overrides)
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def test_horizon_raw_of_the_documented_shape_passes_validation():
+    """The shape the real run produces: 54 configurations x 8 seeds = 432 rows."""
+    info = ph.validate_horizon_raw(_horizon_frame())
     assert info["n_rows"] == 432
     assert info["n_configs"] == 54
     assert info["n_seeds_per_config"] == 8
     assert info["signal_epsilon"] == 1e-12
     assert info["t_max"] == 100
     assert info["n_electors"] == 2000
+
+
+def test_horizon_raw_validation_rejects_a_short_run():
+    """A missing configuration must be refused, not averaged over."""
+    with pytest.raises(ValueError):
+        ph.validate_horizon_raw(_horizon_frame(n_configs=53))
+
+
+def test_horizon_raw_validation_rejects_a_wrong_signal_epsilon():
+    """eps_s is part of the protocol; a file produced under another value is a
+    different experiment."""
+    with pytest.raises(ValueError):
+        ph.validate_horizon_raw(_horizon_frame(signal_epsilon=1e-4))
+
+
+def test_horizon_raw_validation_rejects_a_non_finite_outcome():
+    df = _horizon_frame()
+    df.loc[0, ph.column_for("delta_cenp", "endpoint", 25)] = np.nan
+    with pytest.raises(ValueError):
+        ph.validate_horizon_raw(df)

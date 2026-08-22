@@ -97,6 +97,8 @@ from pathlib import Path
 
 import hashlib
 import json
+import os
+import tempfile
 
 import numpy as np
 import pandas as pd
@@ -294,7 +296,7 @@ def load_resumable(out: Path, meta: dict, design: pd.DataFrame) -> set:
                 "used, although year, seed and n_draws agree.")
 
     try:
-        done = pd.read_csv(out)
+        done = read_canonical(out)
     except (OSError, ValueError) as exc:
         _refuse(f"{out.name} is not readable as CSV ({exc}).")
     if len(done) == 0:
@@ -356,17 +358,92 @@ def load_resumable(out: Path, meta: dict, design: pd.DataFrame) -> set:
     return {int(d) for d in draws}
 
 
+# --------------------------------------------------------------------------- #
+#  Canonical CSV serialisation                                                 #
+# --------------------------------------------------------------------------- #
+#
+# finalise_output() reads a CSV and writes it back, so it must be IDEMPOTENT:
+# finalise(finalise(f)) has to equal finalise(f) byte for byte.  Otherwise a
+# resumed run and an uninterrupted run produce different files from identical
+# numbers, which is what CI caught on 2026-08-22.
+#
+# The culprit was the READER, not the writer.  pandas' default float parser is
+# fast but not correctly rounded: it can return a double one ulp away from the
+# value the text denotes.  Writing that back yields different text, so the
+# file never settles.  ``float_precision="round_trip"`` selects the correctly
+# rounded parser and fixes it at the source.
+#
+# For the writer, three representations were measured on 60 000 adversarial
+# doubles (uniformly random bit patterns, subnormals, extremes, signed zero) in
+# both the local and the CI dependency environments:
+#
+#   repr as a callable  -- REJECTED.  Under numpy 2 the callable receives a
+#                          numpy scalar, so it emits "np.float64(0.1)" instead
+#                          of "0.1" and corrupts the file outright.
+#   "%.17g"             -- REJECTED.  Not lossless: it writes -0.0 as "-0",
+#                          which parses back as +0.0, losing the sign of zero.
+#   pandas default      -- CHOSEN.  Shortest round-tripping representation.
+#                          Bitwise exact on every value tested, including
+#                          signed zero and subnormals, and byte-idempotent
+#                          across repeated cycles in both environments.
+#
+# pandas does not document its default float format as shortest-round-trip, so
+# that property is pinned by tests rather than assumed -- see
+# tests/test_canonical_csv.py, which fails loudly if a future pandas changes it.
+
+CSV_READ_KW = dict(float_precision="round_trip")
+
+
+def read_canonical(path: Path) -> pd.DataFrame:
+    """Read a CSV with the correctly rounded float parser."""
+    return pd.read_csv(path, encoding="utf-8", **CSV_READ_KW)
+
+
+def write_canonical(df: pd.DataFrame, path: Path) -> None:
+    """
+    Write a CSV atomically, in a byte-stable form.
+
+    Explicit UTF-8 and Unix line endings so the bytes do not depend on the
+    platform.  The write goes to a temporary file in the same directory and is
+    moved into place with os.replace, which is atomic on POSIX and Windows: a
+    crash mid-write leaves the previous file intact rather than a half-written
+    one.
+    """
+    path = Path(path)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.",
+                               suffix=".tmp")
+    os.close(fd)
+    tmp = Path(tmp)
+    try:
+        df.to_csv(tmp, index=False, encoding="utf-8", lineterminator="\n")
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 def finalise_output(out: Path) -> pd.DataFrame:
     """
     Sort by draw and rewrite in canonical column order.
 
     Both the uninterrupted and the resumed path end here, so append order stops
-    mattering: the two produce the same file.
+    mattering: the two produce the same file, byte for byte.
     """
-    df = pd.read_csv(out)
+    df = read_canonical(out)
     df = df.sort_values("draw", kind="mergesort").reset_index(drop=True)
     df = df[OUTPUT_COLS]
-    df.to_csv(out, index=False)
+
+    # Same contract as load_resumable: a truncated or corrupt row must not be
+    # quietly written back out as canonical.
+    for c in OUTPUT_COLS:
+        v = pd.to_numeric(df[c], errors="coerce").to_numpy(dtype=float)
+        if not np.isfinite(v).all():
+            n = int((~np.isfinite(v)).sum())
+            raise SystemExit(
+                f"Refusing to finalise {out.name}: {n} missing or non-finite "
+                f"value(s) in column {c!r}.")
+
+    write_canonical(df, out)
     return df
 
 
@@ -386,6 +463,20 @@ def run_sweep(year: int, n_draws: int, n_repeats: int, seed: int,
             completed = load_resumable(out, meta, design)
             print(f"[sweep] resuming {out.name}: {len(completed)}/{n_draws} "
                   f"draws already complete")
+
+            # Nothing left to do.  load_resumable has already validated the
+            # sidecar metadata, the design fingerprint and every retained row,
+            # so completion is established -- and the correct action for an
+            # already-complete file is to touch nothing at all.  Returning
+            # here leaves its bytes, checksum and mtime exactly as they were.
+            #
+            # This is an optimisation of the complete case, not a substitute
+            # for canonical serialisation: an interrupted resume still merges
+            # new rows with old ones and must rewrite the file.
+            if completed == set(range(n_draws)):
+                print(f"[sweep] {out.name} is already complete; "
+                      f"leaving it untouched")
+                return
         elif overwrite:
             out.unlink()
         else:

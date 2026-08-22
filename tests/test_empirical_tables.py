@@ -10,6 +10,7 @@ The regeneration test is skipped when the raw empirical outputs are absent,
 because ``data/`` is git-ignored and a fresh clone has no simulation output.
 """
 
+import io
 from pathlib import Path
 
 import numpy as np
@@ -139,28 +140,164 @@ def test_year_contrast_diff_matches_the_means():
     assert np.allclose(df["diff_2022_minus_2002"], recomputed, atol=1e-12)
 
 
-@pytest.mark.skipif(
-    not (DATA / "empirical_runs_2002.csv").exists(),
-    reason="raw empirical outputs absent (data/ is git-ignored)")
-def test_regeneration_reproduces_the_committed_tables():
-    """Re-deriving every table from the raw outputs must reproduce the bytes.
-
-    This is what makes the committed tables trustworthy: they are a pure
-    function of the simulation output, with no manual editing in between.
-    """
+def _load_generator(data_dir):
+    """Import the table generator with its DATA directory redirected."""
     import importlib.util
     spec = importlib.util.spec_from_file_location(
         "make_empirical_tables",
         ROOT / "analysis" / "empirical" / "make_empirical_tables.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    mod.DATA = Path(data_dir)
+    # Never let a fixture-driven test write into the real results/tables.
+    # Tests that want the committed tables read them directly from TABLES.
+    if Path(data_dir) != DATA:
+        mod.OUT = Path(data_dir).parent / "tables"
+    return mod
 
+
+def _write_fixture_inputs(data_dir):
+    """Minimal raw outputs with the real schema, in a temporary directory.
+
+    The real inputs are 17 MB of git-ignored simulation output, so a test that
+    reads them can only skip in CI. These fixtures carry the same columns and
+    the same per-year candidate counts, with values chosen to be awkward for a
+    float round-trip -- so the test exercises the generator's contract, not the
+    size of the data.
+    """
+    data_dir = Path(data_dir)
+    data_dir.mkdir(parents=True, exist_ok=True)
+    hard = [0.1, 1 / 3, 0.06933728008356, 2.145268755345708e-05,
+            1e-300, 0.30000000000000004, -0.0, 123456789.123456789]
+
+    scalar_cols = ["rmse", "mae", "top2_acc", "top3_acc", "top4_acc",
+                   "enp_sincere", "enp_final", "delta_enp", "delta_cenp",
+                   "cliff_magnitude", "cliff_ratio", "trigger_rate",
+                   "switching_rate", "conditional_switching_rate"]
+
+    def runs(year, K, n):
+        rows = []
+        for d in range(n):
+            r = {"draw": d, "tau_hat": 0.5 + d, "tau_absolute": (0.5 + d) * 2 / K,
+                 "K": K, "rho_pi": 5.0 + d, "alpha": 0.1 * d, "mu": 0.2 * d,
+                 "beta": 1.0 * d, "cliff_location": 1 + (d % 2)}
+            for i, c in enumerate(scalar_cols):
+                r[c] = hard[(d + i) % len(hard)]
+            rows.append(r)
+        return pd.DataFrame(rows)
+
+    def shares(K):
+        return pd.DataFrame({
+            "party": [f"P{i}" for i in range(K)],
+            "block": ["left" if i < K // 2 else "right" for i in range(K)],
+            "position": [-1 + 2 * i / (K - 1) for i in range(K)],
+            "actual_share": [1 / K] * K,
+            "first_signal_share": [hard[i % len(hard)] for i in range(K)],
+            "mean_final_share": [hard[(i + 1) % len(hard)] for i in range(K)],
+            "p05_final_share": [0.0] * K, "p25_final_share": [0.0] * K,
+            "p50_final_share": [0.0] * K, "p75_final_share": [0.0] * K,
+            "p95_final_share": [1.0] * K,
+            "mean_change_first_to_final": [0.0] * K,
+            "p05_change": [0.0] * K, "p95_change": [0.0] * K,
+            "prob_top2": [0.0] * K, "prob_top3": [0.0] * K, "prob_top4": [0.0] * K,
+        })
+
+    for year, K in ((2002, 15), (2022, 12)):
+        runs(year, K, 4).to_csv(data_dir / f"empirical_runs_{year}.csv", index=False)
+        for v in ("prob_signal", "prob_prior", "prob_signal_mu0"):
+            runs(year, K, 4).to_csv(
+                data_dir / f"empirical_runs_{v}_{year}.csv", index=False)
+            shares(K).to_csv(
+                data_dir / f"empirical_candidate_shares_{v}_{year}.csv", index=False)
+        shares(K).to_csv(
+            data_dir / f"empirical_candidate_shares_{year}.csv", index=False)
+
+        rob = pd.concat([runs(year, K, 3).assign(variant=v) for v in
+                         ("individual_signals", "perturbed_positions",
+                          "resampled_voters")], ignore_index=True)
+        rob.to_csv(data_dir / f"empirical_robustness_{year}.csv", index=False)
+
+        sw = pd.DataFrame({
+            "draw": range(4), "tau_hat": [0.5, 1.0, 2.0, 3.0],
+            "tau_absolute": [x * 2 / K for x in (0.5, 1.0, 2.0, 3.0)],
+            "K": K, "mu": 0.1, "alpha": 0.2, "rho_pi": 50.0, "beta": 3.0,
+            "mean_delta_cenp": hard[:4], "mean_final_enp": hard[1:5],
+            "std_delta_cenp": hard[2:6], "n_repeats": 4, "seed": 20020422,
+        })
+        sw.to_csv(data_dir / f"behavioral_sweep_{year}.csv", index=False)
+
+    pd.DataFrame({"year": [2002, 2022], "K": [15, 12],
+                  "cenp_s0": [0.571868, 0.556685],
+                  "cenp_real": [0.458633, 0.615341],
+                  "delta_cenp_real": [-0.113235, 0.058656]}
+                 ).to_csv(data_dir / "behavioral_targets.csv", index=False)
+
+
+def test_generator_is_deterministic_on_fixture_inputs(tmp_path):
+    """Two runs over identical inputs must produce identical bytes.
+
+    This is the property that makes the committed tables trustworthy -- they
+    are a pure function of the raw output, with nothing time- or
+    environment-dependent in between. It runs everywhere, including CI, because
+    it builds its own inputs.
+    """
+    _write_fixture_inputs(tmp_path / "data")
+    mod = _load_generator(tmp_path / "data")
     for name, fn in mod.TABLES.items():
-        # Compare the serialized bytes, not the parsed floats: a CSV round-trip
-        # can drop the last digit, so parsing both sides would compare something
-        # weaker than what is actually committed.
-        regenerated = fn().to_csv(index=False)
-        committed = (TABLES / name).read_text()
-        assert regenerated == committed, (
-            f"{name} does not reproduce from the raw outputs; "
-            f"re-run analysis/empirical/make_empirical_tables.py")
+        first = fn().to_csv(index=False)
+        second = fn().to_csv(index=False)
+        assert first == second, f"{name} is not deterministic"
+
+
+def test_generator_output_survives_a_csv_round_trip(tmp_path):
+    """Writing a table and reading it back must not change a single value.
+
+    The generator reads its inputs with the correctly rounded parser; this
+    checks the other half, that what it writes can be recovered exactly.
+    """
+    _write_fixture_inputs(tmp_path / "data")
+    mod = _load_generator(tmp_path / "data")
+    for name, fn in mod.TABLES.items():
+        df = fn()
+        text = df.to_csv(index=False)
+        back = pd.read_csv(io.StringIO(text), float_precision="round_trip")
+        for c in df.columns:
+            if df[c].dtype.kind == "f":
+                assert np.array_equal(df[c].to_numpy(), back[c].to_numpy()), \
+                    f"{name}: column {c} changed through a round trip"
+            else:
+                assert df[c].tolist() == back[c].tolist(), f"{name}: {c} changed"
+
+
+def test_generator_guard_rails_reject_a_non_finite_input(tmp_path):
+    """A NaN in the raw output must stop the table being written, not
+    propagate into a committed artefact.
+
+    Both DATA and OUT are redirected into tmp_path, so this can never read or
+    write the real directories however it fails.
+    """
+    data = tmp_path / "data"
+    _write_fixture_inputs(data)
+    df = pd.read_csv(data / "empirical_runs_2002.csv")
+    df.loc[0, "rmse"] = np.nan
+    df.to_csv(data / "empirical_runs_2002.csv", index=False)
+
+    mod = _load_generator(data)
+    mod.OUT = tmp_path / "tables"
+    with pytest.raises(AssertionError, match="NaN"):
+        mod.main()
+    assert not (TABLES / "empirical_replay_summary.csv").stat().st_size == 0
+
+
+# The committed tables are also checked against the REAL raw outputs, but not
+# from here: that check needs 17 MB of git-ignored simulation output, so as a
+# test it could only ever skip in CI and on a fresh clone. It runs instead as
+# the last step of the pipeline --
+#
+#     python analysis/empirical/make_empirical_tables.py && git status --short
+#
+# which must leave results/tables/ unchanged. The contract that makes it
+# meaningful -- that the generator is a deterministic pure function of its
+# inputs, exact through a CSV round trip, and refuses corrupt input -- is
+# covered above by tests that build their own fixtures and therefore run
+# everywhere.

@@ -41,7 +41,7 @@ simulations — see the
 | **Inputs** | `data/empirical_*.csv`, `data/behavioral_sweep_*.csv`, `data/behavioral_targets.csv` (generated, git-ignored) |
 | **Regenerate** | `python analysis/empirical/make_empirical_tables.py` |
 | **Tests** | `tests/test_empirical_tables.py` |
-| **Qualification** | Byte-identical on regeneration from unchanged inputs. A pure function of the raw output: fixed row and column order, no timestamps. |
+| **Qualification** | Byte-identical on regeneration from unchanged inputs, on any platform. A pure function of the raw output: fixed row and column order, no timestamps. Inputs are read with pandas' correctly rounded float parser (`float_precision="round_trip"`), so parsing cannot shift a value by an ulp and make the tables platform-dependent. |
 
 | File | Rows × cols | Key | Contents |
 |---|---|---|---|

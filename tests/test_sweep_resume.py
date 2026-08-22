@@ -164,6 +164,64 @@ def test_resume_of_a_complete_file_is_a_no_op(tmp_path, harness):
     assert harness["seeds"] == []
 
 
+def test_resume_of_a_complete_file_leaves_bytes_and_mtime_untouched(tmp_path,
+                                                                   harness):
+    """A complete resume must not rewrite the file at all.
+
+    Byte equality alone would still pass if the file were rewritten with
+    identical content, so the modification time is checked too: the correct
+    behaviour for an already-complete run is to touch nothing.
+    """
+    import hashlib
+    import os
+    import time
+
+    out = tmp_path / "s.csv"
+    _sweep(out)
+    before_bytes = out.read_bytes()
+    before_sha = hashlib.sha256(before_bytes).hexdigest()
+    before_mtime = os.stat(out).st_mtime_ns
+
+    time.sleep(0.01)          # so a rewrite would be visible in st_mtime_ns
+    harness["seeds"].clear()
+    _sweep(out, resume=True)
+
+    assert out.read_bytes() == before_bytes
+    assert hashlib.sha256(out.read_bytes()).hexdigest() == before_sha
+    assert os.stat(out).st_mtime_ns == before_mtime, \
+        "the file was rewritten even though every draw was already complete"
+    assert harness["seeds"] == []
+
+
+def test_interrupted_then_resumed_is_byte_identical_to_uninterrupted(tmp_path,
+                                                                     harness):
+    """The property the canonical serialisation exists to guarantee.
+
+    Unlike the complete-file no-op, this path really does merge new rows with
+    old ones and rewrite the file, so it depends on finalisation being a fixed
+    point rather than on skipping the write.
+    """
+    import hashlib
+
+    clean = tmp_path / "clean.csv"
+    _sweep(clean)
+    clean_sha = hashlib.sha256(clean.read_bytes()).hexdigest()
+
+    broken = tmp_path / "broken.csv"
+    harness["seeds"].clear()
+    harness["stop_after"] = N_REPEATS * 2          # die partway through
+    with pytest.raises(_Interrupt):
+        _sweep(broken)
+    harness["stop_after"] = None
+    assert broken.exists() and len(pd.read_csv(broken)) < N_DRAWS
+
+    harness["seeds"].clear()
+    _sweep(broken, resume=True)
+
+    assert hashlib.sha256(broken.read_bytes()).hexdigest() == clean_sha
+    assert broken.read_bytes() == clean.read_bytes()
+
+
 def test_resume_without_an_existing_file_starts_fresh(tmp_path, harness):
     out = tmp_path / "s.csv"
     _sweep(out, resume=True)

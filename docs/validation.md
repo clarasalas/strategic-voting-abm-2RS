@@ -15,76 +15,64 @@ reproducible. Organised **by type of check**, not by chronology.
 
 ## Verification snapshot
 
-An **auditable local verification**, run against a clean checkout of the exact
-tested code tree. It is a record of one run on one machine, not a standing
-property of the repository and not a CI result.
+An **auditable local verification**. It is a record of runs on one machine, not
+a standing property of the repository; CI is the continuous check.
 
 | | |
 |---|---|
-| **Tested code tree** | `cc5ed19` — checked out clean into a detached worktree; `git status` empty throughout |
 | **Command** | `python -m pytest -ra` |
-| **Result** | **522 passed, 0 skipped, 0 warnings** |
-| **Runtime** | ~10 s |
+| **Result** | **559 passed, 0 skipped, 0 warnings** |
 | **Date** | 2026-08-22 |
-| **Platform** | Python 3.11.7, Darwin 25.5.0 |
+| **Platform** | Darwin 25.5.0, Python 3.11.7 |
 
-| Dependency | Version |
-|---|---|
-| numpy | 1.26.4 |
-| scipy | 1.17.1 |
-| pandas | 3.0.3 |
-| matplotlib | 3.10.9 |
-| scikit-learn | 1.2.2 |
-| SALib | 1.5.2 |
-| pytest | 7.4.0 |
+Run in **two dependency environments**, because the previous snapshot was taken
+in only one and missed a defect that CI then caught:
 
-### Reproducing this number needs generated data
+| Environment | numpy | pandas | Result |
+|---|---|---|---|
+| Development | 1.26.4 | 3.0.3 | 559 passed, 0 skipped, 0 warnings |
+| CI-matched | **2.4.6** | **3.0.5** | 559 passed, 0 skipped, 0 warnings |
 
-A checkout alone gives **520 passed, 2 skipped**. Two tests guard on files that
-are git-ignored by design and therefore absent from a fresh clone:
-
-| Test | Needs |
-|---|---|
-| `test_empirical_tables.py::test_regeneration_reproduces_the_committed_tables` | `data/empirical_*.csv`, `data/behavioral_sweep_*.csv` |
-| `test_protocol_posthoc.py::test_real_horizon_raw_passes_validation` | `analysis/synthetic/outputs/protocol_validation/horizon_raw.csv` |
-
-These are **conditional environment guards**, not the always-skipping tests
-removed in the same pass: each runs and asserts as soon as its input exists. The
-522/0/0 result above was taken with those generated inputs present alongside the
-clean `cc5ed19` tree — copying them left `git status` empty, because every one
-of them is git-ignored, so the code under test was still exactly `cc5ed19`.
-
-To reproduce: run the pipeline (or any prior run's outputs) into `data/`, then
-`python -m pytest -ra`. See
-[Reproducibility](reproducibility.md#regenerating-committed-artefacts).
+Also run against a **tracked-files-only checkout** — no git-ignored data
+present, as on a fresh clone — in both environments, with the same result. No
+test depends on generated output any more.
 
 ### Commit roles
 
 | Commit | Role |
 |---|---|
-| `50a2bf5` | code and tables — `make_empirical_tables.py`, its tests, seven summary tables |
-| `3a3a215` | documentation — changes no code, no tests |
-| `cc5ed19` | test hygiene — **the tree verified above** |
+| `50a2bf5` | code and tables — the generator, its tests, seven summary tables |
+| `3a3a215` | documentation |
+| `cc5ed19` | test hygiene — removed two always-skipping tests |
+| `6db9aee` | documentation — recorded the previous snapshot |
+| *this change* | canonical CSV serialisation, fixture-based tests |
 
-The commit that records this snapshot is later than `cc5ed19` and
-documentation-only, which is why it can name it. No commit here claims to
-contain its own hash.
+A document cannot contain its own commit hash, so the date, the command and the
+environments are the identifying facts. CI is the authoritative check.
 
 ### Test discovery
 
-`pytest.ini` sets `testpaths = tests`. All 18 `test_*.py` files in the
+`pytest.ini` sets `testpaths = tests`. All 19 `test_*.py` files in the
 repository are under `tests/`, and collection with and without the repository's
-`pytest.ini` returns the **same 522 test IDs**, so the setting hides nothing.
+`pytest.ini` returns the same test IDs, so the setting hides nothing.
 
 ### No skipped tests
 
-The suite previously carried two permanent skips. Both are gone, and neither was
-replaced by a weaker check:
+The suite has **no skips at all** — not in CI, not on a fresh clone. Four were
+removed in two passes, none replaced by a weaker check:
 
 | Removed | Why it was meaningless | What covers it now |
 |---|---|---|
-| `test_cli_refuses_an_unhonourable_signal_epsilon` | Asserted that `--signal-epsilon` was *refused*, because ε<sub>s</sub> could not reach `run_simulation`. That plumbing exists now, so the test could only ever skip. | [`test_signal_epsilon.py`](../tests/test_signal_epsilon.py) asserts the positive direction: every `generate_signal` call receives the value, on both the initial and iterative paths, parametrized over several values. |
-| the Panel E branch of `test_panel_table_reports_repetitions` | Panel E is analytic and declares no `n_reps` column, so the check skipped by construction. | The parametrization is now derived from `PANEL_SCHEMAS` — only panels that declare `n_reps` are tested — and a new guard, `test_only_analytic_panels_omit_repetitions`, fails if any *other* panel loses that column. Panel E's own contract is covered by two analytic tests. |
+| `test_cli_refuses_an_unhonourable_signal_epsilon` | Asserted `--signal-epsilon` was *refused*, because ε<sub>s</sub> could not reach `run_simulation`. That plumbing exists, so it could only skip. | [`test_signal_epsilon.py`](../tests/test_signal_epsilon.py) asserts every `generate_signal` call receives the value. |
+| Panel E branch of `test_panel_table_reports_repetitions` | Panel E is analytic and declares no `n_reps` column. | Parametrization derives from `PANEL_SCHEMAS`; a guard fails if any *other* panel loses the column. |
+| `test_real_horizon_raw_passes_validation` | Read a 213 KB git-ignored generated file, so it skipped everywhere but the author's machine. | Four tests build a synthetic frame with the real schema and shape (54 configurations × 8 seeds = 432 rows) and check the validator accepts it and rejects a short run, a wrong ε<sub>s</sub> and a non-finite outcome. |
+| `test_regeneration_reproduces_the_committed_tables` | Needed 17 MB of git-ignored simulation output. | Three tests build their own fixture inputs and check the generator is deterministic, exact through a CSV round trip, and refuses corrupt input. The real-data check runs as the last pipeline step: `make_empirical_tables.py && git status --short` must leave `results/tables/` unchanged. |
+
+> Removing the last one surfaced a real weakness. Its replacement feeds a NaN
+> through the generator — and the existing guard did **not** fire, because every
+> summary goes through a pandas aggregation and those skip NaN by default, so a
+> corrupt input became a healthy-looking mean over fewer rows. The generator now
+> validates on the way *in*, which is the only place it is visible.
 
 ### Warning policy
 
@@ -280,10 +268,50 @@ Two configurations are pinned, both chosen to exercise the strategic path:
 | **Implementation** | `load_resumable()` / `finalise_output()` in [`behavioral_sweep.py`](../analysis/empirical/behavioral_sweep.py) |
 | **Tests** | [`test_sweep_resume.py`](../tests/test_sweep_resume.py) (27) |
 | **Criterion** | Resume validates year, seed, `n_draws`, `n_repeats`, schema version and a SHA-256 fingerprint of the design; rejects duplicate, non-integer or out-of-range draw ids, missing columns and non-finite values. |
-| **Status** | ✅ passing — verified byte-identical (`77a31250…13e09dc`) |
+| **Status** | ✅ passing |
+
+Canonical finalisation makes uninterrupted and resumed sweep outputs
+byte-identical under the supported environments; this is regression-tested in
+CI.
 
 Per-run seeds depend only on `(seed, draw, repeat)`, which is what makes the
-equivalence hold.
+equivalence hold. Two mechanisms deliver the byte-identity:
+
+- **Canonical serialisation.** `finalise_output` reads with pandas' correctly
+  rounded float parser (`float_precision="round_trip"`) and writes with
+  pandas' shortest round-tripping form, atomically via a temporary file. The
+  default parser is fast but *not* correctly rounded — it can return a double
+  one ulp from the text, so reading and rewriting never settles. That is what
+  CI caught on 2026-08-22, on a platform whose float values differ from the
+  development machine's.
+- **A true no-op for a complete file.** When `--resume` finds every draw
+  already present, it validates the sidecar metadata, the design fingerprint
+  and every retained row, then returns without touching the file at all — its
+  bytes, checksum and modification time are unchanged.
+
+The no-op is an optimisation of the complete case, not a substitute for
+canonical serialisation: an interrupted resume still merges new rows with old
+ones and rewrites the file.
+
+<details>
+<summary>Why the writer is pandas' default and not <code>%.17g</code></summary>
+
+Three representations were measured on 60 000 adversarial doubles — uniformly
+random bit patterns, subnormals, extremes, signed zero — in both the local and
+the CI dependency environments:
+
+| Representation | Verdict |
+|---|---|
+| `repr` as a callable | **Rejected.** Under numpy 2 the callable receives a numpy scalar, so it emits `np.float64(0.1)` instead of `0.1` and corrupts the file. |
+| `"%.17g"` | **Rejected.** Not lossless: it writes `-0.0` as `-0`, which parses back as `+0.0`, losing the sign of zero. |
+| pandas default | **Chosen.** Bitwise exact on every value tested, including signed zero and subnormals, and byte-idempotent across repeated cycles in both environments. |
+
+pandas does not document its default float format as shortest-round-trip, so
+that property is pinned by
+[`tests/test_canonical_csv.py`](../tests/test_canonical_csv.py) rather than
+assumed — a future release that changes it fails there loudly.
+
+</details>
 
 ### 10 · Pipeline-contract tests
 

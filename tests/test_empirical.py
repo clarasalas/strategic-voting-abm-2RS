@@ -91,28 +91,39 @@ def test_voter_sample_deterministic():
 #  model.py override backward-compatibility                                    #
 # --------------------------------------------------------------------------- #
 
+# run_simulation's own default is tau=2.0, which is the full width of [-1, 1]
+# and therefore trips the model's degenerate-contender guard.  Both tests below
+# want that default (one to compare argument paths, one because it is the
+# documented synthetic baseline), so they assert the warning rather than let it
+# leak into the suite's output.
+TAU_GUARD = r">= 2\.0: every party is a contender"
+
+
 def test_overrides_none_is_synthetic_baseline():
     """All overrides None -> identical output to a plain synthetic run."""
     common = dict(K=8, n_electors=200, max_iterations=5, seed=7, verbose=False)
-    a = run_simulation(**common)
-    b = run_simulation(party_positions_override=None,
-                       voter_positions_override=None,
-                       exogenous_signals=None, **common)
+    with pytest.warns(UserWarning, match=TAU_GUARD):
+        a = run_simulation(**common)
+    with pytest.warns(UserWarning, match=TAU_GUARD):
+        b = run_simulation(party_positions_override=None,
+                           voter_positions_override=None,
+                           exogenous_signals=None, **common)
     assert a["final_shares"] == b["final_shares"]
 
 
 def test_empirical_run_basic_invariants():
     bundle = ed.load_year(2002)
     voters = ed.sample_voters(2002, 500, np.random.default_rng(1))
-    res = run_simulation(
-        K=bundle["K"], party_ids=bundle["parties"],
-        party_positions_override=bundle["positions"],
-        voter_positions_override=voters,
-        exogenous_signals=bundle["signals"],
-        tau=2.0, mu=0.1, alpha_prior=0.0, rho_pi=50.0,
-        n_electors=len(voters), max_iterations=len(bundle["signals"]),
-        seed=3, verbose=False, collect_diagnostics=True,
-    )
+    with pytest.warns(UserWarning, match=TAU_GUARD):
+        res = run_simulation(
+            K=bundle["K"], party_ids=bundle["parties"],
+            party_positions_override=bundle["positions"],
+            voter_positions_override=voters,
+            exogenous_signals=bundle["signals"],
+            tau=2.0, mu=0.1, alpha_prior=0.0, rho_pi=50.0,
+            n_electors=len(voters), max_iterations=len(bundle["signals"]),
+            seed=3, verbose=False, collect_diagnostics=True,
+        )
     final = np.asarray(res["final_shares"])
     assert final.sum() == pytest.approx(1.0, abs=1e-9)
     assert len(final) == bundle["K"]

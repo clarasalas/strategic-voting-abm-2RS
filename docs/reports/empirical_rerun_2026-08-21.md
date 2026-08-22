@@ -255,9 +255,13 @@ dominant driver.
 
 - **Stale pre-fix artefacts remain on disk.** 32 figures named `*_main_prob_*`
   and 12 correspondingly named CSVs are June outputs sitting beside the
-  regenerated ones. They are git-ignored. `lhs_importance_by_year_slide.png`
-  requires `--slide`, which the pipeline did not run, so the slide figure still
-  reflects the pre-fix ranking.
+  regenerated ones, and `lhs_importance_by_year_slide.png` still reflects the
+  pre-fix ranking because it requires `--slide`, which the pipeline did not run.
+
+  All of them are git-ignored and none is referenced from the documentation, so
+  none can be mistaken for a current result by a reader of this repository. They
+  are left in place deliberately rather than regenerated or deleted: see the
+  figure policy in [Experiments](../experiments.md#figures).
 
 - **The importance table is not byte-identical between runs.** Seeds and
   predictor selection are fixed; values reproduce within numerical tolerance and

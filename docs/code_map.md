@@ -38,7 +38,7 @@ strategic-voting-abm-2RS/
 │       ├── lhs_importance.py        RandomForest surrogate + permutation
 │       └── make_empirical_tables.py the 6 committed empirical tables
 │
-├── tests/                 18 files, 523 tests
+├── tests/                 18 files, 522 tests, no skips
 ├── results/tables/        22 compact CSVs — the citable artefacts
 ├── data/                  real inputs (committed) + raw output (ignored)
 ├── docs/                  this guide

@@ -88,8 +88,8 @@ python -m pytest -ra tests/test_decision_rule.py     # one family
 python -m pytest -ra -k tau                          # by keyword
 ```
 
-`-ra` shows skip reasons. For the most recent recorded result and an explanation
-of the two deliberate skips, see
+`-ra` shows skip reasons; the suite currently has none. For the most recent
+recorded result, the environment it was taken in, and the warning policy, see
 [Validation → Verification snapshot](validation.md#verification-snapshot).
 
 ---

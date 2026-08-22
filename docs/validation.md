@@ -15,8 +15,9 @@ reproducible. Organised **by type of check**, not by chronology.
 
 ## Verification snapshot
 
-A record of one local run, not a standing property of the repository. Re-run the
-command to produce a current result.
+A **dated local verification** of the code and result-table state described in
+this guide. It is a record of one run on one machine, not a standing property of
+the repository and not a CI result. Re-run the command to produce a current one.
 
 ```bash
 python -m pytest -ra
@@ -25,47 +26,66 @@ python -m pytest -ra
 | | |
 |---|---|
 | **Verified on** | 2026-08-22 |
-| **Commit** | `50a2bf5` (branch `pre-rerun-safety`) |
-| **Result** | **521 passed, 2 skipped** (523 collected) |
-| **Runtime** | ~9 s, single machine, Python 3.11.7 |
+| **Result** | **522 passed, 0 skipped, 0 warnings** |
+| **Runtime** | ~18 s |
+| **Environment** | Python 3.11.7, macOS (darwin 25.5.0), single machine |
+| **Dependencies** | `requirements.txt` + `pytest`, `scikit-learn` |
 
-`50a2bf5` is the commit that introduces the summary tables and their tests; the
-documentation commit that follows it changes no code and no tests, so the suite
-state is fully determined by this hash.
+**What was verified.** The state of the code and the committed result tables at
+the point this documentation describes:
 
-Both skips are deliberate and neither is a failure:
+- `50a2bf5` — introduced `make_empirical_tables.py`, its tests and the seven
+  summary tables. This is the **code and table** commit.
+- `3a3a215` — the **documentation** commit that follows it. It changes no code
+  and no tests.
+- A subsequent **test-hygiene** commit removed two always-skipping tests, closed
+  a file handle in `empirical_2002_2022.py`, and added the warning policy in
+  `pytest.ini`. The result above is from **after** that change.
 
-| Test | Skip reason | Why it is intentional |
+> The tested working tree is the one that became the hygiene commit, so no
+> single hash listed here is the exact tree that produced the numbers — a
+> document cannot contain its own commit hash. Treat the date, the command and
+> the environment as the identifying facts, and re-run to confirm.
+
+### No skipped tests
+
+The suite previously carried two permanent skips. Both are gone, and neither was
+replaced by a weaker check:
+
+| Removed | Why it was meaningless | What covers it now |
 |---|---|---|
-| `test_protocol_validation.py:307` | *eps_s plumbing now exists; this guard is obsolete* | The test guarded against `signal_epsilon` never reaching the simulation. That plumbing was added, so the guard now asserts a condition that cannot occur; it is retained as a marker rather than deleted. |
-| `test_result_tables.py:254` | *panel E is analytic: no repetitions* | The check validates a repetition-count column. Panel E is computed analytically and runs no simulations, so it has no repetitions to validate. |
+| `test_cli_refuses_an_unhonourable_signal_epsilon` | Asserted that `--signal-epsilon` was *refused*, because ε<sub>s</sub> could not reach `run_simulation`. That plumbing exists now, so the test could only ever skip. | [`test_signal_epsilon.py`](../tests/test_signal_epsilon.py) asserts the positive direction: every `generate_signal` call receives the value, on both the initial and iterative paths, parametrized over several values. |
+| the Panel E branch of `test_panel_table_reports_repetitions` | Panel E is analytic and declares no `n_reps` column, so the check skipped by construction. | The parametrization is now derived from `PANEL_SCHEMAS` — only panels that declare `n_reps` are tested — and a new guard, `test_only_analytic_panels_omit_repetitions`, fails if any *other* panel loses that column. Panel E's own contract is covered by two analytic tests. |
 
-> No test is skipped because it fails. There is **no continuous-integration run
-> behind this number** — see
-> [Reproducibility → CI](reproducibility.md#continuous-integration).
+### Warning policy
 
-| File | Tests |
-|---|---|
-| [`test_deferred_duplicates.py`](../tests/test_deferred_duplicates.py) | 69 |
-| [`test_signals.py`](../tests/test_signals.py) | 57 |
-| [`test_result_tables.py`](../tests/test_result_tables.py) | 49 |
-| [`test_empirical_tables.py`](../tests/test_empirical_tables.py) | 40 |
-| [`test_metrics.py`](../tests/test_metrics.py) | 38 |
-| [`test_predictor_schema.py`](../tests/test_predictor_schema.py) | 31 |
-| [`test_protocol_posthoc.py`](../tests/test_protocol_posthoc.py) | 30 |
-| [`test_protocol_validation.py`](../tests/test_protocol_validation.py) | 28 |
-| [`test_empirical.py`](../tests/test_empirical.py) | 27 |
-| [`test_sweep_resume.py`](../tests/test_sweep_resume.py) | 27 |
-| [`test_decision_rule.py`](../tests/test_decision_rule.py) | 24 |
-| [`test_dynamic_invariants.py`](../tests/test_dynamic_invariants.py) | 24 |
-| [`test_tau_absolute_output.py`](../tests/test_tau_absolute_output.py) | 17 |
-| [`test_overwrite_protection.py`](../tests/test_overwrite_protection.py) | 13 |
-| [`test_tau_units.py`](../tests/test_tau_units.py) | 10 |
-| [`test_pipeline_contract.py`](../tests/test_pipeline_contract.py) | 9 |
-| [`test_quick_run_isolation.py`](../tests/test_quick_run_isolation.py) | 5 |
-| [`test_signal_epsilon.py`](../tests/test_signal_epsilon.py) | 25 |
+The suite runs clean. Filters live in [`pytest.ini`](../pytest.ini) and no
+category is ignored wholesale — every entry pins a specific message and, where
+possible, the module that raises it, so a *new* warning of the same category
+still surfaces.
 
----
+**Numerical warnings are promoted to errors** (`error::RuntimeWarning`): an
+overflow, an invalid value or a divide-by-zero inside the model is a
+result-changing event, not a note. The suite emits none, so this costs nothing
+and catches the next one.
+
+<details>
+<summary>What is filtered, and why it cannot simply be fixed</summary>
+
+| Source | Count before | Why filtered |
+|---|---|---|
+| `is_sparse is deprecated` — scikit-learn calling a deprecated pandas API | ~5 500 | Raised inside sklearn's own validation layer during RandomForest fitting. Nothing in this repository calls `is_sparse`; it is fixed by upgrading scikit-learn. Pinned to the message *and* the raising module. |
+| pandas `numexpr` / `bottleneck` version notices | 2 | Emitted once each at import. Neither optional accelerator is used here; pandas falls back to its own implementations. |
+| `salib.sample.saltelli` will be removed | 1 | **Not a drop-in rename.** `SALib.sample.sobol` scrambles the Sobol′ sequence by default and returns a *different* design — comparing the two at *N* = 8, 16 and 1024 gives a maximum deviation of ~1.6 × 10², not zero. Switching would invalidate the committed `saltelli_results_K{6,8,9}.csv`, whose 30 720 evaluations are verified row-by-row against `saltelli.sample`. Migrating means regenerating the design and re-running the analysis. |
+
+The `is_sparse` filter names the category as `DeprecationWarning` rather than
+its actual class `pandas.errors.Pandas4Warning` (which subclasses it). Naming
+the pandas class forces pytest to import pandas while parsing `pytest.ini` —
+before any `conftest.py` runs — and pandas emits import-time warnings of its
+own that then become impossible to filter. With the message and module both
+pinned, the base class is equally precise.
+
+</details>
 
 ## Validation matrix
 

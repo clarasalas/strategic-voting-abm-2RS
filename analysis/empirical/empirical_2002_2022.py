@@ -232,7 +232,8 @@ def _scalar_row(params: dict, outcome: dict) -> dict:
 def _row_count(path: Path):
     """Data rows in a CSV, or None if it cannot be read."""
     try:
-        return sum(1 for _ in path.open()) - 1
+        with path.open() as fh:
+            return sum(1 for _ in fh) - 1
     except OSError:
         return None
 

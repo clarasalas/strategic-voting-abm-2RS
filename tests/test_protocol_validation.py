@@ -300,13 +300,11 @@ def test_cli_refuses_to_run_without_an_explicit_size(tmp_path, monkeypatch):
     assert "Refusing to run" in str(exc.value)
 
 
-def test_cli_refuses_an_unhonourable_signal_epsilon(tmp_path, monkeypatch):
-    """eps_s cannot be set through run_simulation, so the flag must not lie."""
-    monkeypatch.setattr(pv, "TABLES_DIR", tmp_path)
-    if ps.signal_epsilon_is_settable():
-        pytest.skip("eps_s plumbing now exists; this guard is obsolete")
-    with pytest.raises(SystemExit, match="cannot be honoured"):
-        pv.main(["--mode", "horizon", "--quick", "--signal-epsilon", "1e-4"])
+# The guard that used to live here asserted --signal-epsilon was REFUSED,
+# because eps_s could not reach run_simulation.  That plumbing exists now, so
+# the guard could only ever skip.  The positive direction is covered by
+# tests/test_signal_epsilon.py, which asserts every generate_signal call
+# receives the value.  History: docs/validation.md.
 
 
 def test_dry_run_performs_no_simulation(tmp_path, monkeypatch):

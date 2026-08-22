@@ -21,7 +21,7 @@ a standing property of the repository; CI is the continuous check.
 | | |
 |---|---|
 | **Command** | `python -m pytest -ra` |
-| **Result** | **568 passed, 0 skipped, 0 warnings** |
+| **Result** | **570 passed, 0 skipped, 0 warnings** |
 | **Date** | 2026-08-22 |
 | **Platform** | Darwin 25.5.0, Python 3.11.7 |
 
@@ -30,8 +30,8 @@ in only one and missed a defect that CI then caught:
 
 | Environment | numpy | pandas | Result |
 |---|---|---|---|
-| Development | 1.26.4 | 3.0.3 | 568 passed, 0 skipped, 0 warnings |
-| CI-matched | **2.4.6** | **3.0.5** | 568 passed, 0 skipped, 0 warnings |
+| Development | 1.26.4 | 3.0.3 | 570 passed, 0 skipped, 0 warnings |
+| CI-matched | **2.4.6** | **3.0.5** | 570 passed, 0 skipped, 0 warnings |
 
 Also run against a **tracked-files-only checkout** — no git-ignored data
 present, as on a fresh clone — in both environments, with the same result. No
@@ -88,6 +88,11 @@ It regenerates every table and **exits non-zero** if a tracked table changes, if
 an unexpected untracked table appears, if a declared table goes missing, or if
 the tables directory was already dirty beforehand — printing the affected
 filenames in each case. It runs as pipeline step `08b_tables_reproduce`.
+
+On a **fresh clone** it exits **3** with its own message: the raw simulation
+outputs it needs are git-ignored by design, so they are simply absent. That is
+not a failure of the tables, and the check says so rather than reporting a
+missing input as stale output.
 
 > The previous instruction was `make_empirical_tables.py && git status --short`.
 > That is not a check: `git status` exits 0 whether or not anything changed, so
@@ -454,7 +459,7 @@ decompose variance.
 |---|---|
 | **Contract** | Every output row records `tau_hat`, `tau_absolute` and `K`, with the conversion applied exactly once. |
 | **Implementation** | [`empirical_2002_2022.py`](../analysis/empirical/empirical_2002_2022.py) |
-| **Tests** | [`test_tau_absolute_output.py`](../tests/test_tau_absolute_output.py) (17), [`test_tau_units.py`](../tests/test_tau_units.py) (10), [`test_empirical_tables.py`](../tests/test_empirical_tables.py) (42), [`test_table_regeneration_check.py`](../tests/test_table_regeneration_check.py) (9) |
+| **Tests** | [`test_tau_absolute_output.py`](../tests/test_tau_absolute_output.py) (17), [`test_tau_units.py`](../tests/test_tau_units.py) (10), [`test_empirical_tables.py`](../tests/test_empirical_tables.py) (42), [`test_table_regeneration_check.py`](../tests/test_table_regeneration_check.py) (11) |
 | **Criterion** | `tau_absolute == tau_hat × 2/K` to 1e-12; year-specific ceilings (2002 ≤ 0.4, 2022 ≤ 0.5, inclusive); `tau_hat` unchanged. |
 | **Status** | ✅ passing; validated across all 14 output files of the 2026-08-21 rerun |
 | **Evidence** | [`empirical_replay_summary.csv`](../results/tables/empirical_replay_summary.csv), [`empirical_activation_summary.csv`](../results/tables/empirical_activation_summary.csv) |

@@ -17,6 +17,10 @@ It fails when:
   * the tables directory is already dirty before regeneration, which would make
     any later diff impossible to attribute.
 
+It exits 3, distinctly, when the raw simulation outputs are simply absent --
+the normal state of a fresh clone, since data/ is git-ignored. That is not a
+failure of the tables and should not be reported as one.
+
 Usage:
     python tools/check_tables_reproduce.py
     python tools/check_tables_reproduce.py --repo /path/to/clone
@@ -52,14 +56,47 @@ def dirty(repo: Path, tables: Path) -> tuple[list[str], list[str]]:
     return sorted(modified), sorted(untracked)
 
 
-def expected_tables(repo: Path, generator: Path) -> list[str]:
-    """The table filenames the generator declares it owns."""
+def _load_generator(repo: Path, generator: Path):
     import importlib.util
     spec = importlib.util.spec_from_file_location(
         "make_empirical_tables", repo / generator)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    return sorted(mod.TABLES)
+    return mod
+
+
+def expected_tables(repo: Path, generator: Path) -> list[str]:
+    """The table filenames the generator declares it owns."""
+    return sorted(_load_generator(repo, generator).TABLES)
+
+
+def missing_inputs(repo: Path, generator: Path) -> list[str]:
+    """Raw inputs the generator needs that are not present.
+
+    Derived from the generator's own YEARS and SPECS rather than hard-coded, so
+    adding a specification cannot leave this list quietly out of date.
+    """
+    try:
+        mod = _load_generator(repo, generator)
+    except (Exception, SystemExit):
+        # Importing the generator failed -- possibly SystemExit, which is not an
+        # Exception. Say nothing here and let running it report the real problem.
+        return []
+    years = tuple(getattr(mod, "YEARS", ()))
+    if not years:
+        # A generator that declares no years reads no per-year raw output, so
+        # there is nothing to require. Keeps this honest for stubs and for any
+        # future generator with different inputs.
+        return []
+    data = Path(getattr(mod, "DATA", repo / "data"))
+    names = ["behavioral_targets.csv"]
+    for year in years:
+        for infix in getattr(mod, "SPECS", {}).values():
+            names.append(f"empirical_runs{infix}_{year}.csv")
+            names.append(f"empirical_candidate_shares{infix}_{year}.csv")
+        names.append(f"empirical_robustness_{year}.csv")
+        names.append(f"behavioral_sweep_{year}.csv")
+    return sorted(n for n in dict.fromkeys(names) if not (data / n).exists())
 
 
 def check(repo: Path, generator: Path = DEFAULT_GENERATOR,
@@ -81,6 +118,22 @@ def check(repo: Path, generator: Path = DEFAULT_GENERATOR,
             say(f"  untracked {p}")
         say("Commit or stash these first.")
         return 2
+
+    absent = missing_inputs(repo, generator)
+    if absent:
+        say("SKIPPED: the raw simulation outputs this check needs are not here.")
+        say("")
+        for n in absent[:6]:
+            say(f"  missing  data/{n}")
+        if len(absent) > 6:
+            say(f"  ... and {len(absent) - 6} more")
+        say("")
+        say("This is expected on a fresh clone: data/ is git-ignored by design, "
+            "because the raw outputs are bulky and regenerate from a seed. The "
+            "committed tables cannot be re-derived without them.")
+        say("Run the empirical pipeline first, or run this check on a machine "
+            "that already has its output. Nothing is wrong with the tables.")
+        return 3
 
     res = subprocess.run([sys.executable, str(repo / generator)],
                          cwd=str(repo), capture_output=True, text=True)

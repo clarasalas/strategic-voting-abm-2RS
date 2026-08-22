@@ -51,6 +51,10 @@ if __name__ == "__main__":
 
 BASELINE = {"alpha.csv": "x\n1\n", "beta.csv": "x\n2\n"}
 
+GEN_MISSING = 'from pathlib import Path\nDATA = Path(__file__).resolve().parent / "data"\nYEARS = (2002,)\nSPECS = {"nearest": ""}\nTABLES = {"alpha.csv": None, "beta.csv": None}\ndef main():\n    raise SystemExit("should never be reached")\n'
+
+GEN_PRESENT = 'from pathlib import Path\nDATA = Path(__file__).resolve().parent / "data"\nYEARS = ()\nSPECS = {}\nTABLES = {"alpha.csv": None, "beta.csv": None}\ndef main(): pass\n'
+
 
 def _make_repo(tmp_path, content=None, extra=None, commit_tables=True):
     repo = tmp_path / "repo"
@@ -170,6 +174,30 @@ def test_fails_when_an_expected_table_is_not_produced(tmp_path, capsys):
     code, out = _check(repo, capsys)
     assert code == 1
     assert "beta.csv" in out
+
+
+def test_skips_distinctly_when_the_raw_inputs_are_absent(tmp_path, capsys):
+    """A fresh clone has no data/: that is expected, not a table failure.
+
+    It must still exit non-zero, so nothing silently "passes", but with its own
+    code and a message that does not blame the tables.
+    """
+    repo = _make_repo(tmp_path)
+    (repo / "gen.py").write_text(GEN_MISSING)
+    code, out = _check(repo, capsys)
+    assert code == 3
+    assert "SKIPPED" in out
+    assert "git-ignored by design" in out
+    assert "Nothing is wrong with the tables" in out
+    assert "empirical_runs_2002.csv" in out
+
+
+def test_missing_inputs_is_empty_when_they_are_all_present(tmp_path):
+    repo = _make_repo(tmp_path)
+    (repo / "gen.py").write_text(GEN_PRESENT)
+    (repo / "data").mkdir()
+    (repo / "data" / "behavioral_targets.csv").write_text("year\n2002\n")
+    assert ctr.missing_inputs(repo, Path("gen.py")) == []
 
 
 # --------------------------------------------------------------------------- #

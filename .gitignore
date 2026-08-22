@@ -224,6 +224,14 @@ data/empirical_*
 data/behavioral_*
 data/sweep_*
 
+# Smoke runs.  --quick writes here so it can never land on a full run's
+# filename; see analysis/empirical/empirical_2002_2022.py.
+data/smoke/
+
+# Pre-rerun evidence archives: bulky point-in-time copies of data/, figures/
+# and results/ kept locally for before/after comparison.  Never committed.
+data/archive/
+
 # Raw / intermediate analysis output: bulky, regenerable, never reader-facing.
 outputs/
 analysis/**/outputs/
@@ -235,3 +243,6 @@ analysis/synthetic/saltelli_sobol_*.csv
 # results/tables/ is deliberately NOT ignored: it holds the small, committed,
 # reader-facing summary tables (see results/README.md).  Raw simulations and
 # figures stay out of the repository; only the derived tables go in.
+
+# Rerun logs: per-run, bulky, regenerable.
+logs/

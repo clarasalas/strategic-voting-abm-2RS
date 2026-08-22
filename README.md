@@ -1,357 +1,160 @@
-# Strategic Voting in Two-Round Elections — Agent-Based Model
+# Strategic Voting in Two-Round Elections
 
-An agent-based model of strategic coordination in two-round elections,
-using the French presidential system as its main empirical reference.
+An agent-based model of strategic voting under a two-round runoff, replayed
+against the French presidential first rounds of **2002** and **2022**.
 
-> Clara Salas — M2 Thesis, ENS-PSL / Centre Borelli (CHArtS), 2025-2026.
+[![python](https://img.shields.io/badge/python-3.10%2B-blue)](docs/reproducibility.md)
+[![license](https://img.shields.io/badge/data-Ipsos%20%C2%B7%20Min.%20Int%C3%A9rieur-lightgrey)](docs/experiments.md#data-sources)
 
----
+> 📖 **[Model & Validation Guide](docs/index.md)** — the canonical technical
+> documentation: how the model works, how it is verified, and how to reproduce
+> every number here.
 
-## Overview
-
-The model represents an electoral campaign as a feedback loop between public
-signals and vote intentions. Voters are boundedly cognitive agents who rely on
-poll-like signals to assess candidate viability and decide whether to vote
-sincerely or strategically. Coordination (i.e., the concentration of votes around
-fewer candidates) emerges from individual responses to perceived viability
-rather than being imposed at the aggregate level.
-
-The framework is applied to the French two-round presidential system (M = 2
-qualifiers) and uses the Effective Number of Parties (ENP) and cliff statistics
-to measure coordination gains (ΔCENP).
-
-**Main findings from the baseline characterisation:**
-
-- Strategic pressure is governed by electorate width *c* and tolerance
-  threshold *τ̂* — not by the informational environment.
-- Among triggered voters, the expressive cost parameter *μ* is the dominant
-  driver of behavioural switching.
-- The signal–vote feedback loop produces path-dependent dynamics rather than
-  monotonic convergence; coordination becomes more volatile at high electorate
-  width.
+> **No continuous integration is active on this repository**, so there is no
+> build or test badge. Test results are recorded as dated local runs — see the
+> [verification snapshot](docs/validation.md#verification-snapshot).
 
 ---
 
-## Requirements
+## What is this?
 
-Python 3.10 or later. Install all dependencies with:
+Voters sit on a left–right axis. Each has a sincere preference, watches a public
+poll signal, and forms beliefs about who will reach the two-candidate runoff. A
+voter abandons their preferred candidate **only** when no candidate they can
+tolerate is projected to qualify — otherwise they vote sincerely.
+
+The model asks what aggregate coordination that rule produces, and whether it
+matches two real elections with opposite outcomes.
+
+## Why was it built?
+
+**2002** is the textbook coordination failure: the French left split its vote
+across several candidates and its front-runner missed the runoff entirely.
+**2022** is the contrasting case, with visible consolidation.
+
+The project is deliberately **not** a fitting exercise. One behavioural draw is
+applied to both years and only the environment changes — a research prototype
+built to demonstrate a coherent scientific and engineering process, not to
+predict elections.
+
+## How does it work?
+
+```mermaid
+flowchart LR
+    A["Public signal<br/>s^t"] --> B["Belief update<br/>m_a = α·π_a + (1−α)·s^t"]
+    B --> C["Contender set<br/>C_a = { j : |x_a − x_j| ≤ τ }"]
+    C --> D["Project the runoff<br/>T_R = top 2 by belief"]
+    D --> E{"Trigger?<br/>C_a ∩ T_R = ∅"}
+    E -- no --> F["Vote sincerely"]
+    E -- yes --> G["Weigh viability<br/>against expressive cost μ"]
+    F --> H["New vote shares"]
+    G --> H
+    H --> I["ENP · CENP · ΔCENP<br/>trigger &amp; switching rates"]
+    H -.->|next iteration| A
+```
+
+Each iteration: voters see a poll, update beliefs, work out who they can
+tolerate, project who will qualify, and switch only if no tolerable candidate
+can make it — weighed against the cost of abandoning their favourite.
+
+Two modes share the same core. **Synthetic** generates the electorate and the
+poll signal, and asks which parameters drive coordination. **Empirical** holds
+the real candidates, electorate and poll timeline fixed, and asks whether the
+2002/2022 contrast comes out.
+
+→ [Full model description](docs/model.md)
+
+## What practices does it demonstrate?
+
+| | |
+|---|---|
+| **Layered testing** | 568 tests across 17 contract families — analytic fixtures, decision-rule tests, dynamic invariants, metamorphic properties, golden regressions, pipeline contracts. |
+| **Metamorphic testing** | Relabelling and left–right reflection invariance were *derived from the equations* before being asserted, not assumed. |
+| **Golden-value regressions** | Full output vectors pinned to 1e-12, so a refactor that moves every code path equally still fails loudly. |
+| **Reproducibility as a contract** | Fixed seeds throughout; derived tables regenerate byte-identically, verified by a test comparing serialized bytes rather than parsed floats. |
+| **Destructive-operation safety** | Runs refuse to overwrite output without an explicit flag; smoke runs are structurally isolated in a separate directory; sweeps resume to byte-identical results. |
+| **Honest units** | The τ̂ → τ conversion happens in exactly one place, and every output row records both values plus *K*, so the relation is checkable from the CSV alone. |
+| **Documented failure** | A tolerance-unit defect was found, corrected, and the full 14 000-simulation pipeline re-run under a validated protocol. |
+
+→ [Validation record](docs/validation.md)
+
+## Run a smoke example
 
 ```bash
+git clone https://github.com/clarasalas/strategic-voting-abm-2RS.git
+cd strategic-voting-abm-2RS
 pip install -r requirements.txt
-```
 
-| Package | Purpose |
-|---------|---------|
-| `numpy >= 1.24` | Core numerics |
-| `scipy >= 1.10` | Skew-normal sampling, sensitivity helpers |
-| `matplotlib >= 3.7` | All figures |
-| `pandas >= 2.0` | Data loading and aggregation |
-| `SALib >= 1.4` | Saltelli sampling and Sobol analysis |
-| `Pillow >= 9.0` | *(optional)* combined 2×2 figure grids |
-
----
-
-## Quick start
-
-```python
+python -c "
+import sys; sys.path.insert(0, 'core_model')
 from model import run_simulation
-
-result = run_simulation(
-    K=8,                         # number of parties
-    n_modes=1,                   # unimodal electorate
-    width_factor=1.5,            # c: electorate width
-    theta=1.0,                   # signal temperature (neutral)
-    rho=100.0,                   # signal precision
-    rho_pi=100.0,                # prior precision
-    n_electors=2000,
-    tau=1.75 * (2.0 / 8),       # τ̂ = 1.75, converted to absolute units
-    mu=0.1,                      # expressive cost weight
-    alpha_prior=0.0,             # full signal reliance
-    K_runoff=2,                  # French two-round rule
-    max_iterations=25,
-    seed=42,
-    verbose=True,
-)
-
-sincere = result["sincere_shares"]
-final   = result["final_shares"]
-print(f"Switching rate : {result['switching']['pct_strategic']:.1%}")
-print(f"Winner (R1)   : Party {result['winner_id']}")
+from metrics import tau_absolute, enp
+K = 8
+r = run_simulation(K=K, n_modes=1, width_factor=1.5, theta=1.0, rho=100.0,
+                   rho_pi=100.0, n_electors=500, tau=tau_absolute(1.75, K),
+                   mu=0.1, alpha_prior=0.0, K_runoff=2, max_iterations=15,
+                   seed=42, verbose=False, collect_diagnostics=True)
+print(f\"ENP {enp(r['sincere_shares']):.3f} -> {enp(r['final_shares']):.3f}\")
+print(f\"winner party {r['winner_id']}, {r['switching']['strategic']}/500 switched\")
+"
 ```
 
-Diagnostics and per-voter calibration data are available via
-`collect_diagnostics=True` and `collect_mu_calibration=True`; see the
-`run_simulation` docstring for the full return-dict specification.
+```
+ENP 5.441 -> 5.208
+winner party 4, 19/500 switched
+```
+
+Those exact numbers are pinned by a golden regression test.
+
+```bash
+pip install pytest scikit-learn
+python -m pytest -ra          # 568 passed, 0 skipped, 0 warnings
+```
+
+→ [Installation and full commands](docs/reproducibility.md)
+
+## Repository map
+
+| Path | Contents |
+|---|---|
+| [`core_model/`](core_model) | The model: agents, iteration loop, metrics, signals. No analysis. |
+| [`analysis/synthetic/`](analysis/synthetic) | Sobol sensitivity, protocol validation, robustness panels. |
+| [`analysis/empirical/`](analysis/empirical) | 2002/2022 replay, behavioural sweeps, diagnostics. |
+| [`tests/`](tests) | 20 files, 568 tests, no skips. |
+| [`results/tables/`](results/README.md) | 22 compact CSVs — the citable numbers. |
+| [`docs/`](docs/index.md) | The Model & Validation Guide. |
+| [`tools/`](tools) | Pipeline driver, output validator, evidence archiver. |
+
+Raw simulation output and figures are git-ignored by design: they are bulky and
+regenerate from a seed. Only the derived tables are committed.
+
+→ [Architecture and canonical definitions](docs/code_map.md)
+
+## Documentation
+
+**The Markdown documentation in this repository is the canonical version.**
+Everything needed to understand, verify or reproduce this project lives under
+[`docs/`](docs/index.md) and reads directly on GitHub — no documentation site,
+no build step, no external service.
+
+An [interactive rendering of the same material](https://claude.ai/code/artifact/af7c9e81-51ed-4411-9e8f-79dd4482aad2)
+is published as a convenience mirror. It is **optional**: it is synchronized
+*from* the Markdown, it is not authoritative, and nothing here depends on access
+to it. Where the two differ, the repository is correct.
+
+## Learn more
+
+| | |
+|---|---|
+| **[Model](docs/model.md)** | Entities, one full iteration, initialization, tolerance units, the decision rule, outcome measures. |
+| **[Validation](docs/validation.md)** | 17 check families, what each guarantees, current status. |
+| **[Experiments](docs/experiments.md)** | Parameter spaces, seeds, simulation counts, data provenance. |
+| **[Reproducibility](docs/reproducibility.md)** | Install, run, regenerate, verify. |
+| **[Code map](docs/code_map.md)** | Repository architecture; canonical vs intentionally separate. |
+| **[Result tables](results/README.md)** | Registry of all 22 tables: contents, generating script, inputs, regeneration command. |
 
 ---
 
-## Repository structure
-
-```
-strategic-voting-abm-2RS/
-│
-├── core_model/
-│   ├── agents.py               Party and Elector agent classes;
-│   │                           four-step decision pipeline
-│   ├── environment.py          Equal-zone ideological space;
-│   │                           unimodal voter distributions
-│   ├── functions.py            Voter placement, vote counting,
-│   │                           coordination outcome measures
-│   ├── signals.py              Temperature-transformed Dirichlet
-│   │                           poll signal generation
-│   ├── model.py                Main simulation loop (run_simulation)
-│   ├── metrics.py              Shared coordination metrics (ENP, CENP, ΔCENP)
-│   ├── empirical_data.py       Loaders for the fixed 2002/2022 inputs
-│   │                           (party positions, electorate, poll timeline)
-│   └── empirical_outcomes.py   Per-run outcome and initialization benchmarks
-│                               for the empirical replay
-│
-├── analysis/
-│   ├── synthetic/              Abstract model on random inputs
-│   │   ├── saltelli_sensitivity.py Global Sobol sensitivity across
-│   │   │                           K ∈ {6, 8, 9}  (30 720 runs)
-│   │   ├── robustness_checks.py    Protocol checks: N, Tmax, εs, ξ (A–D);
-│   │   │                           signal mechanism (E); μ sweep (F)
-│   │   └── main_results.py         Four main paper figures: heatmap, c-sweep,
-│   │                               trajectory, empirical comparison
-│   └── empirical/             Real party positions, electorate & polls held fixed
-│       ├── empirical_2002_2022.py  2002/2022 replay pipeline (runs + robustness)
-│       ├── empirical_diagnostics.py Diagnostic tables per year
-│       ├── empirical_figures.py     Figures from the replay outputs
-│       ├── empirical_beta_bins.py   Outcome by β bin
-│       ├── behavioral_targets.py    Observed ΔCENP target per year
-│       ├── behavioral_sweep.py      Behavioral-parameter sweep (fixed structure)
-│       ├── behavioral_sweep_figure.py  Sweep summary figures
-│       └── lhs_importance.py        LHS parameter-importance (use --slide for slides)
-│
-├── illustration_figures/
-│   ├── distribution_figure.py      Voter distribution on ideological interval
-│   ├── outcome_measures_figure.py  Sincere vs final shares with ΔCENP, k*, Δd*, Δr'
-│   ├── preferences_figure.py       Contender (Ca) and opponent (Oa) sets
-│   ├── signal_figures.py           Signal distortion (θ) and noise (ρs) figures
-│   ├── fr_elections.py             French election poll-vs-result bar charts
-│   └── fr_vote_transfers.py        Second-round vote transfer alluvial diagrams
-│
-├── tests/                     pytest suite (test_empirical.py, …)
-│
-├── data/
-│   ├── FR-electoral_data.csv       Poll and result shares by year and party
-│   ├── FR-vote_transfers.csv       Second-round transfer rates (2002, 2022)
-│   ├── party_positions_{2002,2022}.csv  Candidate ideological positions
-│   ├── polls_{2002,2022}.csv            Pre-electoral poll timeline
-│   ├── results_{2002,2022}.csv          First-round results
-│   ├── voters_ideology_{2002,2022}.csv  Empirical electorate distribution
-│   └── saltelli_results_K{6,8,9}.csv    Pre-computed Saltelli output
-│
-└── requirements.txt
-```
-
-> Generated outputs (`data/empirical_*`, `data/behavioral_*`, `data/sweep_*`,
-> and everything under `figures/`) are git-ignored — regenerate them by running
-> the analysis scripts below.
-
----
-
-## Reproducing the results
-
-Pre-computed Saltelli CSVs are included so the main figures can be reproduced
-without re-running the full sensitivity analysis.
-
-Scripts are organised by data regime: `analysis/synthetic/` runs the abstract
-model on random inputs, while `analysis/empirical/` holds the real 2002/2022
-party positions, electorate, and polls fixed. Run each from the repo root.
-
-**Main paper figures** (heatmap, c-sweep, trajectory, empirical range):
-```bash
-python analysis/synthetic/main_results.py
-```
-Outputs: `fig1_heatmap_trigger.png`, `fig2_trigger_condswitch_c.png`,
-`fig3_trajectory_deltacenp.png`, `fig4_empirical_range_cenp.png`.
-
-**Protocol validation across the Saltelli domain**:
-```bash
-python analysis/synthetic/protocol_validation.py --mode horizon --dry-run
-python analysis/synthetic/protocol_validation.py --mode horizon --full
-python analysis/synthetic/protocol_validation.py --mode population --full
-```
-
-The A–F panels in `robustness_checks.py` are *baseline* diagnostics: each varies
-one protocol constant around a single hand-picked baseline (*K* = 6, τ̂ = 1.0,
-μ = 0). That establishes whether a constant is defensible **at that baseline**.
-
-`protocol_validation.py` asks the harder question — whether *T*<sub>max</sub> = 25
-and *N* = 2000 hold up across the **whole eight-parameter domain the Saltelli
-analysis actually sweeps**, stratified by electorate width *c* (low / medium /
-high) and covering every *K*. Panel G already showed the answer is
-regime-dependent, so a single baseline cannot settle it.
-
-It is a **targeted validation design, not another Sobol analysis**: it estimates
-no indices and re-runs no part of the Saltelli experiment. Configurations are a
-deterministic stratified subset of the committed Saltelli rows, so every
-configuration validated is one the sensitivity analysis really evaluated.
-
-Raw per-run output goes to `analysis/synthetic/outputs/protocol_validation/`
-and stays git-ignored; compact summaries are committed to `results/tables/`.
-Neither mode runs without an explicit `--quick` or `--full`.
-
-**Robustness checks** (Appendices B–D):
-```bash
-python analysis/synthetic/robustness_checks.py               # all six panels
-python analysis/synthetic/robustness_checks.py --panels A B  # specific panels only
-```
-Outputs written to `outputs/robustness_checks/`.
-
-**Empirical 2002/2022 replay** (real structure fixed):
-```bash
-python analysis/empirical/empirical_2002_2022.py            # runs + robustness
-python analysis/empirical/empirical_2002_2022.py --quick    # few draws, smoke run
-python analysis/empirical/empirical_figures.py              # figures from the outputs
-python analysis/empirical/empirical_diagnostics.py          # diagnostic tables
-```
-
-**Behavioral sweep & parameter importance** (fixed empirical structure):
-```bash
-python analysis/empirical/behavioral_targets.py        # observed ΔCENP targets
-python analysis/empirical/behavioral_sweep.py          # run the sweep
-python analysis/empirical/behavioral_sweep_figure.py   # sweep figures
-python analysis/empirical/lhs_importance.py            # paper figures
-python analysis/empirical/lhs_importance.py --slide    # slide figure
-```
-
-**Illustration figures**:
-```bash
-python illustration_figures/distribution_figure.py
-python illustration_figures/outcome_measures_figure.py
-python illustration_figures/preferences_figure.py
-python illustration_figures/signal_figures.py
-python illustration_figures/fr_elections.py --save     # one PNG per election year
-python illustration_figures/fr_vote_transfers.py       # PNG + PDF per year
-```
-
-**Re-run the full Saltelli analysis** (overwrites included CSVs; ~50 minutes).
-Only needed to regenerate the raw evaluations — the Sobol indices themselves
-come from `--analyze-existing` above:
-```bash
-python analysis/synthetic/saltelli_sensitivity.py
-# Edit K_VALUES or set N_SALTELLI = 64 for a quick test run (640 runs per K).
-```
-
-**Tests**:
-```bash
-pytest
-```
-
----
-
-## Numerical result tables
-
-The numbers behind the thesis figures are committed as small, reproducible
-tables under [`results/tables/`](results/tables/) — see
-[`results/README.md`](results/README.md) for the full description of each.
-
-| Table | Contents | Reproduce with |
-|-------|----------|----------------|
-| [`sobol_indices.csv`](results/tables/sobol_indices.csv) | **Formal** Sobol S1/ST + confidence intervals, 3 *K* × 5 outcomes × 8 parameters | `python analysis/synthetic/saltelli_sensitivity.py --analyze-existing` |
-| `robustness_panel_{A–F}.csv` | Protocol robustness summaries, one table per panel | `python analysis/synthetic/robustness_checks.py` |
-| `lhs_parameter_importance.csv` | **Exploratory** LHS surrogate importance (not Sobol) | `python analysis/empirical/lhs_importance.py` |
-| `protocol_horizon_validation.csv`, `protocol_horizon_stability_by_c.csv` | Is *T*<sub>max</sub> = 25 adequate across the Saltelli domain? | `python analysis/synthetic/protocol_validation.py --mode horizon --full` |
-| `protocol_population_validation.csv`, `protocol_population_stability_by_c.csv` | Is *N* = 2000 adequate across the Saltelli domain? | `python analysis/synthetic/protocol_validation.py --mode population --full` |
-
-`--analyze-existing` recomputes the Sobol indices from the committed
-`data/saltelli_results_K{6,8,9}.csv` **without re-running a single
-simulation** — those files already contain all 30 720 model evaluations.
-
-> Raw simulation output and figures stay intentionally uncommitted; only the
-> derived tables are tracked.
-
----
-
-## Data sources
-
-### `FR-electoral_data.csv`
-
-Party-level pre-electoral poll shares and first-round results for five French
-presidential elections. Parties are ordered ideologically following the
-classification used in Ipsos post-election reports.
-
-| Year | Poll source | Electoral results |
-|------|-------------|-------------------|
-| 2002 | Ipsos barometer wave 5 (Ipsos for *Le Figaro* / Europe 1), 15–16 March 2002, *n* = 919 | Ministère de l'Intérieur (2002) |
-| 2007 | Ipsos survey (Ipsos for Dell / SFR / *Le Point*), 22–24 March 2007, *n* = 1 245 | Ministère de l'Intérieur (2007) |
-| 2012 | — | Ministère de l'Intérieur (2012) |
-| 2017 | — | Ministère de l'Intérieur (2017) |
-| 2022 | Ipsos / CEVIPOF / *Le Monde* / Fondation Jean Jaurès wave 5, 3–7 February 2022, *n* = 12 499 | Ministère de l'Intérieur (2022) |
-
-Note: candidate Gluckstein (POI, 2002) is excluded from the 2002 data as he
-had not announced his candidacy at the time of the pre-electoral survey and
-obtained a negligible first-round score (0.47 %).
-
-### `FR-vote_transfers.csv`
-
-Estimated second-round vote transfer rates for 2002 and 2022. Left-side node
-sizes are based on official first-round shares; right-side node sizes on
-official second-round shares (both from *Ministère de l'Intérieur*). Flows are
-constructed from Ipsos post-election transfer estimates, renormalised over the
-two second-round finalists (abstention, blank, and null votes excluded).
-
-| Year | Transfer estimates | Notes |
-|------|-------------------|-------|
-| 2002 | Ipsos post-election telephone survey, 5 May 2002, *n* = 2 886 (Ipsos for Vizzavi / *Le Figaro* / France 2 / Europe 1 / *Le Point*) | All first-round electorates included |
-| 2022 | Ipsos / Sopra Steria post-election survey, 21–23 April 2022, *n* = 4 000, combining survey data with transfer analysis across 500 polling stations | Available for six electorates only: Mélenchon, Jadot, Macron, Pécresse, Le Pen, Zemmour |
-
----
-
-## Model parameters
-
-| Symbol | Meaning | Range | Status |
-|--------|---------|-------|--------|
-| *K* | Number of parties | {6, 8, 9} | Structural |
-| *M* | Runoff qualifiers | 2 | Fixed |
-| *τ̂* | Normalised tolerance threshold | [0.5, 3.0] | Free |
-| *c* | Electorate width factor | [0.25, 3.0] | Free |
-| *θ* | Signal temperature | [0.3, 3.0] | Free |
-| *ρs* | Signal precision | [10, 200] | Free |
-| *ρπ* | Prior precision | [5, 200] | Free |
-| *α* | Prior weight in belief update | [0.0, 0.9] | Free |
-| *μ* | Expressive cost weight | [0.0, 1.0] | Free |
-| *εF* | Uniform floor weight | [0.05, 0.5] | Free |
-| *N* | Number of voters | 2000 | Fixed |
-| *Tmax* | Maximum iterations | 25 | Fixed |
-| *ξ* | Electorate mode position | 0.0 | Fixed |
-| *εs* | Signal offset (numerical floor) | 10⁻¹² | Fixed |
-
-Party positions are equally spaced on [−1, 1]:
-*xⱼ* = −1 + (2*j* + 1)/*K*, *j* = 0, …, *K* − 1.  
-Voter tolerance is normalised by zone spacing: *τ* = *τ̂* · (2/*K*).
-
-### Units of *τ*: normalised vs absolute
-
-Two different quantities are both written "tau" in the code, and mixing them up
-is a silent bug rather than an error:
-
-| | Symbol | Units | Where it appears |
-|---|---|---|---|
-| Normalised | *τ̂* | zone lengths | every design/sweep variable named `tau_hat`, every CSV column, the paper |
-| Absolute | *τ* | ideological distance on [−1, 1] | `run_simulation(tau=…)`, `Elector(tau=…)` |
-
-**Every runner that draws a `tau_hat` must convert before calling the model**,
-using the single shared helper in `core_model/metrics.py`:
-
-```python
-from metrics import tau_absolute
-tau = tau_absolute(tau_hat, K)      # tau_hat * (2 / K)
-```
-
-Because *K* is year-specific in the empirical replay, **one shared *τ̂* draw maps
-to a different absolute *τ* in each year** — *τ̂* = 3.0 becomes *τ* = 0.40 in 2002
-(*K* = 15) and *τ* = 0.50 in 2022 (*K* = 12). That is intended: *τ̂* is the shared
-behavioural setting (tolerance in zone lengths), while the absolute distance it
-implies belongs to the year's environment, exactly like the party positions.
-
-Passing a `tau_hat` straight into `run_simulation` reinterprets it as an absolute
-distance. For *τ̂* ≥ 2 that makes every party a contender for every voter and
-disables the *Cₐ*/*Oₐ* distinction entirely; the model emits a `UserWarning`
-saying so. Two deliberate exceptions pass absolute *τ* directly and are commented
-as such at their call sites: the unit-test fixtures in `tests/`, and
-`initialization_benchmarks(..., tau=2.0)`, which makes every party available on
-purpose so that the three attachment rules are compared on identical footing.
+Data: Ipsos pre- and post-election surveys; results from the Ministère de
+l'Intérieur. Provenance in
+[Experiments → Data sources](docs/experiments.md#data-sources).

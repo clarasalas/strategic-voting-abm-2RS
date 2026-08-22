@@ -46,6 +46,9 @@ Usage
     python analysis/empirical_2002_2022.py            # main + robustness
     python analysis/empirical_2002_2022.py --quick    # few draws, smoke run
 
+--quick writes to data/smoke/ instead of data/, so a smoke run can never
+overwrite a full experiment.  --out-dir overrides both.
+
 Then build figures with:
     python analysis/empirical_figures.py
 """
@@ -70,6 +73,15 @@ from empirical_outcomes import compute_run_outcomes, initialization_benchmarks
 from metrics import tau_absolute
 
 DATA_DIR = REPO / "data"
+
+# Smoke runs write here, never into DATA_DIR.  A --quick run produces 15 draws
+# under the same stem as a 300-draw run, so sharing a directory means a smoke
+# test silently destroys a full experiment -- which is exactly what happened on
+# 2026-08-19, when a --quick run overwrote the full 2002/2022 replay outputs.
+# Separating the directories makes that structurally impossible rather than a
+# matter of remembering.
+SMOKE_DIR = DATA_DIR / "smoke"
+
 YEARS = (2002, 2022)
 
 # =========================================================================== #
@@ -161,13 +173,19 @@ def run_single(params: dict, positions: np.ndarray, voters: np.ndarray,
     # tau_hat is normalised (zone lengths); the model wants absolute units.
     # K differs by year, so one shared tau_hat draw becomes a different
     # absolute tau in 2002 (K=15) and 2022 (K=12).
+    #
+    # This is the ONLY tau conversion on the replay path.  Every CSV column
+    # downstream reads tau_absolute back out of the returned outcome dict, so
+    # the number written to disk is literally the number handed to
+    # run_simulation -- it cannot drift from it, and it cannot be applied twice.
+    tau_abs = tau_absolute(params["tau_hat"], K)
     res = run_simulation(
         K=K,
         party_ids=party_ids,
         party_positions_override=positions,
         voter_positions_override=voters,
         exogenous_signals=signals,
-        tau=tau_absolute(params["tau_hat"], K),
+        tau=tau_abs,
         mu=params["mu"],
         alpha_prior=params["alpha"],
         rho_pi=params["rho_pi"],
@@ -180,7 +198,10 @@ def run_single(params: dict, positions: np.ndarray, voters: np.ndarray,
         verbose=False,
         collect_diagnostics=True,
     )
-    return compute_run_outcomes(res, results, signals[0])
+    outcome = compute_run_outcomes(res, results, signals[0])
+    outcome["tau_absolute"] = tau_abs
+    outcome["K"] = K
+    return outcome
 
 
 # =========================================================================== #
@@ -196,11 +217,69 @@ _SCALAR_KEYS = [
 
 
 def _scalar_row(params: dict, outcome: dict) -> dict:
+    # tau_absolute and K come from the outcome, not from a second conversion:
+    # see run_single.  K is recorded so the row is self-describing -- the
+    # relation tau_absolute = tau_hat * (2 / K) is checkable from the CSV alone,
+    # without knowing which year the file belongs to.
     row = {"draw": params["draw"], "tau_hat": params["tau_hat"],
+           "tau_absolute": outcome["tau_absolute"], "K": outcome["K"],
            "rho_pi": params["rho_pi"], "alpha": params["alpha"],
            "mu": params["mu"], "beta": params.get("beta", 0.0)}
     row.update({k: outcome[k] for k in _SCALAR_KEYS})
     return row
+
+
+def _row_count(path: Path):
+    """Data rows in a CSV, or None if it cannot be read."""
+    try:
+        with path.open() as fh:
+            return sum(1 for _ in fh) - 1
+    except OSError:
+        return None
+
+
+def _refuse_existing_outputs(targets: list, overwrite: bool) -> None:
+    """
+    Refuse to start if ANY target output already exists.
+
+    Existence is the whole test.  Size is not consulted: replacing a 300-row
+    file with a 300-row file still destroys a result that took twenty minutes
+    to produce, and "the new one has at least as many rows" is not a reason to
+    do it silently.  This is the same policy behavioral_sweep.py applies, and
+    for the same reason -- re-running the command is the obvious thing to do
+    and it must not be the destructive thing to do.
+
+    All targets are checked BEFORE any of them is written, so a refusal leaves
+    every existing file untouched rather than aborting halfway through a year.
+    A partially present set is refused too, and reported as partial: it usually
+    means an earlier run died, and quietly filling the gaps would produce a
+    directory whose files came from two different runs.
+
+    The empirical replay has no resume mechanism -- each invocation rewrites
+    its outputs from the start -- so --overwrite has nothing to conflict with
+    here.  (behavioral_sweep.py does have one, and refuses --resume together
+    with --overwrite.)
+    """
+    if overwrite:
+        return
+    existing = [p for p in targets if p.exists()]
+    if not existing:
+        return
+
+    lines = [f"    {p.name}  ({n} rows)" if (n := _row_count(p)) is not None
+             else f"    {p.name}" for p in existing]
+    scope = ("all %d target file(s) already exist" % len(existing)
+             if len(existing) == len(targets)
+             else "%d of %d target file(s) already exist (a partial set -- an "
+                  "earlier run may have died)" % (len(existing), len(targets)))
+
+    raise SystemExit(
+        f"Refusing to run: {scope}, and nothing has been touched.\n"
+        + "\n".join(lines)
+        + f"\n  --overwrite   replace them deliberately\n"
+          f"  --quick       write a smoke run to {SMOKE_DIR}/ instead\n"
+          f"  --out-dir DIR write somewhere else entirely"
+    )
 
 
 def output_suffix(cfg: dict) -> str:
@@ -275,6 +354,8 @@ def per_draw_candidate_table(bundle: dict, design: pd.DataFrame,
             rows.append({
                 "draw": int(prow["draw"]),
                 "tau_hat": prow["tau_hat"],
+                "tau_absolute": o["tau_absolute"],
+                "K": o["K"],
                 "rho_pi": prow["rho_pi"],
                 "alpha": prow["alpha"],
                 "mu": prow["mu"],
@@ -289,8 +370,11 @@ def per_draw_candidate_table(bundle: dict, design: pd.DataFrame,
     return pd.DataFrame(rows)
 
 
-def run_main_experiment(n_draws: int = N_DRAWS, cfg: dict = None) -> None:
+def run_main_experiment(n_draws: int = N_DRAWS, cfg: dict = None,
+                        out_dir: Path = None, overwrite: bool = False) -> None:
     cfg = cfg or {}
+    out_dir = Path(out_dir) if out_dir is not None else DATA_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
     probabilistic = cfg.get("sincere_init_mode", "nearest") == "probabilistic"
     mu_zero = cfg.get("mu_zero", False)
     suffix = output_suffix(cfg)
@@ -299,6 +383,12 @@ def run_main_experiment(n_draws: int = N_DRAWS, cfg: dict = None) -> None:
     design = sample_parameter_design(
         n_draws, rng, include_beta=probabilistic, mu_zero=mu_zero
     )
+
+    # Every file this call will write, listed before any of them is opened.
+    targets = [out_dir / f"empirical_{stem}{suffix}_{year}.csv"
+               for year in YEARS
+               for stem in ("runs", "candidate_shares", "candidate_draws")]
+    _refuse_existing_outputs(targets, overwrite)
 
     bundles = {y: load_year(y, signal_mode="weekly") for y in YEARS}
 
@@ -317,13 +407,13 @@ def run_main_experiment(n_draws: int = N_DRAWS, cfg: dict = None) -> None:
             rows.append(_scalar_row(params, outcome))
             outcomes.append(outcome)
 
-        pd.DataFrame(rows).to_csv(
-            DATA_DIR / f"empirical_runs{suffix}_{year}.csv", index=False)
+        runs_path = out_dir / f"empirical_runs{suffix}_{year}.csv"
+        pd.DataFrame(rows).to_csv(runs_path, index=False)
         aggregate_candidates(bundle, outcomes).to_csv(
-            DATA_DIR / f"empirical_candidate_shares{suffix}_{year}.csv",
+            out_dir / f"empirical_candidate_shares{suffix}_{year}.csv",
             index=False)
         per_draw_candidate_table(bundle, design, outcomes).to_csv(
-            DATA_DIR / f"empirical_candidate_draws{suffix}_{year}.csv",
+            out_dir / f"empirical_candidate_draws{suffix}_{year}.csv",
             index=False)
         print(f"[main{suffix or ' nearest'}] {year}: wrote {len(rows)} runs "
               f"+ candidate aggregates + per-draw candidate table.")
@@ -333,13 +423,19 @@ def run_main_experiment(n_draws: int = N_DRAWS, cfg: dict = None) -> None:
 #  ROBUSTNESS                                                                  #
 # =========================================================================== #
 
-def run_robustness(n_draws: int = N_DRAWS_ROBUST) -> None:
+def run_robustness(n_draws: int = N_DRAWS_ROBUST, out_dir: Path = None,
+                   overwrite: bool = False) -> None:
     """
     Three robustness variants, each applied to both years:
         individual_signals : every poll is its own signal (no weekly mean)
         perturbed_positions: equal-size jitter of party positions
         resampled_voters   : fresh voter sample per draw (different seed)
     """
+    out_dir = Path(out_dir) if out_dir is not None else DATA_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    targets = [out_dir / f"empirical_robustness_{year}.csv" for year in YEARS]
+    _refuse_existing_outputs(targets, overwrite)
+
     rng = np.random.default_rng(MASTER_SEED + 1)
     design = sample_parameter_design(n_draws, rng)
     base = {y: load_year(y, signal_mode="weekly") for y in YEARS}
@@ -380,8 +476,8 @@ def run_robustness(n_draws: int = N_DRAWS_ROBUST) -> None:
             rows.append({"variant": "resampled_voters",
                          **_scalar_row(params, o3)})
 
-        pd.DataFrame(rows).to_csv(
-            DATA_DIR / f"empirical_robustness_{year}.csv", index=False)
+        rob_path = out_dir / f"empirical_robustness_{year}.csv"
+        pd.DataFrame(rows).to_csv(rob_path, index=False)
         print(f"[robustness] {year}: wrote {len(rows)} rows "
               f"({n_draws} draws x 3 variants).")
 
@@ -465,6 +561,12 @@ def main() -> None:
                     help="number of robustness draws per variant "
                          "(overrides default / --quick)")
     ap.add_argument("--no-robustness", action="store_true")
+    ap.add_argument("--out-dir", type=str, default=None,
+                    help="directory for output CSVs (default: data/, or "
+                         "data/smoke/ under --quick)")
+    ap.add_argument("--overwrite", action="store_true",
+                    help="replace existing output files (refused by default, "
+                         "whatever their size)")
 
     # --- Sincere initialization options ---
     ap.add_argument("--sincere-init", choices=["nearest", "probabilistic"],
@@ -499,11 +601,21 @@ def main() -> None:
     if args.robust_draws is not None:
         n_rob = args.robust_draws
 
-    run_main_experiment(n_main, cfg)
+    # An explicit --out-dir wins; otherwise --quick redirects to data/smoke/ so
+    # a smoke run can never land on a full-run filename.
+    if args.out_dir is not None:
+        out_dir = Path(args.out_dir)
+    elif args.quick:
+        out_dir = SMOKE_DIR
+    else:
+        out_dir = DATA_DIR
+    print(f"[out] writing to {out_dir}")
+
+    run_main_experiment(n_main, cfg, out_dir=out_dir, overwrite=args.overwrite)
     # Robustness is defined for the nearest-party baseline only; probabilistic
     # variants write their own suffixed main outputs and skip robustness.
     if not args.no_robustness and args.sincere_init == "nearest":
-        run_robustness(n_rob)
+        run_robustness(n_rob, out_dir=out_dir, overwrite=args.overwrite)
 
 
 if __name__ == "__main__":

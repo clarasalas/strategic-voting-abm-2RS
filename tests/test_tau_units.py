@@ -34,6 +34,10 @@ TAU_HAT_RANGE = (0.5, 3.0)
 # The threshold at which model.py warns that Ca == every party.
 DEGENERATE_TAU = 2.0
 
+# The largest absolute tau each year's design can produce: tau_hat_max * (2/K)
+# at K = 15 and K = 12.  Year-specific, because K is.
+MAX_ABSOLUTE_TAU = {2002: 0.4, 2022: 0.5}
+
 
 # --------------------------------------------------------------------------- #
 #  The conversion itself                                                       #
@@ -72,8 +76,13 @@ def test_no_empirical_sweep_draw_reaches_degenerate_tau(year):
     tau_values = np.array([tau_absolute(t, K) for t in grid])
 
     assert tau_values.max() < DEGENERATE_TAU
-    # and by a wide margin -- the worst case is 0.5 out of 2.0
-    assert tau_values.max() <= 0.5 + 1e-12
+    # And by a wide margin.  The ceiling is year-specific, because K is:
+    # tau_hat_max * (2 / K) is 0.4 for 2002 and 0.5 for 2022.  A single shared
+    # "< 0.5" bound would pass for 2002 while being 25% too loose, so it would
+    # not notice a 2002 design drifting upward.  The bound is inclusive:
+    # tau_hat = 3.0 is the top of the swept range, so the ceiling is attained,
+    # not approached.
+    assert tau_values.max() <= MAX_ABSOLUTE_TAU[year] + 1e-12
 
 
 # --------------------------------------------------------------------------- #

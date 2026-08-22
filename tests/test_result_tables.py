@@ -247,13 +247,26 @@ def test_panel_table_has_no_unexpected_nans(panel):
     _assert_finite(df, f"robustness_panel_{panel}.csv", exclude=("p95_conv",))
 
 
-@pytest.mark.parametrize("panel", sorted(PANEL_SCHEMAS))
+# Panels that summarise repeated runs.  Panel E is analytic and declares no
+# n_reps column, so it is excluded here by its own schema rather than skipped:
+# its contract is checked by the two analytic tests further down.
+REPEATED_PANELS = sorted(
+    p for p, (cols, _) in PANEL_SCHEMAS.items() if "n_reps" in cols
+)
+
+
+@pytest.mark.parametrize("panel", REPEATED_PANELS)
 def test_panel_table_reports_repetitions(panel):
     """Every summary row must say how many runs it came from."""
-    if panel == "E":
-        pytest.skip("panel E is analytic: no repetitions")
     df = _require(_panel_table(panel))
     assert (df["n_reps"] > 0).all()
+
+
+def test_only_analytic_panels_omit_repetitions():
+    """Guards the exclusion above: if a panel loses its n_reps column, the
+    parametrization would silently stop testing it."""
+    omitted = set(PANEL_SCHEMAS) - set(REPEATED_PANELS)
+    assert omitted == {"E"}, f"unexpected panels without n_reps: {omitted}"
 
 
 # --------------------------------------------------------------------------- #

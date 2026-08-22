@@ -43,6 +43,19 @@ real candidate set, weekly-mean polls, N = 2000, Tmax = 25, M = 2 (K_runoff).
 Swept (Latin hypercube, one draw = one row)
 -------------------------------------------
     tau_hat (τ̂)  ∈ [0.5, 3.0]      -> run_simulation(tau=tau_absolute(τ̂, K))
+
+Resuming
+--------
+A full sweep is ~3.5 h per year, so it must survive an interruption:
+
+    python analysis/empirical/behavioral_sweep.py --year 2002 --resume ...
+
+Rows are flushed one draw at a time.  --resume validates the sidecar
+behavioral_sweep_<year>_meta.json (year, seed, n_draws, n_repeats, schema and a
+fingerprint of the design) and cross-checks every retained row against the
+recomputed design before continuing; anything that does not match is refused,
+never merged.  Per-run seeds depend only on (seed, draw, repeat), so a resumed
+sweep and an uninterrupted one produce the same output.
                                       τ̂ is NORMALISED in zone lengths; the model
                                       wants absolute units, so it is converted
                                       with tau = τ̂·(2/K).  K is year-specific,
@@ -81,6 +94,11 @@ import argparse
 import sys
 import time
 from pathlib import Path
+
+import hashlib
+import json
+import os
+import tempfile
 
 import numpy as np
 import pandas as pd
@@ -152,14 +170,19 @@ def run_one(params: dict, bundle: dict, voters: np.ndarray, seed: int) -> dict:
     K = len(positions)
     s0 = np.asarray(signals[0], dtype=float)            # baseline poll, fixed per year
 
+    # tau_hat is normalised; run_simulation wants absolute units (2/K).
+    # This is the ONLY tau conversion on the sweep path: the value written to
+    # the CSV is read back out of this function's return value, so it is
+    # literally the value handed to run_simulation.
+    tau_abs = tau_absolute(params["tau_hat"], K)
+
     res = run_simulation(
         K=K,
         party_ids=bundle["parties"],
         party_positions_override=positions,
         voter_positions_override=voters,
         exogenous_signals=signals,
-        # tau_hat is normalised; run_simulation wants absolute units (2/K).
-        tau=tau_absolute(params["tau_hat"], K),
+        tau=tau_abs,
         mu=params["mu"],
         alpha_prior=params["alpha"],
         rho_pi=params["rho_pi"],
@@ -178,61 +201,354 @@ def run_one(params: dict, bundle: dict, voters: np.ndarray, seed: int) -> dict:
     delta_cenp = cenp(final, K) - cenp(s0, K)           # CENP(δ_final) − CENP(s⁰)
     # final_enp computed the same way as main_results.enp: 1 / Σ δ²
     final_enp = 1.0 / float(((final / final.sum()) ** 2).sum()) if final.sum() > 0 else np.nan
-    return {"delta_cenp": delta_cenp, "final_enp": final_enp}
+    return {"delta_cenp": delta_cenp, "final_enp": final_enp,
+            "tau_absolute": tau_abs, "K": K}
 
 
 # --------------------------------------------------------------------------- #
 #  Sweep                                                                       #
 # --------------------------------------------------------------------------- #
+SCHEMA_VERSION = 2      # 1 = pre-tau_absolute; 2 adds tau_absolute and K
+
+# Canonical column order.  finalise_output() rewrites every file in this order,
+# so a resumed run and an uninterrupted run produce identical output.
+OUTPUT_COLS = [
+    "draw", "tau_hat", "tau_absolute", "K",
+    "mu", "alpha", "rho_pi", "beta",
+    "mean_delta_cenp", "mean_final_enp", "std_delta_cenp",
+    "n_repeats", "seed",
+]
+
+
+def design_path(out: Path) -> Path:
+    return out.with_name(out.stem + "_design.csv")
+
+
+def meta_path(out: Path) -> Path:
+    return out.with_name(out.stem + "_meta.json")
+
+
+def design_fingerprint(design: pd.DataFrame) -> str:
+    """
+    SHA-256 over the design's raw float64 bytes.
+
+    Hashing the numbers rather than the rendered CSV keeps the fingerprint
+    independent of float formatting, so a resume is not refused merely because
+    the partial file was written by a different pandas version.
+    """
+    h = hashlib.sha256()
+    h.update(np.ascontiguousarray(
+        design["draw"].to_numpy(dtype=np.int64)).tobytes())
+    for c in PARAM_COLS:
+        h.update(np.ascontiguousarray(
+            design[c].to_numpy(dtype=np.float64)).tobytes())
+    return h.hexdigest()
+
+
+def build_meta(year: int, n_draws: int, n_repeats: int, seed: int,
+               design: pd.DataFrame) -> dict:
+    """Everything a later --resume needs in order to prove compatibility."""
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "year": int(year),
+        "n_draws": int(n_draws),
+        "n_repeats": int(n_repeats),
+        "seed": int(seed),
+        "n_voters": int(N_VOTERS),
+        "t_max": int(T_MAX),
+        "param_cols": list(PARAM_COLS),
+        "design_sha256": design_fingerprint(design),
+    }
+
+
+def _refuse(msg: str):
+    raise SystemExit("Refusing to resume: " + msg)
+
+
+def load_resumable(out: Path, meta: dict, design: pd.DataFrame) -> set:
+    """
+    Validate an existing partial sweep and return the set of completed draws.
+
+    Every check refuses rather than repairs.  A full sweep is roughly seven
+    hours of compute, and silently merging two incompatible partial runs would
+    produce a file that looks finished and is quietly wrong -- much worse than
+    being told to start again.
+    """
+    mpath = meta_path(out)
+    if not mpath.exists():
+        _refuse(f"{out.name} exists but {mpath.name} does not, so the run that "
+                f"produced it cannot be identified.  Move it aside, or pass "
+                f"--overwrite to start again.")
+    try:
+        prev = json.loads(mpath.read_text())
+    except (OSError, ValueError) as exc:
+        _refuse(f"{mpath.name} is not readable JSON ({exc}).")
+
+    for key in ("year", "seed", "n_draws", "n_repeats"):
+        if prev.get(key) != meta[key]:
+            _refuse(f"{key} differs -- the partial run used {prev.get(key)!r}, "
+                    f"this one asks for {meta[key]!r}.  Different experiments.")
+    if prev.get("schema_version") != meta["schema_version"]:
+        _refuse(f"schema_version differs (file {prev.get('schema_version')!r}, "
+                f"current {meta['schema_version']!r}): the columns differ.")
+    if prev.get("design_sha256") != meta["design_sha256"]:
+        _refuse("the recomputed design does not match the one the partial run "
+                "used, although year, seed and n_draws agree.")
+
+    try:
+        done = read_canonical(out)
+    except (OSError, ValueError) as exc:
+        _refuse(f"{out.name} is not readable as CSV ({exc}).")
+    if len(done) == 0:
+        return set()
+
+    missing = [c for c in OUTPUT_COLS if c not in done.columns]
+    if missing:
+        _refuse(f"{out.name} is missing column(s) {missing}.")
+
+    raw = pd.to_numeric(done["draw"], errors="coerce").to_numpy(dtype=float)
+    if not np.isfinite(raw).all():
+        _refuse(f"{out.name} has {int((~np.isfinite(raw)).sum())} row(s) with a "
+                f"missing or non-numeric draw id.")
+    if not np.array_equal(raw, np.round(raw)):
+        _refuse(f"{out.name} has non-integer draw ids.")
+    draws = raw.astype(int)
+
+    dup = sorted(set(draws[pd.Series(draws).duplicated().to_numpy()].tolist()))
+    if dup:
+        _refuse(f"{out.name} has duplicate draw id(s) {dup[:10]}"
+                f"{' ...' if len(dup) > 10 else ''}.")
+
+    bad_range = sorted({int(d) for d in draws
+                        if d < 0 or d >= meta["n_draws"]})
+    if bad_range:
+        _refuse(f"{out.name} has draw id(s) outside [0, {meta['n_draws']}): "
+                f"{bad_range[:10]}.")
+
+    # A truncated final row -- the likely shape of a kill mid-write -- shows up
+    # as a non-finite value here.
+    for c in OUTPUT_COLS:
+        if c == "draw":
+            continue
+        v = pd.to_numeric(done[c], errors="coerce").to_numpy(dtype=float)
+        if not np.isfinite(v).all():
+            bad = draws[~np.isfinite(v)][:5].tolist()
+            _refuse(f"{out.name} has a missing or non-finite {c!r} at draw(s) "
+                    f"{bad}.")
+
+    # Per-row cross-check against the design: the strongest evidence that these
+    # rows really belong to this experiment, not just to a run with the same
+    # seed and size.
+    idx = design.set_index("draw")
+    for c in PARAM_COLS:
+        expected = idx.loc[draws, c].to_numpy(dtype=float)
+        got = done[c].to_numpy(dtype=float)
+        close = np.isclose(expected, got, rtol=0, atol=1e-9)
+        if not close.all():
+            k = int(np.argmax(~close))
+            _refuse(f"{out.name} row for draw {draws[k]} has {c}={got[k]!r} but "
+                    f"the design says {expected[k]!r}.")
+
+    # Row-level bookkeeping must agree with the sidecar too.
+    for c, want in (("n_repeats", meta["n_repeats"]), ("seed", meta["seed"])):
+        vals = sorted(set(pd.to_numeric(done[c]).astype(int).tolist()))
+        if vals != [int(want)]:
+            _refuse(f"{out.name} has {c} values {vals}, expected [{int(want)}].")
+
+    return {int(d) for d in draws}
+
+
+# --------------------------------------------------------------------------- #
+#  Canonical CSV serialisation                                                 #
+# --------------------------------------------------------------------------- #
+#
+# finalise_output() reads a CSV and writes it back, so it must be IDEMPOTENT:
+# finalise(finalise(f)) has to equal finalise(f) byte for byte.  Otherwise a
+# resumed run and an uninterrupted run produce different files from identical
+# numbers, which is what CI caught on 2026-08-22.
+#
+# The culprit was the READER, not the writer.  pandas' default float parser is
+# fast but not correctly rounded: it can return a double one ulp away from the
+# value the text denotes.  Writing that back yields different text, so the
+# file never settles.  ``float_precision="round_trip"`` selects the correctly
+# rounded parser and fixes it at the source.
+#
+# For the writer, three representations were measured on 60 000 adversarial
+# doubles (uniformly random bit patterns, subnormals, extremes, signed zero) in
+# both the local and the CI dependency environments:
+#
+#   repr as a callable  -- REJECTED.  Under numpy 2 the callable receives a
+#                          numpy scalar, so it emits "np.float64(0.1)" instead
+#                          of "0.1" and corrupts the file outright.
+#   "%.17g"             -- REJECTED.  Not lossless: it writes -0.0 as "-0",
+#                          which parses back as +0.0, losing the sign of zero.
+#   pandas default      -- CHOSEN.  Shortest round-tripping representation.
+#                          Bitwise exact on every value tested, including
+#                          signed zero and subnormals, and byte-idempotent
+#                          across repeated cycles in both environments.
+#
+# pandas does not document its default float format as shortest-round-trip, so
+# that property is pinned by tests rather than assumed -- see
+# tests/test_canonical_csv.py, which fails loudly if a future pandas changes it.
+
+CSV_READ_KW = dict(float_precision="round_trip")
+
+
+def read_canonical(path: Path) -> pd.DataFrame:
+    """Read a CSV with the correctly rounded float parser."""
+    return pd.read_csv(path, encoding="utf-8", **CSV_READ_KW)
+
+
+def write_canonical(df: pd.DataFrame, path: Path) -> None:
+    """
+    Write a CSV atomically, in a byte-stable form.
+
+    Explicit UTF-8 and Unix line endings so the bytes do not depend on the
+    platform.  The write goes to a temporary file in the same directory and is
+    moved into place with os.replace, which is atomic on POSIX and Windows: a
+    crash mid-write leaves the previous file intact rather than a half-written
+    one.
+    """
+    path = Path(path)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.",
+                               suffix=".tmp")
+    os.close(fd)
+    tmp = Path(tmp)
+    try:
+        df.to_csv(tmp, index=False, encoding="utf-8", lineterminator="\n")
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
+def finalise_output(out: Path) -> pd.DataFrame:
+    """
+    Sort by draw and rewrite in canonical column order.
+
+    Both the uninterrupted and the resumed path end here, so append order stops
+    mattering: the two produce the same file, byte for byte.
+    """
+    df = read_canonical(out)
+    df = df.sort_values("draw", kind="mergesort").reset_index(drop=True)
+    df = df[OUTPUT_COLS]
+
+    # Same contract as load_resumable: a truncated or corrupt row must not be
+    # quietly written back out as canonical.
+    for c in OUTPUT_COLS:
+        v = pd.to_numeric(df[c], errors="coerce").to_numpy(dtype=float)
+        if not np.isfinite(v).all():
+            n = int((~np.isfinite(v)).sum())
+            raise SystemExit(
+                f"Refusing to finalise {out.name}: {n} missing or non-finite "
+                f"value(s) in column {c!r}.")
+
+    write_canonical(df, out)
+    return df
+
+
 def run_sweep(year: int, n_draws: int, n_repeats: int, seed: int,
-              out: Path) -> None:
+              out: Path, resume: bool = False,
+              overwrite: bool = False) -> None:
     rng = np.random.default_rng(seed)
+    design = build_design(n_draws, rng)
+    meta = build_meta(year, n_draws, n_repeats, seed, design)
+
+    out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    completed = set()
+    if out.exists():
+        if resume:
+            completed = load_resumable(out, meta, design)
+            print(f"[sweep] resuming {out.name}: {len(completed)}/{n_draws} "
+                  f"draws already complete")
+
+            # Nothing left to do.  load_resumable has already validated the
+            # sidecar metadata, the design fingerprint and every retained row,
+            # so completion is established -- and the correct action for an
+            # already-complete file is to touch nothing at all.  Returning
+            # here leaves its bytes, checksum and mtime exactly as they were.
+            #
+            # This is an optimisation of the complete case, not a substitute
+            # for canonical serialisation: an interrupted resume still merges
+            # new rows with old ones and must rewrite the file.
+            if completed == set(range(n_draws)):
+                print(f"[sweep] {out.name} is already complete; "
+                      f"leaving it untouched")
+                return
+        elif overwrite:
+            out.unlink()
+        else:
+            raise SystemExit(
+                f"{out} already exists and nothing has been touched.\n"
+                f"  --resume     continue it, keeping every completed draw\n"
+                f"  --overwrite  discard it and start again"
+            )
+    elif resume:
+        print(f"[sweep] --resume given but {out.name} does not exist; "
+              f"starting from draw 0")
+
+    # Load the environment only once the resume decision is settled, so a
+    # refusal costs nothing.
     bundle = load_year(year, signal_mode="weekly")
 
     # Real electorate: sampled ONCE and held fixed across all draws/repeats.
     voter_rng = np.random.default_rng(seed + 1)
     voters = sample_voters(year, N_VOTERS, voter_rng)
 
-    design = build_design(n_draws, rng)
-
-    # Log the design next to the output for full reproducibility.
-    design_path = out.with_name(out.stem + "_design.csv")
-    design.to_csv(design_path, index=False)
+    design.to_csv(design_path(out), index=False)
+    meta_path(out).write_text(json.dumps(meta, indent=2) + "\n")
     print(f"[sweep] year={year}  n_draws={n_draws}  n_repeats={n_repeats}  "
           f"seed={seed}")
-    print(f"[sweep] LHS design logged -> {design_path}")
+    print(f"[sweep] design -> {design_path(out)}")
+    print(f"[sweep] meta   -> {meta_path(out)}")
 
-    out.parent.mkdir(parents=True, exist_ok=True)
-    if out.exists():
-        out.unlink()        # fresh start; avoid appending to a stale run
+    todo = [row for _, row in design.iterrows()
+            if int(row["draw"]) not in completed]
+    if not todo:
+        print(f"[sweep] all {n_draws} draws already present; finalising only")
+
     n_written = 0
-    for _, prow in design.iterrows():
+    for prow in todo:
         params = {c: float(prow[c]) for c in PARAM_COLS}
         draw = int(prow["draw"])
-        deltas, enps = [], []
+        deltas, enps, taus, ks = [], [], [], []
         for r in range(n_repeats):
-            # Deterministic per (draw, repeat) seed -> reproducible.
+            # Deterministic per (draw, repeat) seed -> reproducible.  It depends
+            # only on seed, draw and repeat, so resuming cannot change it.
             run_seed = seed + 1000 * (draw + 1) + r
             o = run_one(params, bundle, voters, run_seed)
             deltas.append(o["delta_cenp"])
             enps.append(o["final_enp"])
-        row = {
-            "draw": draw,
-            **params,
+            taus.append(o["tau_absolute"])
+            ks.append(o["K"])
+        assert len(set(taus)) == 1 and len(set(ks)) == 1, \
+            "tau_absolute must not vary across the repeats of one draw"
+
+        row = {"draw": draw,
+               "tau_hat": params["tau_hat"],
+               "tau_absolute": taus[0],
+               "K": ks[0]}
+        row.update({c: params[c] for c in PARAM_COLS if c != "tau_hat"})
+        row.update({
             "mean_delta_cenp": float(np.mean(deltas)),
             "mean_final_enp": float(np.mean(enps)),
             "std_delta_cenp": float(np.std(deltas, ddof=1)) if n_repeats > 1 else 0.0,
             "n_repeats": n_repeats,
             "seed": seed,
-        }
-        # Flush row-by-row: header only on the first write, append thereafter,
-        # so a Ctrl+C keeps every completed draw.
-        pd.DataFrame([row]).to_csv(out, mode="a", header=(n_written == 0), index=False)
+        })
+        # Flush row-by-row: an interruption keeps every completed draw, and
+        # --resume picks up at the next one.
+        header = (not out.exists()) or out.stat().st_size == 0
+        pd.DataFrame([row])[OUTPUT_COLS].to_csv(
+            out, mode="a", header=header, index=False)
         n_written += 1
-        if (draw + 1) % 25 == 0 or draw == n_draws - 1:
-            print(f"[sweep]   {draw + 1}/{n_draws} draws done")
+        if n_written % 25 == 0 or prow is todo[-1]:
+            print(f"[sweep]   {len(completed) + n_written}/{n_draws} draws done")
 
-    print(f"[sweep] wrote {n_written} rows -> {out}")
+    df = finalise_output(out)
+    print(f"[sweep] wrote {n_written} new row(s); {len(df)} total -> {out}")
 
 
 # --------------------------------------------------------------------------- #
@@ -271,6 +587,12 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=20020422)
     ap.add_argument("--out", type=str, default=None,
                     help="output CSV path (default: data/behavioral_sweep_<year>.csv)")
+    ap.add_argument("--resume", action="store_true",
+                    help="continue an interrupted sweep, keeping every "
+                         "completed draw (validates year, seed, n_draws, "
+                         "n_repeats and the design before merging)")
+    ap.add_argument("--overwrite", action="store_true",
+                    help="discard an existing output and start again")
     ap.add_argument("--time_one_run", action="store_true",
                     help="run a single simulation, print wall-clock seconds, exit")
     args = ap.parse_args()
@@ -279,8 +601,12 @@ def main() -> None:
         time_one_run(args.year, args.seed)
         return
 
+    if args.resume and args.overwrite:
+        raise SystemExit("--resume and --overwrite are mutually exclusive.")
+
     out = Path(args.out) if args.out else REPO / "data" / f"behavioral_sweep_{args.year}.csv"
-    run_sweep(args.year, args.n_draws, args.n_repeats, args.seed, Path(out))
+    run_sweep(args.year, args.n_draws, args.n_repeats, args.seed, Path(out),
+              resume=args.resume, overwrite=args.overwrite)
 
 
 if __name__ == "__main__":

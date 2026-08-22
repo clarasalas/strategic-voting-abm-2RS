@@ -21,7 +21,7 @@ a standing property of the repository; CI is the continuous check.
 | | |
 |---|---|
 | **Command** | `python -m pytest -ra` |
-| **Result** | **559 passed, 0 skipped, 0 warnings** |
+| **Result** | **568 passed, 0 skipped, 0 warnings** |
 | **Date** | 2026-08-22 |
 | **Platform** | Darwin 25.5.0, Python 3.11.7 |
 
@@ -30,8 +30,8 @@ in only one and missed a defect that CI then caught:
 
 | Environment | numpy | pandas | Result |
 |---|---|---|---|
-| Development | 1.26.4 | 3.0.3 | 559 passed, 0 skipped, 0 warnings |
-| CI-matched | **2.4.6** | **3.0.5** | 559 passed, 0 skipped, 0 warnings |
+| Development | 1.26.4 | 3.0.3 | 568 passed, 0 skipped, 0 warnings |
+| CI-matched | **2.4.6** | **3.0.5** | 568 passed, 0 skipped, 0 warnings |
 
 Also run against a **tracked-files-only checkout** — no git-ignored data
 present, as on a fresh clone — in both environments, with the same result. No
@@ -52,7 +52,7 @@ environments are the identifying facts. CI is the authoritative check.
 
 ### Test discovery
 
-`pytest.ini` sets `testpaths = tests`. All 19 `test_*.py` files in the
+`pytest.ini` sets `testpaths = tests`. All 20 `test_*.py` files in the
 repository are under `tests/`, and collection with and without the repository's
 `pytest.ini` returns the same test IDs, so the setting hides nothing.
 
@@ -66,13 +66,37 @@ removed in two passes, none replaced by a weaker check:
 | `test_cli_refuses_an_unhonourable_signal_epsilon` | Asserted `--signal-epsilon` was *refused*, because ε<sub>s</sub> could not reach `run_simulation`. That plumbing exists, so it could only skip. | [`test_signal_epsilon.py`](../tests/test_signal_epsilon.py) asserts every `generate_signal` call receives the value. |
 | Panel E branch of `test_panel_table_reports_repetitions` | Panel E is analytic and declares no `n_reps` column. | Parametrization derives from `PANEL_SCHEMAS`; a guard fails if any *other* panel loses the column. |
 | `test_real_horizon_raw_passes_validation` | Read a 213 KB git-ignored generated file, so it skipped everywhere but the author's machine. | Four tests build a synthetic frame with the real schema and shape (54 configurations × 8 seeds = 432 rows) and check the validator accepts it and rejects a short run, a wrong ε<sub>s</sub> and a non-finite outcome. |
-| `test_regeneration_reproduces_the_committed_tables` | Needed 17 MB of git-ignored simulation output. | Three tests build their own fixture inputs and check the generator is deterministic, exact through a CSV round trip, and refuses corrupt input. The real-data check runs as the last pipeline step: `make_empirical_tables.py && git status --short` must leave `results/tables/` unchanged. |
+| `test_regeneration_reproduces_the_committed_tables` | Needed 17 MB of git-ignored simulation output. | Three tests build their own fixture inputs and check the generator is deterministic, exact through a CSV round trip, and refuses corrupt input. The real-data check runs as a pipeline step — see below. |
 
 > Removing the last one surfaced a real weakness. Its replacement feeds a NaN
 > through the generator — and the existing guard did **not** fire, because every
 > summary goes through a pandas aggregation and those skip NaN by default, so a
 > corrupt input became a healthy-looking mean over fewer rows. The generator now
 > validates on the way *in*, which is the only place it is visible.
+
+### Enforcing real-table regeneration
+
+The committed tables must reproduce from the real raw outputs. That check needs
+17 MB of git-ignored simulation output, so it cannot be a unit test — but it can
+still be enforced:
+
+```bash
+python tools/check_tables_reproduce.py
+```
+
+It regenerates every table and **exits non-zero** if a tracked table changes, if
+an unexpected untracked table appears, if a declared table goes missing, or if
+the tables directory was already dirty beforehand — printing the affected
+filenames in each case. It runs as pipeline step `08b_tables_reproduce`.
+
+> The previous instruction was `make_empirical_tables.py && git status --short`.
+> That is not a check: `git status` exits 0 whether or not anything changed, so
+> a drifted table passed silently unless a human read the output.
+
+Both directions are tested in
+[`tests/test_table_regeneration_check.py`](../tests/test_table_regeneration_check.py)
+against throwaway git repositories in `tmp_path`, so the failure modes are
+exercised without touching the real tables.
 
 ### Warning policy
 
@@ -266,13 +290,29 @@ Two configurations are pinned, both chosen to exercise the strategic path:
 |---|---|
 | **Contract** | An interrupted-and-resumed sweep produces byte-identical output to an uninterrupted one. |
 | **Implementation** | `load_resumable()` / `finalise_output()` in [`behavioral_sweep.py`](../analysis/empirical/behavioral_sweep.py) |
-| **Tests** | [`test_sweep_resume.py`](../tests/test_sweep_resume.py) (27) |
+| **Tests** | [`test_sweep_resume.py`](../tests/test_sweep_resume.py) (29), [`test_canonical_csv.py`](../tests/test_canonical_csv.py) (30) |
 | **Criterion** | Resume validates year, seed, `n_draws`, `n_repeats`, schema version and a SHA-256 fingerprint of the design; rejects duplicate, non-integer or out-of-range draw ids, missing columns and non-finite values. |
 | **Status** | ✅ passing |
 
 Canonical finalisation makes uninterrupted and resumed sweep outputs
 byte-identical under the supported environments; this is regression-tested in
 CI.
+
+Byte stability was measured directly, not inferred. The same 2 000-value
+fixture — the CI failure's own values, plus signed zero, subnormals, the
+largest finite double, integer-like floats and 1 982 uniformly random bit
+patterns — was written through `write_canonical` in both environments:
+
+| Environment | numpy | pandas | Bytes | SHA-256 |
+|---|---|---|---|---|
+| Development | 1.26.4 | 3.0.3 | 400 054 | `653d8db8…45210791` |
+| CI-matched | 2.4.6 | 3.0.5 | 400 054 | `653d8db8…45210791` |
+
+**The hashes are identical**, and finalising four times in a row changed
+nothing in either environment. So for the two environments tested the output is
+byte-identical *across* them, not merely idempotent within each. That is a
+measurement of those two configurations, not a guarantee for every future
+numpy or pandas — which is what the regression tests exist to catch.
 
 Per-run seeds depend only on `(seed, draw, repeat)`, which is what makes the
 equivalence hold. Two mechanisms deliver the byte-identity:
@@ -414,7 +454,7 @@ decompose variance.
 |---|---|
 | **Contract** | Every output row records `tau_hat`, `tau_absolute` and `K`, with the conversion applied exactly once. |
 | **Implementation** | [`empirical_2002_2022.py`](../analysis/empirical/empirical_2002_2022.py) |
-| **Tests** | [`test_tau_absolute_output.py`](../tests/test_tau_absolute_output.py) (17), [`test_tau_units.py`](../tests/test_tau_units.py) (10), [`test_empirical_tables.py`](../tests/test_empirical_tables.py) (40) |
+| **Tests** | [`test_tau_absolute_output.py`](../tests/test_tau_absolute_output.py) (17), [`test_tau_units.py`](../tests/test_tau_units.py) (10), [`test_empirical_tables.py`](../tests/test_empirical_tables.py) (42), [`test_table_regeneration_check.py`](../tests/test_table_regeneration_check.py) (9) |
 | **Criterion** | `tau_absolute == tau_hat × 2/K` to 1e-12; year-specific ceilings (2002 ≤ 0.4, 2022 ≤ 0.5, inclusive); `tau_hat` unchanged. |
 | **Status** | ✅ passing; validated across all 14 output files of the 2026-08-21 rerun |
 | **Evidence** | [`empirical_replay_summary.csv`](../results/tables/empirical_replay_summary.csv), [`empirical_activation_summary.csv`](../results/tables/empirical_activation_summary.csv) |
@@ -439,7 +479,7 @@ pre-fix `tau >= 2.0` warning appears **zero** times in the simulation logs.
 |---|---|
 | **Question** | How much of the observed variation is seed noise rather than signal? |
 | **Implementation** | [`analysis/synthetic/protocol_posthoc.py`](../analysis/synthetic/protocol_posthoc.py) |
-| **Tests** | [`test_protocol_posthoc.py`](../tests/test_protocol_posthoc.py) (30) |
+| **Tests** | [`test_protocol_posthoc.py`](../tests/test_protocol_posthoc.py) (33) |
 | **Criterion** | Within/between variance components with bootstrap ICC; Benjamini–Hochberg correction applied within each outcome × statistic × interval family. |
 | **Status** | ✅ complete |
 | **Evidence** | [`protocol_seed_noise_decomposition.csv`](../results/tables/protocol_seed_noise_decomposition.csv), `protocol_horizon_drift_{by_config,summary}.csv` |

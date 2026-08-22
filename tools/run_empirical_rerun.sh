@@ -215,7 +215,13 @@ run 07_lhs_importance \
 run 08a_pytest \
     python3 -m pytest -ra
 
-run 08b_archive_intact \
+# Regenerates every committed table and FAILS if any of them changes, so a
+# stale artefact stops the pipeline instead of waiting for someone to read
+# `git status`.  This is the step that makes results/tables/ trustworthy.
+run 08b_tables_reproduce \
+    python3 tools/check_tables_reproduce.py
+
+run 08c_archive_intact \
     bash -c 'cd data/archive/pre_rerun_2026-08-21 && shasum -c SHA256SUMS --quiet && echo "archive intact"'
 
 log "=========================================================="

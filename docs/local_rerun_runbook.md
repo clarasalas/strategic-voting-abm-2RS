@@ -376,7 +376,7 @@ test ! -e $LOGDIR/FAILED && echo "FAILED absent" || cat $LOGDIR/FAILED
 cat $LOGDIR/COMPLETE
 ```
 
-**Every stage completed** (expect 30 `OK` lines and no `FAILED`):
+**Every stage completed** (expect 31 `OK` lines and no `FAILED`):
 
 ```bash
 grep -c "  OK     " $LOGDIR/master.log

@@ -38,13 +38,14 @@ strategic-voting-abm-2RS/
 │       ├── lhs_importance.py        RandomForest surrogate + permutation
 │       └── make_empirical_tables.py the 6 committed empirical tables
 │
-├── tests/                 19 files, 559 tests, no skips
+├── tests/                 20 files, 568 tests, no skips
 ├── results/tables/        22 compact CSVs — the citable artefacts
 ├── data/                  real inputs (committed) + raw output (ignored)
 ├── docs/                  this guide
 └── tools/                 operational scripts, not analysis
     ├── run_empirical_rerun.sh   unattended pipeline driver
     ├── validate_rerun.py        per-file output validator
+    ├── check_tables_reproduce.py enforces that committed tables regenerate
     └── archive_pre_rerun.sh     evidence snapshot + SHA-256 manifest
 ```
 

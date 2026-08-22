@@ -112,6 +112,13 @@ python analysis/empirical/make_empirical_tables.py   # 6 empirical tables
 python analysis/empirical/lhs_importance.py          # importance table
 ```
 
+To check the committed tables still reproduce — regenerates them and **exits
+non-zero** if any changes, naming the files:
+
+```bash
+python tools/check_tables_reproduce.py
+```
+
 ### Needs simulation
 
 ```bash
@@ -193,7 +200,7 @@ a workflow is actually running, no CI badge belongs in the README.
 ```bash
 export LOGDIR=logs/rerun_20260821_launch
 
-ls $LOGDIR/COMPLETE && grep -c "  OK     " $LOGDIR/master.log   # expect 30
+ls $LOGDIR/COMPLETE && grep -c "  OK     " $LOGDIR/master.log   # expect 31
 
 # tau relation, ceilings, row counts, finiteness — per file
 python3 tools/validate_rerun.py data/empirical_runs_2002.csv --year 2002 --expect-rows 300

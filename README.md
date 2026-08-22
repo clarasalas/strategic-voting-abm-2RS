@@ -68,7 +68,7 @@ the real candidates, electorate and poll timeline fixed, and asks whether the
 
 | | |
 |---|---|
-| **Layered testing** | 559 tests across 17 contract families — analytic fixtures, decision-rule tests, dynamic invariants, metamorphic properties, golden regressions, pipeline contracts. |
+| **Layered testing** | 568 tests across 17 contract families — analytic fixtures, decision-rule tests, dynamic invariants, metamorphic properties, golden regressions, pipeline contracts. |
 | **Metamorphic testing** | Relabelling and left–right reflection invariance were *derived from the equations* before being asserted, not assumed. |
 | **Golden-value regressions** | Full output vectors pinned to 1e-12, so a refactor that moves every code path equally still fails loudly. |
 | **Reproducibility as a contract** | Fixed seeds throughout; derived tables regenerate byte-identically, verified by a test comparing serialized bytes rather than parsed floats. |
@@ -108,7 +108,7 @@ Those exact numbers are pinned by a golden regression test.
 
 ```bash
 pip install pytest scikit-learn
-python -m pytest -ra          # 559 passed, 0 skipped, 0 warnings
+python -m pytest -ra          # 568 passed, 0 skipped, 0 warnings
 ```
 
 → [Installation and full commands](docs/reproducibility.md)
@@ -120,7 +120,7 @@ python -m pytest -ra          # 559 passed, 0 skipped, 0 warnings
 | [`core_model/`](core_model) | The model: agents, iteration loop, metrics, signals. No analysis. |
 | [`analysis/synthetic/`](analysis/synthetic) | Sobol sensitivity, protocol validation, robustness panels. |
 | [`analysis/empirical/`](analysis/empirical) | 2002/2022 replay, behavioural sweeps, diagnostics. |
-| [`tests/`](tests) | 19 files, 559 tests, no skips. |
+| [`tests/`](tests) | 20 files, 568 tests, no skips. |
 | [`results/tables/`](results/README.md) | 22 compact CSVs — the citable numbers. |
 | [`docs/`](docs/index.md) | The Model & Validation Guide. |
 | [`tools/`](tools) | Pipeline driver, output validator, evidence archiver. |

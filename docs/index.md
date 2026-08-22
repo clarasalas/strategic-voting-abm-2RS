@@ -17,11 +17,11 @@ earlier standalone "fiche technique".
 They read directly on GitHub with previous/next links, need no documentation
 site or build step, and depend on no external service.
 
-An [interactive rendering](https://claude.ai/code/artifact/af7c9e81-51ed-4411-9e8f-79dd4482aad2)
-of the same material is published as an **optional convenience mirror**. It is
-synchronized *from* these files and is not authoritative. Understanding or
-reproducing this repository must not require access to it. Where the two
-disagree, the repository is correct.
+A [navigable single-page rendering](https://clarasalas.github.io/strategic-voting-abm-2RS/guide.html) of the same material is published
+through GitHub Pages as an **optional convenience mirror**. It is generated
+*from* these files and is not authoritative. Understanding or reproducing this
+repository must not require access to it. Where the two disagree, the repository
+is correct.
 
 ---
 

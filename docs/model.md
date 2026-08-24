@@ -41,20 +41,12 @@ exit.
 | Party positions | generated, evenly spaced | real candidates, coded on [−1, 1] |
 | Electorate | generated from a mixture | sampled from a real ideology histogram |
 | Poll signal | **generated** each iteration from current support | **exogenous** real poll timeline |
-| Question | which parameters drive coordination? | does it reproduce 2002 vs 2022? |
+| Question | which parameters drive coordination? | does it reproduce 2002 vs 2022 patterns? |
 | Code | [`analysis/synthetic/`](../analysis/synthetic) | [`analysis/empirical/`](../analysis/empirical) |
 
 The distinction matters throughout: in empirical mode the signal is read from
 data rather than generated, so **every signal-generating parameter is inert**
 (see [below](#which-parameters-are-inactive-in-empirical-replay)).
-
-### What the model does and does not claim
-
-- **Does**: implement one specific decision rule and characterise its aggregate
-  behaviour.
-- **Does not**: predict elections, recover parameters, or fit. The empirical
-  mode applies one behavioural draw to both years and changes only the
-  environment. Documented misfit is a result, not a bug to tune away.
 
 ---
 

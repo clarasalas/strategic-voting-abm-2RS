@@ -7,10 +7,6 @@ This guide is the single canonical description of the model, how it is
 verified, and how to reproduce every number in the repository. It replaces the
 earlier standalone "fiche technique".
 
-> **Audience.** Written to be readable by a software engineer who has never
-> studied voting models. Political-science terms are defined where they first
-> appear.
-
 ## This documentation is canonical
 
 **The Markdown files in this repository are the authoritative documentation.**

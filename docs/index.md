@@ -4,8 +4,7 @@ An agent-based model of strategic voting in two-round presidential elections,
 replayed against the French first rounds of **2002** and **2022**.
 
 This guide is the single canonical description of the model, how it is
-verified, and how to reproduce every number in the repository. It replaces the
-earlier standalone "fiche technique".
+verified, and how to reproduce every number in the repository. 
 
 ## This documentation is canonical
 

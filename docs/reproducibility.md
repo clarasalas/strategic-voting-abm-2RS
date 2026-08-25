@@ -177,21 +177,21 @@ small and diff-readable.
 
 ## Continuous integration
 
-> ⚠️ **There is no active CI for this repository.** No GitHub Actions workflow
-> is running, so no build or test badge would be meaningful. Every test result
-> quoted in this documentation is a **local run on a single machine**, recorded
-> with its date and commit.
+[`.github/workflows/tests.yml`](../.github/workflows/tests.yml) runs on every
+push to `main` and on every pull request targeting `main`: Python 3.11, pip
+caching keyed on `requirements.txt`, `pytest -ra` with no suppressed failures.
+It was merged in [#13](https://github.com/clarasalas/strategic-voting-abm-2RS/pull/13)
+and has been running since; the
+[run history](https://github.com/clarasalas/strategic-voting-abm-2RS/actions) is
+public.
 
-A workflow is drafted on the `add-ci-workflow` branch — Python 3.11, pip caching
-keyed on `requirements.txt`, `pytest -ra` with no suppressed failures.
-
-The branch **is pushed** — `.github/workflows/tests.yml` is on `origin`. It has
-never run, because the workflow triggers only on pushes to `main` and pull
-requests targeting `main`, and it is neither merged nor in an open PR. GitHub
-therefore has no registered workflow and no run history for this repository.
-
-To activate it, open a PR from `add-ci-workflow` into `main` and merge it. Until
-a workflow is actually running, no CI badge belongs in the README.
+**CI is the authoritative check.** Test results quoted elsewhere in this
+documentation are dated local runs on a single machine — a record of one moment,
+not a standing property of the repository. CI runs the same suite on a clean
+machine with a fresh dependency install, which is what catches defects a
+configured local environment can hide; see the
+[verification snapshot](validation.md#verification-snapshot) for a case where it
+did exactly that.
 
 ---
 

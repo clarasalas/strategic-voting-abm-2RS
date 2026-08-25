@@ -3,6 +3,7 @@
 An agent-based model of strategic voting under a two-round runoff, replayed
 against the French presidential first rounds of **2002** and **2022**.
 
+[![tests](https://github.com/clarasalas/strategic-voting-abm-2RS/actions/workflows/tests.yml/badge.svg)](https://github.com/clarasalas/strategic-voting-abm-2RS/actions/workflows/tests.yml)
 [![python](https://img.shields.io/badge/python-3.10%2B-blue)](docs/reproducibility.md)
 [![license](https://img.shields.io/badge/data-Ipsos%20%C2%B7%20Min.%20Int%C3%A9rieur-lightgrey)](docs/experiments.md#data-sources)
 
@@ -10,8 +11,8 @@ against the French presidential first rounds of **2002** and **2022**.
 > documentation: how the model works, how it is verified, and how to reproduce
 > every number here.
 
-> **No continuous integration is active on this repository**, so there is no
-> build or test badge. Test results are recorded as dated local runs — see the
+> The test suite runs in CI on every push and pull request. Local runs are
+> recorded with their date and commit — see the
 > [verification snapshot](docs/validation.md#verification-snapshot).
 
 ---

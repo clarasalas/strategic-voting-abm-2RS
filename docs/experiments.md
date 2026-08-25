@@ -276,11 +276,12 @@ two second-round finalists (abstention, blank, and null votes excluded).
 so the effective tolerance was up to 7.5× too large and the strategic module was
 largely inert. See [Tolerance](model.md#tolerance-the-two-units).
 
-> ⚠️ **Pre-fix raw outputs for the `nearest` specification are permanently
-> unrecoverable.** They were overwritten on 2026-08-19 by a 15-draw `--quick`
-> run and had never been committed. Before/after comparison is valid for the
-> sweeps, the probabilistic variants and the diagnostics; for `nearest` the
-> archived logs and figures are historical evidence only.
+> **Pre-fix raw outputs for the `nearest` specification were not archived.**
+> They were overwritten on 2026-08-19 by a 15-draw `--quick` run and had never
+> been committed. Before/after comparison is therefore direct for the sweeps,
+> the probabilistic variants and the diagnostics; for `nearest` a baseline would
+> have to be regenerated from the pre-fix commit (`70e23f5`), which the fixed
+> seed makes possible but which has not been done.
 
 Full record — protocol, validation status, generated outputs and known
 limitations: **[Empirical rerun record, 2026-08-21](reports/empirical_rerun_2026-08-21.md)**.

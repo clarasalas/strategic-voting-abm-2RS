@@ -332,10 +332,10 @@ run 08b_archive_intact \
 ```
 
 Then the before/after comparison, against the archive. **State explicitly in
-any write-up that a direct raw before-versus-after comparison of the main
-replay is impossible** — the pre-fix full outputs were destroyed on
-2026-08-19 by a `--quick` run and were never committed. For the main replay,
-the archived logs, figures and fiche are historical evidence only.
+any write-up that no archived raw before-versus-after comparison of the main
+replay exists** — the pre-fix full outputs were overwritten on 2026-08-19 by a
+`--quick` run and were never committed. One could be regenerated from commit
+`70e23f5` under the fixed seed, but has not been.
 
 A genuine raw comparison *is* available for the parts never overwritten:
 `behavioral_sweep_{2002,2022}.csv`, `empirical_runs_prob_*.csv` and

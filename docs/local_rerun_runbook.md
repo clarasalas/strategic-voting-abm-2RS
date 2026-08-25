@@ -545,12 +545,12 @@ for name, year in pairs:
 PY
 ```
 
-> **State this in any write-up:** a direct raw before/after comparison of the
-> **main replay** is impossible. Its pre-fix outputs were overwritten on
+> **State this in any write-up:** no archived raw before/after comparison of the
+> **main replay** exists. Its pre-fix outputs were overwritten on
 > 2026-08-19 by a `--quick` run and were never committed, so the archived
-> `empirical_runs_{2002,2022}.csv` are that smoke run. For the main replay the
-> archived logs, figures and fiche snapshot are **historical evidence only**.
-> The comparison above is genuine only for the sweeps, the probabilistic
+> `empirical_runs_{2002,2022}.csv` are that smoke run. A pre-fix baseline could
+> be regenerated from commit `70e23f5` under the fixed seed, but has not been.
+> The comparison above is direct only for the sweeps, the probabilistic
 > variants and the diagnostics, which were never overwritten.
 
 **3 · Produce the proposed fiche updates.** Work from

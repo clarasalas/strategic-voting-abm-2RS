@@ -104,11 +104,11 @@ close rankings.
 
 ### 2.5 Change and rerun record — partial
   The τ unit error, its scope, and the audit showing the synthetic path was a
-  pure refactor. Include the standing caveat: **no raw before-versus-after
-  comparison of the main replay is possible**, because the pre-fix full outputs
-  were overwritten on 2026-08-19 and were never committed. Archived logs,
-  figures and the fiche snapshot are historical evidence only. Ready to write
-  now except for the after-side numbers.
+  pure refactor. Include the standing caveat: **no archived raw
+  before-versus-after comparison of the main replay exists**, because the
+  pre-fix full outputs were overwritten on 2026-08-19 and were never committed.
+  One could be regenerated from commit `70e23f5` under the fixed seed, but has
+  not been. Ready to write now except for the after-side numbers.
 
 ### 2.6 Reproducibility — ready
   Python version, `requirements.txt`, seeds, the exact commands

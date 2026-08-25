@@ -56,15 +56,19 @@ environments are the identifying facts. CI is the authoritative check.
 repository are under `tests/`, and collection with and without the repository's
 `pytest.ini` returns the same test IDs, so the setting hides nothing.
 
-### No skipped tests
+### How the suite reached zero skips
 
-The suite has **no skips at all** — not in CI, not on a fresh clone. Four were
-removed in two passes, none replaced by a weaker check:
+The suite has **no skips at all** — not in CI, not on a fresh clone. Four tests
+were removed in two passes, none replaced by a weaker check. Three bear on the
+headline and are below; the fourth was the Panel E branch of
+`test_panel_table_reports_repetitions`, which skipped by construction because
+Panel E is analytic and declares no `n_reps` column. Its parametrization now
+derives from `PANEL_SCHEMAS`, and a guard fails if any *other* panel loses that
+column.
 
-| Removed | Why it was meaningless | What covers it now |
+| Removed | What it actually asserted | What covers it now |
 |---|---|---|
 | `test_cli_refuses_an_unhonourable_signal_epsilon` | Asserted `--signal-epsilon` was *refused*, because ε<sub>s</sub> could not reach `run_simulation`. That plumbing exists, so it could only skip. | [`test_signal_epsilon.py`](../tests/test_signal_epsilon.py) asserts every `generate_signal` call receives the value. |
-| Panel E branch of `test_panel_table_reports_repetitions` | Panel E is analytic and declares no `n_reps` column. | Parametrization derives from `PANEL_SCHEMAS`; a guard fails if any *other* panel loses the column. |
 | `test_real_horizon_raw_passes_validation` | Read a 213 KB git-ignored generated file, so it skipped everywhere but the author's machine. | Four tests build a synthetic frame with the real schema and shape (54 configurations × 8 seeds = 432 rows) and check the validator accepts it and rejects a short run, a wrong ε<sub>s</sub> and a non-finite outcome. |
 | `test_regeneration_reproduces_the_committed_tables` | Needed 17 MB of git-ignored simulation output. | Three tests build their own fixture inputs and check the generator is deterministic, exact through a CSV round trip, and refuses corrupt input. The real-data check runs as a pipeline step — see below. |
 
@@ -286,8 +290,9 @@ Two configurations are pinned, both chosen to exercise the strategic path:
 
 > This family exists because of a real incident: on 2026-08-19 a 15-draw
 > `--quick` run silently overwrote the full 300-draw main-replay outputs, which
-> were never committed (`data/` is git-ignored). Those pre-fix results are
-> **permanently unrecoverable**. The protection was written so it cannot recur.
+> were never committed (`data/` is git-ignored). Recovering them would mean
+> regenerating from the pre-fix commit. The protection was written so it cannot
+> recur.
 
 ### 9 · Resume equivalence
 
@@ -403,21 +408,14 @@ filenames, columns and paths, which is where pipelines actually break.
 |---|---|---|
 | A · *N* | voters before ΔCENP stabilises | *N* = 2000 |
 | B · *T*<sub>max</sub> | do vote intentions reach a fixed point? | *T* = 25 |
-| C · ε<sub>s</sub> | is ΔCENP invariant to the signal offset? | ε<sub>s</sub> = **1e-12** (see caveat) |
+| C · ε<sub>s</sub> | is ΔCENP invariant to the signal offset? | ε<sub>s</sub> = **1e-12** (see scope note) |
 | D · ξ | does electorate centre matter, or only geometry? | ξ = 0 |
 | E · θ | what does temperature do mechanically? | analytic, no runs |
 | F · μ | does μ suppress switching monotonically? | documents μ |
 | G · truncation | does the *T* = 25 ceiling reach reported outcomes? | validates *T* = 25 |
 
-> ⚠️ **Panel C was invalid and has been regenerated — read its claim narrowly.**
-> In its original form the ε<sub>s</sub> value *never reached the simulation*, so
-> all five grid points produced bit-identical output and the "invariance" it
-> appeared to show was vacuous. ε<sub>s</sub> is now a real parameter
-> (`run_simulation(signal_epsilon=…)`), the grid includes the **1e-12** actually
-> in force, and the results genuinely vary.
->
-> What the corrected panel establishes: **Panel C evaluates six `signal_epsilon`
-> values across four selected parameter configurations. It establishes local
+> **Panel C — the claim, precisely.** Panel C evaluates six `signal_epsilon`
+> values across four selected parameter configurations. It establishes **local
 > robustness for those tested configurations, not invariance across the full
 > Saltelli parameter space.**
 >
@@ -425,6 +423,11 @@ filenames, columns and paths, which is where pipelines actually break.
 > Sweet-spot} × {θ = 0.3, θ = 1.0}, 10 repetitions each — 24 rows in
 > [`robustness_panel_C.csv`](../results/tables/robustness_panel_C.csv). Within
 > those configurations, 1e-12, 1e-6 and 1e-4 return identical voting outcomes.
+>
+> These numbers are a regeneration — in the panel's original form ε<sub>s</sub>
+> never reached the simulation, so every grid point was bit-identical and the
+> invariance it appeared to show was vacuous; earlier copies of this panel
+> disagree with the committed one.
 
 **Panel G qualifies Panel B.** Panel B shows the diffuse regime (*c* = 2.5) never
 reaches a fixed point — 70 % of runs are still moving at the ceiling. Panel G
@@ -515,12 +518,9 @@ pre-fix `tau >= 2.0` warning appears **zero** times in the simulation logs.
   **−0.187** — worse than predicting the mean. The script emits its
   low-performance warning below 0.1. Per-year scopes (R² 0.853 and 0.991) are
   sound; the pooled row should not be cited.
-- **No pre-fix baseline exists for the nearest-party replay.** See family 8.
-  Comparisons for that specification rest on archived logs and figures as
-  historical evidence only.
-- **CI is not yet merged.** The workflow is pushed on the `add-ci-workflow`
-  branch but has never run: it triggers only on `main`, and the branch is
-  neither merged nor in an open pull request.
+- **No pre-fix baseline is archived for the nearest-party replay.** See family
+  8. A baseline could be regenerated from the pre-fix commit (`70e23f5`) under
+  the fixed seed, but has not been.
 
 ---
 

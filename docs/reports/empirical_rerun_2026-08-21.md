@@ -230,12 +230,12 @@ dominant driver.
 
 ## 6. Known limitations
 
-- **No pre-fix baseline exists for the `nearest` specification.** Its raw
+- **No pre-fix baseline is archived for the `nearest` specification.** Its raw
   outputs were overwritten on 2026-08-19 by a 15-draw `--quick` run and had
-  never been committed (`data/` is git-ignored). They are **permanently
-  unrecoverable**. Direct before/after comparison is valid only for the sweeps,
-  the probabilistic variants and the diagnostics; for `nearest` the archived
-  logs and figures are historical evidence only.
+  never been committed (`data/` is git-ignored). Direct before/after comparison
+  is available only for the sweeps, the probabilistic variants and the
+  diagnostics; for `nearest` a baseline could be regenerated from the pre-fix
+  commit (`70e23f5`) under the fixed seed, but has not been.
 
   This also affects `empirical_candidate_shares_{2002,2022}.csv`, whose row
   count is the number of candidates and therefore matches the new file exactly

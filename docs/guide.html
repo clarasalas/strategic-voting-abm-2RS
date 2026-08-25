@@ -764,7 +764,7 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   on a fresh clone — in both environments, with the same result. No test depends on generated output.</p>
 
   <div class="note">
-    <p><strong>No skipped tests.</strong> Four were removed across two passes, none replaced by a weaker
+    <p><strong>How the suite reached zero skips.</strong> Four tests were removed across two passes, none replaced by a weaker
     check: two that could only ever skip once the code they guarded had changed, and two that read
     git-ignored generated files and therefore skipped everywhere but one machine. The latter two were
     rebuilt on fixtures they construct themselves.</p>
@@ -827,8 +827,8 @@ def tau_absolute(tau_hat: float, K: int) -> float:
     <summary>The incident behind output-isolation testing</summary>
     <div class="det-body">
       <p>On 2026-08-19 a 15-draw <code>--quick</code> run silently overwrote the full 300-draw main-replay
-      outputs, which had never been committed (<code>data/</code> is git-ignored). Those pre-fix results
-      are <strong>permanently unrecoverable</strong>. The protection was written so it cannot recur: quick
+      outputs, which had never been committed (<code>data/</code> is git-ignored). Recovering them would
+      mean regenerating from the pre-fix commit. The protection was written so it cannot recur: quick
       mode writes to a <em>separate directory</em>, which makes the dangerous case unrepresentable rather
       than merely discouraged.</p>
     </div>
@@ -843,9 +843,9 @@ def tau_absolute(tau_hat: float, K: int) -> float:
     {θ = 0.3, θ = 1.0}, 10 repetitions each — 24 rows in
     <code>robustness_panel_C.csv</code>. Within those configurations, 1e-12, 1e-6 and 1e-4 return
     identical voting outcomes.</p>
-    <p>In its original form the ε<sub>s</sub> value <em>never reached the simulation</em>, so every grid
-    point produced bit-identical output and the "invariance" it appeared to show was vacuous. It has
-    since been fixed and regenerated.</p>
+    <p>These numbers are a regeneration — in the panel's original form ε<sub>s</sub> never reached the
+    simulation, so every grid point was bit-identical and the invariance it appeared to show was
+    vacuous; earlier copies of this panel disagree with the committed one.</p>
   </div>
 
   <h4>What the protocol constants are, and are not, justified by</h4>
@@ -915,32 +915,6 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   across the two environments tested — a measurement of those configurations, not a guarantee for every
   future numpy or pandas, which is what the regression tests exist to catch.</p>
 
-  <h4>No skipped tests</h4>
-  <p>The suite previously carried two permanent skips. Both are gone, and neither was replaced by a
-  weaker check.</p>
-  <div class="tw"><table>
-    <thead><tr><th>Removed</th><th>Why it was meaningless</th><th>What covers it now</th></tr></thead>
-    <tbody>
-      <tr>
-        <td><code>test_cli_refuses_an_unhonourable_signal_epsilon</code></td>
-        <td>Asserted that <code>--signal-epsilon</code> was <em>refused</em>, because ε<sub>s</sub>
-        could not reach <code>run_simulation</code>. That plumbing exists now, so the test could only
-        ever skip.</td>
-        <td><code>test_signal_epsilon.py</code> asserts the positive direction: every
-        <code>generate_signal</code> call receives the value, on both the initial and iterative paths,
-        parametrized over several values.</td>
-      </tr>
-      <tr>
-        <td>the Panel E branch of <code>test_panel_table_reports_repetitions</code></td>
-        <td>Panel E is analytic and declares no <code>n_reps</code> column, so the check skipped by
-        construction.</td>
-        <td>The parametrization is derived from <code>PANEL_SCHEMAS</code>, so only panels declaring
-        <code>n_reps</code> are tested, and a new guard fails if any <em>other</em> panel loses that
-        column. Panel E's own contract is covered by two analytic tests.</td>
-      </tr>
-    </tbody>
-  </table></div>
-
   <h4>Warning policy</h4>
   <p>The suite runs clean. Filters live in <code>pytest.ini</code> and no category is ignored
   wholesale — every entry pins a specific message and, where possible, the module that raises it, so
@@ -976,9 +950,9 @@ def tau_absolute(tau_hat: float, K: int) -> float:
     <li><strong>Pooled parameter importance is not interpretable.</strong> Its 5-fold CV R² is
     <strong>−0.187</strong> — worse than predicting the mean. Per-year scopes (R² 0.853 and 0.991) are
     sound; the pooled row should not be cited.</li>
-    <li><strong>No pre-fix baseline exists for the nearest-party replay</strong> — see the incident above.</li>
-    <li><strong>CI is not yet merged.</strong> The workflow exists on <code>add-ci-workflow</code> but is
-    unpushed, pending a token with <code>workflow</code> scope.</li>
+    <li><strong>No pre-fix baseline is archived for the nearest-party replay</strong> — see the incident
+    above. One could be regenerated from the pre-fix commit (<code>70e23f5</code>) under the fixed seed,
+    but has not been.</li>
   </ul>
 </section>
 
@@ -1084,12 +1058,12 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   <p>30 / 30 stages OK, no failures. τ relation verified to 1e-12 in all 14 output files; zero
   <code>tau ≥ 2</code> warnings across 30 simulation logs.</p>
 
-  <div class="note stop">
-    <span class="tag">A permanent gap in the record</span>
-    <p>Pre-fix raw outputs for the <code>nearest</code> specification are <strong>unrecoverable</strong> —
-    overwritten on 2026-08-19 and never committed. Before/after comparison is valid for the sweeps, the
-    probabilistic variants and the diagnostics; for <code>nearest</code>, the archived logs and figures are
-    historical evidence only.</p>
+  <div class="note warn">
+    <span class="tag">A gap in the record</span>
+    <p>Pre-fix raw outputs for the <code>nearest</code> specification were not archived — overwritten on
+    2026-08-19 and never committed. Direct before/after comparison is available for the sweeps, the
+    probabilistic variants and the diagnostics; for <code>nearest</code> a baseline could be regenerated
+    from the pre-fix commit (<code>70e23f5</code>) under the fixed seed, but has not been.</p>
   </div>
 
   <h3 id="pipeline">Pipeline, quick mode, and resume rules</h3>

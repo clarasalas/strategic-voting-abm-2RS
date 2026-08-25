@@ -7,12 +7,11 @@ against the French presidential first rounds of **2002** and **2022**.
 [![python](https://img.shields.io/badge/python-3.10%2B-blue)](docs/reproducibility.md)
 [![license](https://img.shields.io/badge/data-Ipsos%20%C2%B7%20Min.%20Int%C3%A9rieur-lightgrey)](docs/experiments.md#data-sources)
 
-> 📖 **[Model & Validation Guide](docs/index.md)** — the canonical technical
-> documentation: how the model works, how it is verified, and how to reproduce
+> 📖 **[Model & Validation Guide](docs/index.md)**: how the model works, how it is verified, and how to reproduce
 > every number here.
 
 > The test suite runs in CI on every push and pull request. Local runs are
-> recorded with their date and commit — see the
+> recorded with their date and commit. See the
 > [verification snapshot](docs/validation.md#verification-snapshot).
 
 ---
@@ -22,7 +21,7 @@ against the French presidential first rounds of **2002** and **2022**.
 Voters sit on a left–right axis. Each has a sincere preference, watches a public
 poll signal, and forms beliefs about who will reach the two-candidate runoff. A
 voter abandons their preferred candidate **only** when no candidate they can
-tolerate is projected to qualify — otherwise they vote sincerely.
+tolerate is projected to qualify – otherwise they vote sincerely.
 
 The model asks what aggregate coordination that rule produces, and whether it
 matches two real elections with opposite outcomes.
@@ -34,9 +33,7 @@ across several candidates and its front-runner missed the runoff entirely.
 **2022** is the contrasting case, with visible consolidation.
 
 The project is deliberately **not** a fitting exercise. One behavioural draw is
-applied to both years and only the environment changes — a research prototype
-built to demonstrate a coherent scientific and engineering process, not to
-predict elections.
+applied to both years and only the environment changes
 
 ## How does it work?
 
@@ -56,7 +53,7 @@ flowchart LR
 
 Each iteration: voters see a poll, update beliefs, work out who they can
 tolerate, project who will qualify, and switch only if no tolerable candidate
-can make it — weighed against the cost of abandoning their favourite.
+can make it, weighed against the cost of abandoning their favourite.
 
 Two modes share the same core. **Synthetic** generates the electorate and the
 poll signal, and asks which parameters drive coordination. **Empirical** holds
@@ -135,8 +132,7 @@ regenerate from a seed. Only the derived tables are committed.
 
 **The Markdown documentation in this repository is the canonical version.**
 Everything needed to understand, verify or reproduce this project lives under
-[`docs/`](docs/index.md) and reads directly on GitHub — no documentation site,
-no build step, no external service.
+[`docs/`](docs/index.md) and reads directly on GitHub.
 
 A [navigable single-page rendering](https://clarasalas.github.io/strategic-voting-abm-2RS/guide.html) of the same material is published
 through GitHub Pages as a convenience mirror. It is **optional**: it is

@@ -559,8 +559,8 @@ footer p{max-width:none}
       <tr><td class="n">3.0</td><td class="n"><strong>0.400</strong></td><td class="n"><strong>0.500</strong></td></tr>
     </tbody>
   </table></div>
-  <p>That is the point: τ̂ is comparable across party systems of different size, which is exactly what a
-  two-election comparison needs.</p>
+  <p>That is what τ̂ is for: it stays comparable across party systems of different size, which is exactly
+  what a two-election comparison needs.</p>
 
   <h4>Where the conversion occurs</h4>
   <p><strong>Exactly once</strong>, in <code>core_model/metrics.py</code>:</p>
@@ -608,7 +608,7 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   </table></div>
   <div class="note warn">
     <span class="tag">ε<sub>s</sub> = 1e-12, not 1e-4</span>
-    <p>The floor is a numerical guard, not a smoothing parameter. Earlier documentation quoted
+    <p>The floor is a numerical guard with no smoothing role. Earlier documentation quoted
     <code>1e-4</code>; that value is obsolete. The current default is at <code>model.py:100</code> and is
     pinned by <code>tests/test_signal_epsilon.py</code> (25 tests).</p>
   </div>
@@ -621,7 +621,7 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   <h4>Belief update</h4>
   <div class="eq"><em>t</em> = 0: m<sup>0</sup><sub>a</sub> = π<sub>a</sub> &nbsp;&nbsp;·&nbsp;&nbsp; <em>t</em> &gt; 0: m<sup>t</sup><sub>a</sub> = <span class="em">α · π<sub>a</sub> + (1 − α) · s<sup>t</sup></span></div>
   <p>The previous posterior is never reused. Inertia is anchored to the fixed prior
-  π<sub>a</sub>, not to an evolving belief state. At <em>t</em> = 0 the posterior is set to π<sub>a</sub>
+  π<sub>a</sub> rather than to an evolving belief state. At <em>t</em> = 0 the posterior is set to π<sub>a</sub>
   directly, avoiding double-counting <em>s</em><sup>0</sup>, which already generated π<sub>a</sub>.</p>
 
   <h4 id="inert">Which parameters are inactive in empirical replay</h4>
@@ -810,10 +810,10 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   </details>
 
   <details>
-    <summary>Metamorphic properties were derived, not assumed</summary>
+    <summary>Where the metamorphic properties come from</summary>
     <div class="det-body">
-      <p>Candidate-relabelling invariance and left-right reflection symmetry were <strong>derived from
-      the equations before being asserted</strong>. All 120 relabellings were exhaustively verified, and
+      <p>Candidate-relabelling invariance and left-right reflection symmetry were derived from the
+      equations before anything asserted them. All 120 relabellings were exhaustively verified, and
       reflection was checked at five voter positions. Both hold with no counterexample. Had one failed,
       the contract itself would have been the thing in question, ahead of the code.</p>
     </div>
@@ -863,9 +863,8 @@ def tau_absolute(tau_hat: float, K: int) -> float:
     </tbody>
   </table></div>
   <div class="note warn">
-    <p>The defensible statement is <strong>"aggregate results are robust to the <em>T</em> = 25 ceiling;
-    individual trajectories are not"</strong>. A flat claim that the model converges by <em>T</em> = 25
-    is not supported by these panels.</p>
+    <p>Aggregate results are robust to the <em>T</em> = 25 ceiling, while individual trajectories are
+    not. A flat claim that the model converges by <em>T</em> = 25 is unsupported by these panels.</p>
   </div>
 
   <h3 id="determinism">Reproducibility guarantees</h3>
@@ -890,8 +889,8 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   <p>Finalising a sweep file reads it and writes it back, so it has to be a fixed point: finalising
   twice must produce the same bytes as finalising once. Otherwise a resumed run and an uninterrupted
   run yield different files from identical numbers.</p>
-  <p>The cause of a failure CI caught on 2026-08-22 was the <strong>reader</strong>, not the writer:
-  pandas' default float parser is fast but not correctly rounded, so it can return a double one ulp
+  <p>CI caught a failure on 2026-08-22 that came from the reader rather than the writer. pandas'
+  default float parser is fast but not correctly rounded, so it can return a double one ulp
   from the value the text denotes. Reading with <code>float_precision="round_trip"</code> fixes it at
   source. Three writer representations were measured on 60 000 adversarial doubles in both dependency
   environments. <code>repr</code> as a callable is rejected (under numpy 2 it emits
@@ -915,9 +914,9 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   <p>The suite runs clean. Filters live in <code>pytest.ini</code> and no category is ignored
   wholesale. Every entry pins a specific message and, where possible, the module that raises it, so
   a <em>new</em> warning of the same category still surfaces.</p>
-  <p><strong>Numerical warnings are promoted to errors</strong> (<code>error::RuntimeWarning</code>):
-  an overflow, an invalid value or a divide-by-zero inside the model is a result-changing event, not
-  a note. The suite emits none, so this costs nothing and catches the next one.</p>
+  <p>Numerical warnings are promoted to errors (<code>error::RuntimeWarning</code>). An overflow, an
+  invalid value or a divide-by-zero inside the model changes results, so it should stop the suite
+  rather than print a note. The suite emits none, so this costs nothing and catches the next one.</p>
 
   <div class="note warn">
     <span class="tag">Two counts, two configurations</span>
@@ -991,8 +990,9 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   </table></div>
   <div class="note warn">
     <span class="tag">Two similarly named epsilons</span>
-    <p><code>epsilon</code> here is the electorate floor weight ε<sub>F</sub>, <strong>not</strong> the
-    signal offset ε<sub>s</sub>. ε<sub>s</sub> is fixed at 1e-12 and is not in the Saltelli problem.</p>
+    <p><code>epsilon</code> here is the electorate floor weight ε<sub>F</sub>, and not the signal offset
+    ε<sub>s</sub>. They are different parameters with similar names. ε<sub>s</sub> is fixed at 1e-12
+    and is not in the Saltelli problem.</p>
   </div>
   <p>Run separately for <em>K</em> ∈ {6, 8, 9} to separate odd/even geometry.</p>
 
@@ -1005,8 +1005,9 @@ def tau_absolute(tau_hat: float, K: int) -> float:
 
   <div class="note key">
     <span class="tag">The defining design decision</span>
-    <p><strong>Pattern-oriented calibration, not parameter recovery.</strong> One behavioural draw is
-    applied to <em>both</em> years; only the environment changes between them. No parameter is fitted.</p>
+    <p>The empirical mode calibrates on patterns rather than recovering parameters. One behavioural draw
+    is applied to <em>both</em> years, only the environment changes between them, and no parameter is
+    fitted.</p>
   </div>
 
   <details>
@@ -1036,8 +1037,8 @@ def tau_absolute(tau_hat: float, K: int) -> float:
     </tbody>
   </table></div>
   <div class="note">
-    <p>The importance seed is <strong>42</strong>, not <code>20020422</code>. The latter is the
-    <em>design</em> seed and belongs to the sweep, not to the surrogate.</p>
+    <p>The importance seed is 42, not <code>20020422</code>. The latter is the <em>design</em> seed and
+    belongs to the sweep rather than to the surrogate.</p>
   </div>
 
   <div class="tw"><table>
@@ -1102,8 +1103,7 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   <p class="lede">Install, run a smoke example, regenerate every committed artefact.</p>
 
   <h3>Installation</h3>
-  <p>Requires <strong>Python 3.10 or later</strong>; every committed result was produced under
-  <strong>3.11</strong>.</p>
+  <p>Requires Python 3.10 or later. Every committed result was produced under 3.11.</p>
   <pre><code>git clone https://github.com/clarasalas/strategic-voting-abm-2RS.git
 cd strategic-voting-abm-2RS
 python -m pip install -r requirements.txt
@@ -1192,9 +1192,8 @@ python analysis/empirical/lhs_importance.py</code></pre>
       </tr>
     </tbody>
   </table></div>
-  <p>So: <strong>6</strong> carry a byte-reproducibility contract; <strong>7</strong> were added by the
-  2026-08-21 empirical rerun (those 6 plus the importance table); <strong>15</strong> are synthetic and
-  predate it; <strong>22</strong> are tracked in total.</p>
+  <p>Of the 22 tracked tables, 6 carry a byte-reproducibility contract, 7 were added by the 2026-08-21
+  empirical rerun (those 6 plus the importance table), and 15 are synthetic and predate it.</p>
 
   <h3>What is committed and what is not</h3>
   <div class="tw"><table>
@@ -1206,7 +1205,7 @@ python analysis/empirical/lhs_importance.py</code></pre>
       <tr><td>All source, tests and docs</td><td><code>logs/</code>, <code>analysis/**/outputs/</code></td></tr>
     </tbody>
   </table></div>
-  <p>The principle: <strong>commit the numbers a reader needs to cite; regenerate the rest.</strong></p>
+  <p>The principle is to commit the numbers a reader needs to cite and regenerate the rest.</p>
 </section>
 
 <!-- ============ 05 CODE MAP ============ -->

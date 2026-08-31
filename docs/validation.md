@@ -5,12 +5,10 @@
 How we know the implementation is coherent and the analytical process is
 reproducible. Organised by type of check rather than by chronology.
 
-> **Scope of this page.** This page covers *implementation correctness*:
-> whether the code does what it claims and whether the process is reproducible.
-> How well the model reproduces the two elections is a separate question,
-> recorded in the [empirical rerun
-> record](reports/empirical_rerun_2026-08-21.md), and it is not evidence about
-> the implementation either way.
+> **Scope of this page.** Implementation correctness: whether the code does
+> what it claims, and whether the process is reproducible. How well the model
+> reproduces the two elections is recorded separately, in the [empirical rerun
+> record](reports/empirical_rerun_2026-08-21.md).
 
 ---
 

@@ -5,11 +5,9 @@
 A dated record of the corrected empirical rerun: what was wrong, what was run,
 how it was validated, and what it produced.
 
-> **Scope.** This is a process and validation record for a **research
-> prototype**, written to document a reproducible empirical stress test. It
-> reports what the corrected pipeline produced. It is not a study of how well
-> the model fits French elections, and it makes no recommendation about
-> calibration or model design.
+> **Scope.** A process and validation record for a research prototype,
+> documenting a reproducible empirical stress test and reporting what the
+> corrected pipeline produced.
 
 | | |
 |---|---|

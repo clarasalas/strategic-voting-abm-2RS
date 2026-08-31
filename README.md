@@ -33,10 +33,9 @@ matches two real elections with opposite outcomes.
 several candidates and its front-runner missed the runoff entirely. 2022 is the
 contrasting case, with visible consolidation.
 
-There is no fitting step anywhere in the project. One behavioural draw is
-applied to both years and only the environment changes. This is a research
-prototype meant to demonstrate a coherent scientific and engineering process,
-and it makes no attempt to predict elections.
+One behavioural draw is applied to both years and only the environment changes;
+nothing is fitted to either election. It is a research prototype, built to
+demonstrate a coherent scientific and engineering process.
 
 ## How does it work?
 

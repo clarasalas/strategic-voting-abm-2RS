@@ -61,17 +61,12 @@ validation status and outputs.
 
 ---
 
-## What this project does and does not claim
+## Scope
 
-It does claim to be a coherent, tested, reproducible implementation of a
-specific strategic-voting rule, with its behaviour under both abstract and real
-electoral structures characterised and documented.
-
-It does not claim to be a predictive model of French elections, a fitted model,
-or a parameter-recovery exercise. The empirical mode is *pattern-oriented*: one
-behavioural draw is applied to both years, and only the environment changes.
-Where the model fails to reproduce reality, that failure is documented rather
-than tuned away.
+The empirical mode is *pattern-oriented*. One behavioural draw is applied to
+both years, only the environment changes, and nothing is fitted to either
+election. Where the model diverges from the real result, the divergence is
+recorded as it stands.
 
 ---
 

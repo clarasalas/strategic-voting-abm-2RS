@@ -406,14 +406,10 @@ footer p{max-width:none}
   generated, so <a href="#inert">every signal-generating parameter is inert</a>.</p>
 
   <div class="note key">
-    <span class="tag">What this project claims</span>
-    <p><strong>It does claim</strong> to be a coherent, tested, reproducible implementation of a specific
-    strategic-voting rule, with its behaviour under both abstract and real electoral structures
-    characterised and documented.</p>
-    <p><strong>It does not claim</strong> to be a predictive model of French elections, a fitted model, or
-    a parameter-recovery exercise. The empirical mode is <em>pattern-oriented</em>: one behavioural draw
-    is applied to both years, and only the environment changes. Where the model fails to reproduce
-    reality, that failure is documented rather than tuned away.</p>
+    <span class="tag">Scope</span>
+    <p>The empirical mode is <em>pattern-oriented</em>. One behavioural draw is applied to both years,
+    only the environment changes, and nothing is fitted to either election. Where the model diverges
+    from the real result, the divergence is recorded as it stands.</p>
   </div>
 </section>
 
@@ -734,9 +730,9 @@ def tau_absolute(tau_hat: float, K: int) -> float:
 
   <div class="note key">
     <span class="tag">Scope of this section</span>
-    <p>This section covers implementation correctness rather than how well the model fits the
-    French elections. Whether the empirical fit is good is a scientific finding, and it is not evidence
-    of a working or broken implementation.</p>
+    <p>Implementation correctness: whether the code does what it claims, and whether the process is
+    reproducible. How well the model fits the French elections is recorded separately, in the rerun
+    record.</p>
   </div>
 
   <div class="tw"><table>

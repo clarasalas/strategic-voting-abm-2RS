@@ -13,7 +13,7 @@ here is copy-pasteable and needs no Claude session.
 | **Expected finish** | ≈ 21:45 local (~8 h 40 min) |
 | **Total simulations** | 14,000 |
 
-Set this once per terminal — every command below assumes it:
+Set this once per terminal, because every command below assumes it:
 
 ```bash
 cd ~/Desktop/strategic-voting-abm-2RS
@@ -75,7 +75,7 @@ Sweep progress at a glance:
 grep "draws done" $LOGDIR/03a_sweep_2002.log | tail -5
 ```
 
-**Marker files** — exactly one of these appears at the end:
+**Marker files.** Exactly one of these appears at the end:
 
 ```bash
 ls -la $LOGDIR/COMPLETE    # success
@@ -90,8 +90,8 @@ cat $LOGDIR/run_metadata.json
 ```
 
 **Stopping the pipeline** (only if you need to). This kills the whole process
-group — the driver, `caffeinate`, and the running Python — so nothing is left
-orphaned:
+group, meaning the driver, `caffeinate`, and the running Python, so nothing is
+left orphaned:
 
 ```bash
 PID=$(cat $LOGDIR/rerun.pid)
@@ -105,16 +105,16 @@ ps -p "$(cat $LOGDIR/rerun.pid)" -o pid= || echo "stopped"
 ```
 
 A behavioural sweep stopped this way keeps every completed draw and can be
-resumed — see §3. A replay stage stopped this way must restart from zero.
+resumed; see §3. A replay stage stopped this way must restart from zero.
 
 ---
 
 ## 2. Stage order and expected duration
 
-**Simulation stages: 1–3.** These are the ~8.5 hours. Stages 4–8 run no
+**Simulation stages: 1 to 3.** These are the ~8.5 hours. Stages 4 to 8 run no
 simulation at all and take minutes in total.
 
-### Stage 1 · `01_replay_nearest` — simulation
+### Stage 1 · `01_replay_nearest` (simulation)
 
 | | |
 |---|---|
@@ -138,11 +138,11 @@ Outputs and expected rows:
 
 Validation afterwards: `01_check_runs_2002`, `01_check_runs_2022`,
 `01_check_robust_2002`, `01_check_robust_2022`, `01_check_draws_2002`,
-`01_check_draws_2022` — each runs `tools/validate_rerun.py` (schema, K,
+`01_check_draws_2022`. Each runs `tools/validate_rerun.py` (schema, K,
 `tau_absolute = tau_hat × 2/K`, year ceiling, row count, finiteness, and for the
 runs files, that no `tau >= 2.0` warning appears in the stage log).
 
-### Stage 2 · `02a_prob_signal`, `02b_prob_prior`, `02c_prob_signal_mu0` — simulation
+### Stage 2 · `02a_prob_signal`, `02b_prob_prior`, `02c_prob_signal_mu0` (simulation)
 
 | | |
 |---|---|
@@ -164,12 +164,12 @@ Outputs per variant `v ∈ {prob_signal, prob_prior, prob_signal_mu0}`:
 | `data/empirical_candidate_shares_<v>_2002.csv` | 15 |
 | `data/empirical_candidate_shares_<v>_2022.csv` | 12 |
 
-Robustness is skipped automatically for these — the runner restricts it to
+Robustness is skipped automatically for these, because the runner restricts it to
 `--sincere-init nearest`.
 
 Validation afterwards: `02_check_<v>_<year>`, six in total.
 
-### Stage 3 · `03a_sweep_2002`, `03b_sweep_2022` — simulation, the long one
+### Stage 3 · `03a_sweep_2002`, `03b_sweep_2022` (simulation, the long one)
 
 | | |
 |---|---|
@@ -184,12 +184,12 @@ Validation afterwards: `02_check_<v>_<year>`, six in total.
 | `data/behavioral_sweep_2002.csv` | 1000 |
 | `data/behavioral_sweep_2022.csv` | 1000 |
 | `data/behavioral_sweep_<year>_design.csv` | 1000 |
-| `data/behavioral_sweep_<year>_meta.json` | — (sidecar) |
+| `data/behavioral_sweep_<year>_meta.json` | n/a (sidecar) |
 
 Validation afterwards: `03_check_sweep_2002` runs immediately after 2002 and
 before 2022 starts, so a unit error is caught after 3.5 hours rather than 7.
 
-### Stage 4 · `04a_diag_nearest` … `04d_diag_prob_signal_mu0` — no simulation
+### Stage 4 · `04a_diag_nearest` … `04d_diag_prob_signal_mu0` (no simulation)
 
 | | |
 |---|---|
@@ -212,25 +212,25 @@ pairs.
 
 Validation afterwards: none automated. Row counts are checked in §4.
 
-### Stage 5 · `05_figures` — no simulation
+### Stage 5 · `05_figures` (no simulation)
 
-`python3 analysis/empirical/empirical_figures.py` · depends on stages 1–2 ·
+`python3 analysis/empirical/empirical_figures.py` · depends on stages 1 and 2 ·
 minutes · overwrites the empirical PNG/PDF pairs in `figures/`.
 
-### Stage 6 · `06a_compare`, `06b_sweep_figure` — no simulation
+### Stage 6 · `06a_compare`, `06b_sweep_figure` (no simulation)
 
 `python3 analysis/empirical/behavioral_compare.py` and
 `python3 analysis/empirical/behavioral_sweep_figure.py` · depend on stage 3 ·
 minutes · write `data/behavioral_compare_2002_2022.csv` and
 `figures/behavioral_sweep.{png,pdf}`.
 
-### Stage 7 · `07_lhs_importance` — no simulation
+### Stage 7 · `07_lhs_importance` (no simulation)
 
 `python3 analysis/empirical/lhs_importance.py` · depends on stage 3 · minutes ·
 writes **`results/tables/lhs_parameter_importance.csv`** (15 rows: 5 parameters
 × 3 scopes). This is the file that turns 4 currently skipped tests into passes.
 
-### Stage 8 · `08a_pytest`, `08b_archive_intact` — no simulation
+### Stage 8 · `08a_pytest`, `08b_archive_intact` (no simulation)
 
 `python3 -m pytest -ra`, then the archive checksum verification. Minutes.
 
@@ -241,7 +241,7 @@ writes **`results/tables/lhs_parameter_importance.csv`** (15 rows: 5 parameters
 | Stage 1 | 1,200 | ~17 min |
 | Stage 2 | 4,800 | ~65 min |
 | Stage 3 | 8,000 | ~7 h 05 min |
-| Stages 4–8 | 0 | ~10 min |
+| Stages 4-8 | 0 | ~10 min |
 | **Total** | **14,000** | **~8 h 40 min** |
 
 ---
@@ -267,7 +267,7 @@ the commands in §2 in order.
 **Why:** `tail -40 "$LOGDIR/$STAGE.log"`.
 
 **What may be partial:** the runner writes a year's files only after that year
-finishes, so a mid-run failure typically leaves 2002 written and 2022 absent —
+finishes, so a mid-run failure typically leaves 2002 written and 2022 absent,
 a partial set. `--overwrite` refuses nothing; the guard only blocks a run that
 was *not* asked to replace.
 
@@ -301,7 +301,7 @@ every completed draw. Check how far it got:
 echo "$(( $(wc -l < data/behavioral_sweep_2002.csv) - 1 )) / 1000 draws"
 ```
 
-**Restart, overwrite or resume:** **resume.** Do *not* use `--overwrite` — it
+**Restart, overwrite or resume: resume.** Do *not* use `--overwrite`, because it
 discards up to 3.5 hours of completed draws. `--resume` validates year, seed,
 `n_draws`, `n_repeats`, the schema version and a fingerprint of the design, and
 cross-checks every retained row against the recomputed design before continuing.
@@ -322,7 +322,7 @@ python3 analysis/empirical/behavioral_sweep.py \
 test "${PIPESTATUS[0]}" -eq 0 || echo "STILL FAILING"
 ```
 
-**Never pass `--resume` and `--overwrite` together** — the CLI refuses it.
+**Never pass `--resume` and `--overwrite` together.** The CLI refuses it.
 
 If `--resume` itself refuses, it prints exactly which check failed. That means
 the partial file does not belong to this experiment; do not force it. Move it
@@ -358,7 +358,7 @@ python3 analysis/empirical/lhs_importance.py
 
 ### Stage 8 failed
 
-`08a_pytest` failing means a test broke against the regenerated outputs —
+`08a_pytest` failing means a test broke against the regenerated outputs,
 investigate, do not re-run the simulations. `08b_archive_intact` failing means
 the archive was modified; see §4.
 
@@ -432,7 +432,7 @@ print("  all good" if bad == 0 else f"  {bad} problem(s)")
 PY
 ```
 
-**`tau_absolute = tau_hat × 2/K`, ceilings, finiteness** — the validator, on
+**`tau_absolute = tau_hat × 2/K`, ceilings, finiteness.** The validator, on
 every regenerated file:
 
 ```bash
@@ -455,7 +455,7 @@ python3 $V data/behavioral_sweep_2022.csv --year 2022 --expect-rows 1000
 Every block must end `All checks passed.` The ceiling is year-specific and
 inclusive: `≤ 0.4` for 2002 (K=15), `≤ 0.5` for 2022 (K=12).
 
-**No `tau >= 2` warning anywhere in the new logs** — this is the pre-fix bug's
+**No `tau >= 2` warning anywhere in the new logs.** This is the pre-fix bug's
 direct signature, and it must appear zero times:
 
 ```bash
@@ -500,14 +500,14 @@ double can move (~1e-16) without any ranking changing.
 python3 -m pytest -ra 2>&1 | tail -20
 ```
 
-Expect **481 passed, 2 skipped** once the importance table exists — the 4
+Expect **481 passed, 2 skipped** once the importance table exists. The 4
 `lhs_parameter_importance.csv not generated yet` skips become passes. The two
 that legitimately remain:
 
-- `test_protocol_validation.py` — `eps_s plumbing now exists; this guard is obsolete`
-- `test_result_tables.py` — `panel E is analytic: no repetitions`
+- `test_protocol_validation.py`: `eps_s plumbing now exists; this guard is obsolete`
+- `test_result_tables.py`: `panel E is analytic: no repetitions`
 
-**Final git status** — regenerated data is git-ignored, so the only tracked
+**Final git status.** Regenerated data is git-ignored, so the only tracked
 change should be the new importance table:
 
 ```bash
@@ -521,7 +521,7 @@ git log --oneline -1
 
 Nothing here commits anything or touches the fiche.
 
-**1 · Validate every regenerated output** — the full validator block from §4,
+**1 · Validate every regenerated output.** The full validator block from §4,
 plus the warning grep and the archive check.
 
 **2 · Generate the before/after comparison** against the archive:
@@ -589,5 +589,5 @@ Everything under `data/`, `figures/` and `logs/` is git-ignored by design.
   or a power loss on battery. If that happens, follow §3: the behavioural
   sweeps resume, the replay stages restart.
 - **Never pass `--resume` and `--overwrite` together.** The CLI refuses it.
-- **Do not use `--overwrite` to recover an interrupted sweep** — it discards
+- **Do not use `--overwrite` to recover an interrupted sweep.** It discards
   every completed draw. Use `--resume`.

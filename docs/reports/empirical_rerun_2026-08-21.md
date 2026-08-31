@@ -1,4 +1,4 @@
-# Empirical rerun record — 2026-08-21
+# Empirical rerun record: 2026-08-21
 
 [← Experiments](../experiments.md) · **Rerun record** · [Reproducibility →](../reproducibility.md)
 
@@ -29,13 +29,13 @@ lengths. They are related through the zone length ℓ = 2/*K*:
 
 > **τ = τ̂ × (2 / K)**
 
-On the empirical side that conversion was not applied — τ̂ was passed straight
+On the empirical side that conversion was not applied. τ̂ was passed straight
 into `run_simulation` and silently reinterpreted as an absolute distance.
 
 | | Effective τ before | Effective τ after |
 |---|---|---|
-| 2002 (*K* = 15) | 0.500 – 3.000 | **0.067 – 0.400** |
-| 2022 (*K* = 12) | 0.500 – 3.000 | **0.083 – 0.500** |
+| 2002 (*K* = 15) | 0.500 to 3.000 | **0.067 to 0.400** |
+| 2022 (*K* = 12) | 0.500 to 3.000 | **0.083 to 0.500** |
 
 Too large by a factor of **7.5** (2002) and **6** (2022).
 
@@ -62,7 +62,7 @@ a `COMPLETE`/`FAILED` marker.
 | 1 · Replay, `nearest` (300 draws × 2 years) + robustness | 1 200 | ~30 min |
 | 2 · Replay, 3 probabilistic variants (800 × 2 each) | 4 800 | ~39 min |
 | 3 · Behavioural sweeps (1 000 draws × 4 repeats × 2 years) | 8 000 | ~2 h 57 |
-| 4–8 · Diagnostics, figures, comparison, importance, tables, pytest | 0 | ~3 min |
+| 4-8 · Diagnostics, figures, comparison, importance, tables, pytest | 0 | ~3 min |
 | **Total** | **14 000** | **4 h 07** |
 
 Every simulation stage is followed by
@@ -99,14 +99,14 @@ The rerun was preceded by a set of guards, all of which are now permanent:
 | Unique keys | all unique |
 | NaN / non-finite | none |
 | `tau_absolute == tau_hat × 2/K` | holds to 1e-12 in all 14 files |
-| Year ceilings | 2002 ≤ 0.4, 2022 ≤ 0.5 — respected, inclusive |
+| Year ceilings | 2002 ≤ 0.4, 2022 ≤ 0.5, respected, inclusive |
 | `tau ≥ 2` warning | **zero occurrences in all 30 simulation logs** |
 | Archive checksums | 153 / 153 verified |
 | Test suite at run time | 481 passed, 2 skipped |
 
 Two verification notes, both resolved:
 
-- **Robustness `draw` is not unique alone.** The key is `(variant, draw)` —
+- **Robustness `draw` is not unique alone.** The key is `(variant, draw)`,
   3 perturbation variants × 100 draws = 300 rows, verified unique on the
   composite key.
 - **The `tau ≥ 2` string appears once, in `08a_pytest.log`.** It originates in
@@ -145,7 +145,7 @@ serialized bytes rather than parsed floats.
 
 ## 5. What the corrected run produced
 
-The behavioural-sweep **design is byte-identical before and after** — all of
+The behavioural-sweep design is byte-identical before and after. All of
 `draw, tau_hat, mu, alpha, rho_pi, beta` match to 1e-12. The comparison below is
 therefore controlled: the same parameter draws, with only the τ interpretation
 changed.
@@ -178,7 +178,7 @@ tolerance scale.
 ### Coordination measures
 
 ΔCENP from the behavioural sweeps, measured against the exogenous opening poll
-s⁰ — the baseline the observed target uses:
+s⁰, the baseline the observed target uses:
 
 | | 2002 | 2022 |
 |---|---|---|
@@ -209,7 +209,7 @@ anomalous.
 |---|---|---|
 | Cohen's *d* | −3.071 | −0.202 |
 | rank-biserial | −0.924 | −0.180 |
-| Mann–Whitney *p* | 4e−280 | 3e−12 |
+| Mann-Whitney *p* | 4e−280 | 3e−12 |
 
 ### Parameter importance
 
@@ -239,7 +239,7 @@ dominant driver.
 
   This also affects `empirical_candidate_shares_{2002,2022}.csv`, whose row
   count is the number of candidates and therefore matches the new file exactly
-  despite being smoke output — row count alone does not detect it.
+  despite being smoke output, and row count alone does not detect it.
 
 - **Pooled parameter importance is not interpretable.** Its 5-fold CV R² is
   **−0.187**, worse than predicting the mean; the script emits its

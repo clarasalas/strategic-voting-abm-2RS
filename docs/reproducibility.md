@@ -6,8 +6,7 @@
 
 ## Installation
 
-Requires **Python 3.10 or later**; every committed result was produced under
-**3.11**.
+Requires Python 3.10 or later. Every committed result was produced under 3.11.
 
 ```bash
 git clone https://github.com/clarasalas/strategic-voting-abm-2RS.git
@@ -21,8 +20,8 @@ python -m pip install -r requirements.txt
 numpy>=1.24   scipy>=1.10   matplotlib>=3.7   pandas>=2.0   SALib>=1.4
 ```
 
-Two more are needed to run the **test suite** and are installed separately —
-they are not model dependencies:
+Two more are needed to run the test suite. They are installed separately and
+are not model dependencies:
 
 ```bash
 pip install pytest scikit-learn
@@ -30,7 +29,7 @@ pip install pytest scikit-learn
 
 > `scikit-learn` is imported by `lhs_importance.py` (the RandomForest surrogate).
 > Whether it belongs in `requirements.txt` is a genuine question about the
-> model's declared dependencies, deliberately left open rather than settled by
+> model's declared dependencies, and it is left open rather than settled by
 > convenience.
 
 ---
@@ -67,7 +66,7 @@ winner   party 4
 switchers 19 of 500
 ```
 
-> `core_model` uses flat imports internally, so it must be on `sys.path` — that
+> `core_model` uses flat imports internally, so it must be on `sys.path`. That
 > is how every script in `analysis/` loads it. This exact configuration is the
 > one pinned by `test_golden_synthetic_baseline`, so if these three numbers ever
 > change, that test fails first.
@@ -102,7 +101,7 @@ recorded result, the environment it was taken in, and the warning policy, see
 python analysis/synthetic/saltelli_sensitivity.py --analyze-existing
 ```
 
-Recomputes `sobol_indices.csv` from the committed raw matrices — all 30 720
+Recomputes `sobol_indices.csv` from the committed raw matrices. All 30 720
 evaluations are already on disk.
 
 Once raw empirical output exists in `data/`:
@@ -112,8 +111,8 @@ python analysis/empirical/make_empirical_tables.py   # 6 empirical tables
 python analysis/empirical/lhs_importance.py          # importance table
 ```
 
-To check the committed tables still reproduce — regenerates them and **exits
-non-zero** if any changes, naming the files:
+To check the committed tables still reproduce. This regenerates them and exits
+non-zero if any of them changes, naming the files:
 
 ```bash
 python tools/check_tables_reproduce.py
@@ -122,7 +121,7 @@ python tools/check_tables_reproduce.py
 ### Needs simulation
 
 ```bash
-python analysis/synthetic/robustness_checks.py       # panels A–G, ~2–4 min
+python analysis/synthetic/robustness_checks.py       # panels A-G, ~2-4 min
 python analysis/synthetic/protocol_validation.py     # horizon + population
 python analysis/empirical/empirical_2002_2022.py     # replay
 python analysis/empirical/behavioral_sweep.py --year 2002 --n_draws 1000 --n_repeats 4 --seed 20020422
@@ -136,8 +135,8 @@ bash tools/run_empirical_rerun.sh
 
 Unattended driver: writes `run_metadata.json` (commit, host, PID, planned
 outputs), a master log, per-stage logs, a PID file, and a `COMPLETE` or `FAILED`
-marker. Uses `caffeinate` on macOS. **~4 hours, 14 000 simulations.** Full
-operating instructions — monitoring, recovery, verification — are in
+marker. Uses `caffeinate` on macOS. Expect about 4 hours and 14 000 simulations.
+Full operating instructions for monitoring, recovery and verification are in
 [`local_rerun_runbook.md`](local_rerun_runbook.md), and the most recent
 execution is recorded in the
 [empirical rerun record](reports/empirical_rerun_2026-08-21.md).
@@ -148,15 +147,15 @@ execution is recorded in the
 
 | Artefact | Guarantee | How to compare |
 |---|---|---|
-| Model runs | **bit-identical** for a fixed seed | direct equality |
+| Model runs | bit-identical for a fixed seed | direct equality |
 | `sobol_indices.csv` | regenerates exactly from committed inputs | checksum |
-| The 6 empirical tables | **byte-identical** on regeneration | checksum |
-| `lhs_parameter_importance.csv` | reproducible, **not** byte-identical | **numerically** |
+| The 6 empirical tables | byte-identical on regeneration | checksum |
+| `lhs_parameter_importance.csv` | reproducible, but not byte-identical | numerically |
 
 > ⚠️ The importance table is fitted in parallel, so the order of floating-point
 > reduction is not fixed and the last bit of a double can move (~1e-16).
 > Predictor selection and all seeds are fixed; values reproduce within tolerance
-> and rankings are stable. **Never compare it by checksum.**
+> and rankings are stable. Never compare it by checksum.
 
 ---
 
@@ -169,9 +168,9 @@ execution is recorded in the
 | `data/saltelli_results_K{6,8,9}.csv` | `figures/` (108 files) |
 | All source, tests and docs | `logs/`, `analysis/**/outputs/` |
 
-The principle: **commit the numbers a reader needs to cite; regenerate the rest.**
-Raw simulation output is bulky and reproducible from a seed; derived tables are
-small and diff-readable.
+The principle is to commit the numbers a reader needs to cite and regenerate the
+rest. Raw simulation output is bulky and reproducible from a seed, while derived
+tables are small and diff-readable.
 
 ---
 
@@ -185,11 +184,11 @@ and has been running since; the
 [run history](https://github.com/clarasalas/strategic-voting-abm-2RS/actions) is
 public.
 
-**CI is the authoritative check.** Test results quoted elsewhere in this
-documentation are dated local runs on a single machine — a record of one moment,
-not a standing property of the repository. CI runs the same suite on a clean
-machine with a fresh dependency install, which is what catches defects a
-configured local environment can hide; see the
+CI is the authoritative check. Test results quoted elsewhere in this
+documentation are dated local runs on a single machine, a record of one moment
+rather than a standing property of the repository. CI runs the same suite on a
+clean machine with a fresh dependency install, which is what catches defects a
+configured local environment can hide. See the
 [verification snapshot](validation.md#verification-snapshot) for a case where it
 did exactly that.
 
@@ -202,7 +201,7 @@ export LOGDIR=logs/rerun_20260821_launch
 
 ls $LOGDIR/COMPLETE && grep -c "  OK     " $LOGDIR/master.log   # expect 31
 
-# tau relation, ceilings, row counts, finiteness — per file
+# tau relation, ceilings, row counts, finiteness, per file
 python3 tools/validate_rerun.py data/empirical_runs_2002.csv --year 2002 --expect-rows 300
 
 # the pre-fix defect signature must not appear in ANY simulation log

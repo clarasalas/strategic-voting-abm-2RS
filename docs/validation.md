@@ -3,20 +3,21 @@
 [← Model](model.md) · **Validation** · [Experiments →](experiments.md)
 
 How we know the implementation is coherent and the analytical process is
-reproducible. Organised **by type of check**, not by chronology.
+reproducible. Organised by type of check rather than by chronology.
 
-> **Scope of this page.** This is about *implementation correctness* — whether
-> the code does what it claims and whether the process is reproducible. How well
-> the model reproduces the two elections is a separate question, recorded in the
-> [empirical rerun record](reports/empirical_rerun_2026-08-21.md); it is not
-> evidence of a working or broken implementation either way.
+> **Scope of this page.** This page covers *implementation correctness*:
+> whether the code does what it claims and whether the process is reproducible.
+> How well the model reproduces the two elections is a separate question,
+> recorded in the [empirical rerun
+> record](reports/empirical_rerun_2026-08-21.md), and it is not evidence about
+> the implementation either way.
 
 ---
 
 ## Verification snapshot
 
-An **auditable local verification**. It is a record of runs on one machine, not
-a standing property of the repository; CI is the continuous check.
+An auditable local verification. It records runs on one machine and is not a
+standing property of the repository; CI is the continuous check.
 
 | | |
 |---|---|
@@ -25,26 +26,26 @@ a standing property of the repository; CI is the continuous check.
 | **Date** | 2026-08-22 |
 | **Platform** | Darwin 25.5.0, Python 3.11.7 |
 
-Run in **two dependency environments**, because the previous snapshot was taken
-in only one and missed a defect that CI then caught:
+Run in two dependency environments, because the previous snapshot was taken in
+only one and missed a defect that CI then caught:
 
 | Environment | numpy | pandas | Result |
 |---|---|---|---|
 | Development | 1.26.4 | 3.0.3 | 570 passed, 0 skipped, 0 warnings |
 | CI-matched | **2.4.6** | **3.0.5** | 570 passed, 0 skipped, 0 warnings |
 
-Also run against a **tracked-files-only checkout** — no git-ignored data
-present, as on a fresh clone — in both environments, with the same result. No
-test depends on generated output any more.
+Also run against a tracked-files-only checkout, with no git-ignored data present
+as on a fresh clone, in both environments, with the same result. No test depends
+on generated output any more.
 
 ### Commit roles
 
 | Commit | Role |
 |---|---|
-| `50a2bf5` | code and tables — the generator, its tests, seven summary tables |
+| `50a2bf5` | code and tables: the generator, its tests, seven summary tables |
 | `3a3a215` | documentation |
-| `cc5ed19` | test hygiene — removed two always-skipping tests |
-| `6db9aee` | documentation — recorded the previous snapshot |
+| `cc5ed19` | test hygiene: removed two always-skipping tests |
+| `6db9aee` | documentation: recorded the previous snapshot |
 | *this change* | canonical CSV serialisation, fixture-based tests |
 
 A document cannot contain its own commit hash, so the date, the command and the
@@ -58,9 +59,9 @@ repository are under `tests/`, and collection with and without the repository's
 
 ### How the suite reached zero skips
 
-The suite has **no skips at all** — not in CI, not on a fresh clone. Four tests
-were removed in two passes, none replaced by a weaker check. Three bear on the
-headline and are below; the fourth was the Panel E branch of
+The suite has no skips at all, neither in CI nor on a fresh clone. Four tests
+were removed in two passes, and none was replaced by a weaker check. Three bear
+on the headline and are below. The fourth was the Panel E branch of
 `test_panel_table_reports_repetitions`, which skipped by construction because
 Panel E is analytic and declares no `n_reps` column. Its parametrization now
 derives from `PANEL_SCHEMAS`, and a guard fails if any *other* panel loses that
@@ -68,39 +69,39 @@ column.
 
 | Removed | What it actually asserted | What covers it now |
 |---|---|---|
-| `test_cli_refuses_an_unhonourable_signal_epsilon` | Asserted `--signal-epsilon` was *refused*, because ε<sub>s</sub> could not reach `run_simulation`. That plumbing exists, so it could only skip. | [`test_signal_epsilon.py`](../tests/test_signal_epsilon.py) asserts every `generate_signal` call receives the value. |
+| `test_cli_refuses_an_unhonourable_signal_epsilon` | Asserted `--signal-epsilon` was *refused*, because ε<sub>s</sub> could not reach `run_simulation`. That plumbing exists, so the test could only skip. | [`test_signal_epsilon.py`](../tests/test_signal_epsilon.py) asserts every `generate_signal` call receives the value. |
 | `test_real_horizon_raw_passes_validation` | Read a 213 KB git-ignored generated file, so it skipped everywhere but the author's machine. | Four tests build a synthetic frame with the real schema and shape (54 configurations × 8 seeds = 432 rows) and check the validator accepts it and rejects a short run, a wrong ε<sub>s</sub> and a non-finite outcome. |
-| `test_regeneration_reproduces_the_committed_tables` | Needed 17 MB of git-ignored simulation output. | Three tests build their own fixture inputs and check the generator is deterministic, exact through a CSV round trip, and refuses corrupt input. The real-data check runs as a pipeline step — see below. |
+| `test_regeneration_reproduces_the_committed_tables` | Needed 17 MB of git-ignored simulation output. | Three tests build their own fixture inputs and check the generator is deterministic, exact through a CSV round trip, and refuses corrupt input. The real-data check runs as a pipeline step, described below. |
 
 > Removing the last one surfaced a real weakness. Its replacement feeds a NaN
-> through the generator — and the existing guard did **not** fire, because every
-> summary goes through a pandas aggregation and those skip NaN by default, so a
-> corrupt input became a healthy-looking mean over fewer rows. The generator now
-> validates on the way *in*, which is the only place it is visible.
+> through the generator, and the existing guard did not fire: every summary goes
+> through a pandas aggregation, those skip NaN by default, and so a corrupt
+> input became a healthy-looking mean over fewer rows. The generator now
+> validates on the way *in*, which is the only place the problem is visible.
 
 ### Enforcing real-table regeneration
 
 The committed tables must reproduce from the real raw outputs. That check needs
-17 MB of git-ignored simulation output, so it cannot be a unit test — but it can
+17 MB of git-ignored simulation output, so it cannot be a unit test, but it can
 still be enforced:
 
 ```bash
 python tools/check_tables_reproduce.py
 ```
 
-It regenerates every table and **exits non-zero** if a tracked table changes, if
-an unexpected untracked table appears, if a declared table goes missing, or if
-the tables directory was already dirty beforehand — printing the affected
-filenames in each case. It runs as pipeline step `08b_tables_reproduce`.
+It regenerates every table and exits non-zero if a tracked table changes, if an
+unexpected untracked table appears, if a declared table goes missing, or if the
+tables directory was already dirty beforehand. Each case prints the affected
+filenames. It runs as pipeline step `08b_tables_reproduce`.
 
-On a **fresh clone** it exits **3** with its own message: the raw simulation
-outputs it needs are git-ignored by design, so they are simply absent. That is
-not a failure of the tables, and the check says so rather than reporting a
-missing input as stale output.
+On a fresh clone it exits 3 with its own message: the raw simulation outputs it
+needs are git-ignored on purpose, so they are simply absent. That is not a
+failure of the tables, and the check says so instead of reporting a missing
+input as stale output.
 
-> The previous instruction was `make_empirical_tables.py && git status --short`.
-> That is not a check: `git status` exits 0 whether or not anything changed, so
-> a drifted table passed silently unless a human read the output.
+> The previous instruction was `make_empirical_tables.py && git status --short`,
+> which does not check anything. `git status` exits 0 whether or not anything
+> changed, so a drifted table passed silently unless a human read the output.
 
 Both directions are tested in
 [`tests/test_table_regeneration_check.py`](../tests/test_table_regeneration_check.py)
@@ -110,29 +111,29 @@ exercised without touching the real tables.
 ### Warning policy
 
 The suite runs clean. Filters live in [`pytest.ini`](../pytest.ini) and no
-category is ignored wholesale — every entry pins a specific message and, where
+category is ignored wholesale. Every entry pins a specific message and, where
 possible, the module that raises it, so a *new* warning of the same category
 still surfaces.
 
-**Numerical warnings are promoted to errors** (`error::RuntimeWarning`): an
-overflow, an invalid value or a divide-by-zero inside the model is a
-result-changing event, not a note. The suite emits none, so this costs nothing
-and catches the next one.
+Numerical warnings are promoted to errors (`error::RuntimeWarning`). An
+overflow, an invalid value or a divide-by-zero inside the model changes results,
+so it should stop the suite rather than print a note. The suite emits none, so
+this costs nothing and catches the next one.
 
 #### What the audit counted
 
-Two different numbers appear below, and they come from **two different warning
-configurations**. They are not alternative totals of the same thing:
+Two different numbers appear below, and they come from two different warning
+configurations. They are not alternative totals of the same thing:
 
 | | Warnings | Configuration |
 |---|---:|---|
-| Reported by a plain `pytest` run | **5 578** | Python's default filters, which **hide `ResourceWarning` entirely** |
+| Reported by a plain `pytest` run | **5 578** | Python's default filters, which hide `ResourceWarning` entirely |
 | Additionally exposed by `pytest -W always` | **+34** | `ResourceWarning`s from a leaked file handle, invisible by default |
 | **Complete audit** | **5 612** | every occurrence, nothing suppressed |
 
-The 34 were a real defect — `_row_count` opened a file and never closed it —
-and would never have appeared in ordinary output. Auditing under `-W always`
-rather than trusting the visible count is what surfaced them.
+The 34 were a real defect: `_row_count` opened a file and never closed it. They
+would never have appeared in ordinary output. Auditing under `-W always` instead
+of trusting the visible count is what surfaced them.
 
 All 5 612 are now fixed, asserted, or narrowly filtered.
 
@@ -143,18 +144,18 @@ Counts below are from the complete `-W always` audit.
 
 | Source | Count | Disposition |
 |---|---:|---|
-| `is_sparse is deprecated` — scikit-learn calling a deprecated pandas API | 5 572 | **Filtered.** Raised inside sklearn's own validation layer during RandomForest fitting. Nothing in this repository calls `is_sparse`; it is fixed by upgrading scikit-learn. Pinned to the message *and* the raising module. |
-| Unclosed file in `_row_count` | 34 | **Fixed** — now a context manager. Hidden by default filtering; only `-W always` revealed it. |
-| τ ≥ 2 guard warnings in `test_empirical.py` | 3 | **Asserted**, not filtered. `tau=2.0` is deliberate there, so the tests now use `pytest.warns` and fail if the guard stops firing. |
-| pandas `numexpr` / `bottleneck` version notices | 2 | **Filtered.** Emitted once each at import. Neither optional accelerator is used here; pandas falls back to its own implementations. |
-| `salib.sample.saltelli` will be removed | 1 | **Filtered — not a drop-in rename.** `SALib.sample.sobol` scrambles the Sobol′ sequence by default and returns a *different* design: comparing the two at *N* = 8, 16 and 1024 gives a maximum deviation of ~1.6 × 10², not zero. Switching would invalidate the committed `saltelli_results_K{6,8,9}.csv`, whose 30 720 evaluations are verified row-by-row against `saltelli.sample`. Migrating means regenerating the design and re-running the analysis. |
+| `is_sparse is deprecated`, scikit-learn calling a deprecated pandas API | 5 572 | **Filtered.** Raised inside sklearn's own validation layer during RandomForest fitting. Nothing in this repository calls `is_sparse`; upgrading scikit-learn fixes it. Pinned to the message and the raising module. |
+| Unclosed file in `_row_count` | 34 | **Fixed**, now a context manager. Hidden by default filtering; only `-W always` revealed it. |
+| τ ≥ 2 guard warnings in `test_empirical.py` | 3 | **Asserted**, not filtered. `tau=2.0` is deliberate there, so the tests use `pytest.warns` and fail if the guard stops firing. |
+| pandas `numexpr` / `bottleneck` version notices | 2 | **Filtered.** Emitted once each at import. Neither optional accelerator is used here, and pandas falls back to its own implementations. |
+| `salib.sample.saltelli` will be removed | 1 | **Filtered.** This is not a drop-in rename. `SALib.sample.sobol` scrambles the Sobol′ sequence by default and returns a *different* design: comparing the two at *N* = 8, 16 and 1024 gives a maximum deviation of ~1.6 × 10², not zero. Switching would invalidate the committed `saltelli_results_K{6,8,9}.csv`, whose 30 720 evaluations are verified row-by-row against `saltelli.sample`. Migrating means regenerating the design and re-running the analysis. |
 
 The `is_sparse` filter names the category as `DeprecationWarning` rather than
 its actual class `pandas.errors.Pandas4Warning` (which subclasses it). Naming
-the pandas class forces pytest to import pandas while parsing `pytest.ini` —
-before any `conftest.py` runs — and pandas emits import-time warnings of its
-own that then become impossible to filter. With the message and module both
-pinned, the base class is equally precise.
+the pandas class forces pytest to import pandas while parsing `pytest.ini`,
+before any `conftest.py` runs, and pandas emits import-time warnings of its own
+that then become impossible to filter. With the message and module both pinned,
+the base class is equally precise.
 
 </details>
 
@@ -170,32 +171,32 @@ pinned, the base class is equally precise.
 | **Inputs** | Tiny analytic share vectors with known ENP/CENP. |
 | **Criterion** | Exact agreement with the closed form to 1e-12. |
 | **Status** | ✅ passing |
-| **Evidence** | Test assertions only — no generated artefact. |
+| **Evidence** | Test assertions only, with no generated artefact. |
 
-`test_deferred_duplicates.py` additionally pins the **duplicated** ENP/CENP
+`test_deferred_duplicates.py` additionally pins the duplicated ENP/CENP
 implementations against each other within strict tolerance, using both analytic
-and generated-share fixtures. It deliberately does **not** assert the two
-`delta_cenp` definitions are equal — [they use different
-baselines](model.md#δcenp--two-baselines-that-must-never-be-mixed).
+and generated-share fixtures. It deliberately does not assert the two
+`delta_cenp` definitions are equal, because [they use different
+baselines](model.md#δcenp-two-baselines-that-must-never-be-mixed).
 
 ### 2 · Decision-rule tests
 
 | | |
 |---|---|
 | **Contract** | The trigger fires exactly when *C<sub>a</sub> ∩ T<sub>R</sub> = ∅*, and the expressive cost flips the choice at the analytically derived boundary. |
-| **Implementation** | [`core_model/agents.py`](../core_model/agents.py) — `calcStrategicUtilities`, `_updatePartition` |
+| **Implementation** | [`core_model/agents.py`](../core_model/agents.py), `calcStrategicUtilities` and `_updatePartition` |
 | **Tests** | [`test_decision_rule.py`](../tests/test_decision_rule.py) (24) |
 | **Inputs** | Hand-built fixtures with no ties. |
 | **Criterion** | Trigger state and chosen party match the hand-derived expectation. |
 | **Status** | ✅ passing |
 
 Covers: viable sincere choice does not trigger; non-viable choice with a viable
-contender does; the trigger depends on the projection not the voter; no
+contender does; the trigger depends on the projection and not on the voter; no
 opponents means no incentive; the contender set is the tolerance ball with an
-**inclusive** boundary; the set is never empty and always holds the attachment;
-the cost is never charged on the attachment itself.
+inclusive boundary; the set is never empty and always holds the attachment; the
+cost is never charged on the attachment itself.
 
-The boundary case is derived, not assumed: μ\* = (S<sub>alt</sub> −
+The boundary case is derived rather than assumed: μ\* = (S<sub>alt</sub> −
 S<sub>j\*</sub>)/λ<sub>alt</sub> = 1/15 for the fixture, and the model flips
 there.
 
@@ -220,7 +221,7 @@ there.
 | **Criterion** | Positions inside [−1, 1] and sorted; *K* consistent across every file; results sum to 1 (1e-9); poll signals normalised and non-negative in both `weekly` and `individual` modes. |
 | **Status** | ✅ passing, parametrised over both years |
 
-This family exists because everything downstream is **indexed positionally** — a
+This family exists because everything downstream is indexed positionally, and a
 silent re-ordering would corrupt every candidate-level result without raising.
 
 ### 5 · Dynamic invariants
@@ -235,8 +236,8 @@ silent re-ordering would corrupt every candidate-level result without raising.
 
 Includes `test_the_histories_line_up_on_the_documented_offset`, which pins the
 *n+1* vs *n* offset between `history`/`intention_history` and the diagnostic
-series. That test was written **after** investigating an apparent failure — the
-offset is real and intended, so the test documents it rather than asserting a
+series. That test was written after investigating an apparent failure. The
+offset is real and intended, so the test documents it instead of asserting a
 convenient falsehood.
 
 ### 6 · Deterministic golden regressions
@@ -244,25 +245,25 @@ convenient falsehood.
 | | |
 |---|---|
 | **Contract** | Published numbers do not drift silently across commits. |
-| **Tests** | [`test_empirical.py`](../tests/test_empirical.py) — golden-value cases |
-| **Criterion** | Full sincere **and** final share vectors match recorded literals to `abs=1e-12`; switcher counts pinned. |
+| **Tests** | [`test_empirical.py`](../tests/test_empirical.py), golden-value cases |
+| **Criterion** | Full sincere and final share vectors match recorded literals to `abs=1e-12`; switcher counts pinned. |
 | **Status** | ✅ passing |
 
 Two configurations are pinned, both chosen to exercise the strategic path:
 
-- **Synthetic** — *K* = 8, *N* = 500, `width_factor` = 1.5, τ̂ = 1.75, μ = 0.1, *T* = 15, seed 42.
-- **Empirical 2022** — probabilistic init, salience = *s*<sup>0</sup>, 350 voters, μ = 0.3, α = 0.1, ρ<sub>π</sub> = 70, β = 6, seed 33.
+- Synthetic: *K* = 8, *N* = 500, `width_factor` = 1.5, τ̂ = 1.75, μ = 0.1, *T* = 15, seed 42.
+- Empirical 2022: probabilistic init, salience = *s*<sup>0</sup>, 350 voters, μ = 0.3, α = 0.1, ρ<sub>π</sub> = 70, β = 6, seed 33.
 
 > Why this family exists: comparing two runs of *today's* code only catches
-> divergence between argument paths. A change that moves every path equally —
-> a rewrite of the sincere-init rule, a reordering of RNG draws — leaves such a
-> test green while every published number changes. Golden values are the suite's
-> memory of the past.
+> divergence between argument paths. A change that moves every path equally, such
+> as a rewrite of the sincere-init rule or a reordering of RNG draws, leaves such
+> a test green while every published number changes. Golden values are what the
+> suite remembers about earlier commits.
 >
-> A failure is either a bug (fix the code, not the numbers) or a deliberate
-> model change, in which case re-record with the snippet in each docstring and
-> say so in the commit message — every figure generated before that commit is
-> then stale.
+> A failure is either a bug, in which case fix the code and not the numbers, or a
+> deliberate model change, in which case re-record with the snippet in each
+> docstring and say so in the commit message. Every figure generated before that
+> commit is then stale.
 
 ### 7 · Metamorphic properties
 
@@ -273,10 +274,11 @@ Two configurations are pinned, both chosen to exercise the strategic path:
 | **Criterion** | The chosen party, mapped through the transformation, is identical. |
 | **Status** | ✅ passing |
 
-> These properties were **derived from the equations before being asserted**, not
-> assumed. All 120 relabellings were exhaustively verified, and reflection was
+> These properties were derived from the equations before anything asserted
+> them. All 120 relabellings were exhaustively verified, and reflection was
 > checked at five voter positions. Both hold with no counterexample. Had one
-> failed, the contract would have been the thing in question — not the code.
+> failed, the contract itself would have been the thing in question, ahead of
+> the code.
 
 ### 8 · Output isolation and overwrite protection
 
@@ -285,10 +287,10 @@ Two configurations are pinned, both chosen to exercise the strategic path:
 | **Contract** | A quick/smoke run can never overwrite a full-run output, and a full run refuses to destroy existing output without an explicit flag. |
 | **Implementation** | `_refuse_existing_outputs()` in [`empirical_2002_2022.py`](../analysis/empirical/empirical_2002_2022.py); `SMOKE_DIR = data/smoke/` |
 | **Tests** | [`test_quick_run_isolation.py`](../tests/test_quick_run_isolation.py) (5), [`test_overwrite_protection.py`](../tests/test_overwrite_protection.py) (13) |
-| **Criterion** | Refusal occurs **before any output is modified**, whether the existing file is smaller, equal or larger; partial target sets are detected; `--overwrite` is incompatible with `--resume`. |
+| **Criterion** | Refusal occurs before any output is modified, whether the existing file is smaller, equal or larger; partial target sets are detected; `--overwrite` is incompatible with `--resume`. |
 | **Status** | ✅ passing |
 
-> This family exists because of a real incident: on 2026-08-19 a 15-draw
+> This family exists because of a real incident. On 2026-08-19 a 15-draw
 > `--quick` run silently overwrote the full 300-draw main-replay outputs, which
 > were never committed (`data/` is git-ignored). Recovering them would mean
 > regenerating from the pre-fix commit. The protection was written so it cannot
@@ -305,24 +307,23 @@ Two configurations are pinned, both chosen to exercise the strategic path:
 | **Status** | ✅ passing |
 
 Canonical finalisation makes uninterrupted and resumed sweep outputs
-byte-identical under the supported environments; this is regression-tested in
-CI.
+byte-identical under the supported environments, and CI regression-tests this.
 
-Byte stability was measured directly, not inferred. The same 2 000-value
-fixture — the CI failure's own values, plus signed zero, subnormals, the
-largest finite double, integer-like floats and 1 982 uniformly random bit
-patterns — was written through `write_canonical` in both environments:
+Byte stability was measured directly rather than inferred. The same 2 000-value
+fixture, made up of the CI failure's own values plus signed zero, subnormals,
+the largest finite double, integer-like floats and 1 982 uniformly random bit
+patterns, was written through `write_canonical` in both environments:
 
 | Environment | numpy | pandas | Bytes | SHA-256 |
 |---|---|---|---|---|
 | Development | 1.26.4 | 3.0.3 | 400 054 | `653d8db8…45210791` |
 | CI-matched | 2.4.6 | 3.0.5 | 400 054 | `653d8db8…45210791` |
 
-**The hashes are identical**, and finalising four times in a row changed
-nothing in either environment. So for the two environments tested the output is
-byte-identical *across* them, not merely idempotent within each. That is a
-measurement of those two configurations, not a guarantee for every future
-numpy or pandas — which is what the regression tests exist to catch.
+The hashes are identical, and finalising four times in a row changed nothing in
+either environment. So for the two environments tested the output is
+byte-identical *across* them, rather than only idempotent within each. That is a
+measurement of those two configurations, and not a guarantee for every future
+numpy or pandas, which is what the regression tests exist to catch.
 
 Per-run seeds depend only on `(seed, draw, repeat)`, which is what makes the
 equivalence hold. Two mechanisms deliver the byte-identity:
@@ -330,25 +331,25 @@ equivalence hold. Two mechanisms deliver the byte-identity:
 - **Canonical serialisation.** `finalise_output` reads with pandas' correctly
   rounded float parser (`float_precision="round_trip"`) and writes with
   pandas' shortest round-tripping form, atomically via a temporary file. The
-  default parser is fast but *not* correctly rounded — it can return a double
-  one ulp from the text, so reading and rewriting never settles. That is what
-  CI caught on 2026-08-22, on a platform whose float values differ from the
+  default parser is fast but not correctly rounded: it can return a double one
+  ulp from the text, so reading and rewriting never settles. That is what CI
+  caught on 2026-08-22, on a platform whose float values differ from the
   development machine's.
 - **A true no-op for a complete file.** When `--resume` finds every draw
   already present, it validates the sidecar metadata, the design fingerprint
-  and every retained row, then returns without touching the file at all — its
+  and every retained row, then returns without touching the file at all. Its
   bytes, checksum and modification time are unchanged.
 
-The no-op is an optimisation of the complete case, not a substitute for
-canonical serialisation: an interrupted resume still merges new rows with old
+The no-op is an optimisation of the complete case and not a substitute for
+canonical serialisation. An interrupted resume still merges new rows with old
 ones and rewrites the file.
 
 <details>
 <summary>Why the writer is pandas' default and not <code>%.17g</code></summary>
 
-Three representations were measured on 60 000 adversarial doubles — uniformly
-random bit patterns, subnormals, extremes, signed zero — in both the local and
-the CI dependency environments:
+Three representations were measured on 60 000 adversarial doubles, made up of
+uniformly random bit patterns, subnormals, extremes and signed zero, in both the
+local and the CI dependency environments:
 
 | Representation | Verdict |
 |---|---|
@@ -359,7 +360,7 @@ the CI dependency environments:
 pandas does not document its default float format as shortest-round-trip, so
 that property is pinned by
 [`tests/test_canonical_csv.py`](../tests/test_canonical_csv.py) rather than
-assumed — a future release that changes it fails there loudly.
+assumed. A future release that changes it fails there loudly.
 
 </details>
 
@@ -372,7 +373,7 @@ assumed — a future release that changes it fails there loudly.
 | **Criterion** | Diagnostics finds and reads the replay output; every column diagnostics wants is actually produced; figure loaders resolve the replay filenames and report a missing file clearly; sweep output is a valid importance input; the importance table exports the documented schema. |
 | **Status** | ✅ passing |
 
-Deliberately does **not** inspect figure appearance — it catches incompatible
+These tests deliberately ignore figure appearance. They catch incompatible
 filenames, columns and paths, which is where pipelines actually break.
 
 ### 11 · Horizon validation
@@ -391,11 +392,11 @@ filenames, columns and paths, which is where pipelines actually break.
 | | |
 |---|---|
 | **Question** | How many voters before ΔCENP stabilises? |
-| **Criterion** | Standard error of ΔCENP across seeds as a function of *N* — an estimator-stability criterion, not a mean comparison. |
+| **Criterion** | Standard error of ΔCENP across seeds as a function of *N*. This is an estimator-stability criterion, not a mean comparison. |
 | **Status** | ✅ complete → fixes *N* = 2000 |
 | **Evidence** | [`protocol_population_validation.csv`](../results/tables/protocol_population_validation.csv), `protocol_population_stability_by_c.csv` |
 
-### 13 · Protocol robustness (panels A–G)
+### 13 · Protocol robustness (panels A-G)
 
 | | |
 |---|---|
@@ -414,32 +415,32 @@ filenames, columns and paths, which is where pipelines actually break.
 | F · μ | does μ suppress switching monotonically? | documents μ |
 | G · truncation | does the *T* = 25 ceiling reach reported outcomes? | validates *T* = 25 |
 
-> **Panel C — the claim, precisely.** Panel C evaluates six `signal_epsilon`
-> values across four selected parameter configurations. It establishes **local
-> robustness for those tested configurations, not invariance across the full
-> Saltelli parameter space.**
+> **Panel C, the claim stated precisely.** Panel C evaluates six
+> `signal_epsilon` values across four selected parameter configurations. It
+> establishes local robustness for those tested configurations, and not
+> invariance across the full Saltelli parameter space.
 >
 > The grid is ε<sub>s</sub> ∈ {1e-12, 1e-6, 1e-4, 1e-3, 1e-2, 1e-1} × {Baseline,
-> Sweet-spot} × {θ = 0.3, θ = 1.0}, 10 repetitions each — 24 rows in
+> Sweet-spot} × {θ = 0.3, θ = 1.0}, 10 repetitions each, giving 24 rows in
 > [`robustness_panel_C.csv`](../results/tables/robustness_panel_C.csv). Within
 > those configurations, 1e-12, 1e-6 and 1e-4 return identical voting outcomes.
 >
-> These numbers are a regeneration — in the panel's original form ε<sub>s</sub>
+> These numbers are a regeneration. In the panel's original form ε<sub>s</sub>
 > never reached the simulation, so every grid point was bit-identical and the
-> invariance it appeared to show was vacuous; earlier copies of this panel
+> invariance it appeared to show was vacuous. Earlier copies of this panel
 > disagree with the committed one.
 
 **Panel G qualifies Panel B.** Panel B shows the diffuse regime (*c* = 2.5) never
-reaches a fixed point — 70 % of runs are still moving at the ceiling. Panel G
+reaches a fixed point, with 70 % of runs still moving at the ceiling. Panel G
 asks the different question of whether that truncation reaches the *reported
 outcomes*: at high width a single run's outcome moves by more than the
-between-seed SD (`drift_over_sd` ≈ 1.2–1.4), but the **mean across seeds** barely
-moves — 0.3 % for ΔCENP, 0.04 % for final ENP. The trajectory oscillates around a
-stable centre rather than still trending.
+between-seed SD (`drift_over_sd` ≈ 1.2-1.4), but the mean across seeds barely
+moves, by 0.3 % for ΔCENP and 0.04 % for final ENP. The trajectory oscillates
+around a stable centre rather than still trending.
 
-> So the defensible claim is: **aggregate results are robust to the ceiling;
-> individual trajectories are not.** A flat statement that "the model converges by
-> *T* = 25" is not supported and should not be made.
+> So the defensible claim is that aggregate results are robust to the ceiling
+> while individual trajectories are not. A flat statement that "the model
+> converges by *T* = 25" is unsupported and should not be made.
 
 ### 14 · Global sensitivity
 
@@ -450,11 +451,11 @@ stable centre rather than still trending.
 | **Design** | 8 parameters, *K* ∈ {6, 8, 9}, **10 240 evaluations per K** = 30 720 total |
 | **Criterion** | First- and total-order Sobol indices with bootstrap CIs. |
 | **Status** | ✅ complete |
-| **Evidence** | [`sobol_indices.csv`](../results/tables/sobol_indices.csv) — **120 rows, committed.** Raw matrices `data/saltelli_results_K{6,8,9}.csv` are committed too, so the table regenerates with `--analyze-existing` and **no simulation**. |
+| **Evidence** | [`sobol_indices.csv`](../results/tables/sobol_indices.csv), **120 rows, committed.** Raw matrices `data/saltelli_results_K{6,8,9}.csv` are committed too, so the table regenerates with `--analyze-existing` and no simulation. |
 
-This is the **only formal variance decomposition** in the project. The empirical
-importance analysis is LHS-based and exploratory — it ranks, it does not
-decompose variance.
+This is the only formal variance decomposition in the project. The empirical
+importance analysis is LHS-based and exploratory: it ranks parameters without
+decomposing variance.
 
 ### 15 · Empirical replay
 
@@ -469,7 +470,7 @@ decompose variance.
 
 Enforced at runtime as well, by
 [`tools/validate_rerun.py`](../tools/validate_rerun.py), which also asserts the
-pre-fix `tau >= 2.0` warning appears **zero** times in the simulation logs.
+pre-fix `tau >= 2.0` warning appears zero times in the simulation logs.
 
 ### 16 · Empirical robustness
 
@@ -488,7 +489,7 @@ pre-fix `tau >= 2.0` warning appears **zero** times in the simulation logs.
 | **Question** | How much of the observed variation is seed noise rather than signal? |
 | **Implementation** | [`analysis/synthetic/protocol_posthoc.py`](../analysis/synthetic/protocol_posthoc.py) |
 | **Tests** | [`test_protocol_posthoc.py`](../tests/test_protocol_posthoc.py) (33) |
-| **Criterion** | Within/between variance components with bootstrap ICC; Benjamini–Hochberg correction applied within each outcome × statistic × interval family. |
+| **Criterion** | Within/between variance components with bootstrap ICC; Benjamini-Hochberg correction applied within each outcome × statistic × interval family. |
 | **Status** | ✅ complete |
 | **Evidence** | [`protocol_seed_noise_decomposition.csv`](../results/tables/protocol_seed_noise_decomposition.csv), `protocol_horizon_drift_{by_config,summary}.csv` |
 
@@ -500,24 +501,24 @@ pre-fix `tau >= 2.0` warning appears **zero** times in the simulation logs.
 |---|---|
 | Model runs | **Bit-identical** for a fixed seed. |
 | `sobol_indices.csv` | Regenerates from committed inputs with no simulation. |
-| Empirical tables | **Byte-identical** on regeneration — verified by SHA-256 and pinned by a test that compares serialized bytes, not parsed floats. |
-| `lhs_parameter_importance.csv` | Reproducible **but not byte-identical** — see below. |
+| Empirical tables | **Byte-identical** on regeneration, verified by SHA-256 and pinned by a test that compares serialized bytes rather than parsed floats. |
+| `lhs_parameter_importance.csv` | Reproducible but not byte-identical. See below. |
 
 > ⚠️ **The importance table is not byte-identical, and any claim that it is
 > would be wrong.** Predictor selection and every seed are fixed (`SEED = 42`);
 > values reproduce within numerical tolerance and rankings are stable. Last-bit
 > differences (~1e-16) occur because the surrogate is fitted in parallel and the
-> order of floating-point reduction is not fixed. **Compare regenerated copies
-> numerically, never by checksum.**
+> order of floating-point reduction is not fixed. Compare regenerated copies
+> numerically, never by checksum.
 
 ---
 
 ## Known limitations of the validation
 
 - **Pooled parameter importance is not interpretable.** Its 5-fold CV R² is
-  **−0.187** — worse than predicting the mean. The script emits its
-  low-performance warning below 0.1. Per-year scopes (R² 0.853 and 0.991) are
-  sound; the pooled row should not be cited.
+  −0.187, worse than predicting the mean. The script emits its low-performance
+  warning below 0.1. Per-year scopes (R² 0.853 and 0.991) are sound; the pooled
+  row should not be cited.
 - **No pre-fix baseline is archived for the nearest-party replay.** See family
   8. A baseline could be regenerated from the pre-fix commit (`70e23f5`) under
   the fixed seed, but has not been.

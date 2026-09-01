@@ -36,15 +36,11 @@ Also run against a tracked-files-only checkout, with no git-ignored data present
 as on a fresh clone, in both environments, with the same result. No test depends
 on generated output any more.
 
-### Commit roles
-
-| Commit | Role |
-|---|---|
-| `50a2bf5` | code and tables: the generator, its tests, seven summary tables |
-| `3a3a215` | documentation |
-| `cc5ed19` | test hygiene: removed two always-skipping tests |
-| `6db9aee` | documentation: recorded the previous snapshot |
-| *this change* | canonical CSV serialisation, fixture-based tests |
+The suite has no skips at all, neither in CI nor on a fresh clone. Four tests
+were removed across two passes and none was replaced by a weaker check: two
+could only ever skip once the code they guarded had changed, and two read
+git-ignored generated files, so they skipped everywhere but one machine. The
+last two were rebuilt on fixtures they construct themselves.
 
 A document cannot contain its own commit hash, so the date, the command and the
 environments are the identifying facts. CI is the authoritative check.
@@ -54,28 +50,6 @@ environments are the identifying facts. CI is the authoritative check.
 `pytest.ini` sets `testpaths = tests`. All 20 `test_*.py` files in the
 repository are under `tests/`, and collection with and without the repository's
 `pytest.ini` returns the same test IDs, so the setting hides nothing.
-
-### How the suite reached zero skips
-
-The suite has no skips at all, neither in CI nor on a fresh clone. Four tests
-were removed in two passes, and none was replaced by a weaker check. Three bear
-on the headline and are below. The fourth was the Panel E branch of
-`test_panel_table_reports_repetitions`, which skipped by construction because
-Panel E is analytic and declares no `n_reps` column. Its parametrization now
-derives from `PANEL_SCHEMAS`, and a guard fails if any *other* panel loses that
-column.
-
-| Removed | What it actually asserted | What covers it now |
-|---|---|---|
-| `test_cli_refuses_an_unhonourable_signal_epsilon` | Asserted `--signal-epsilon` was *refused*, because ε<sub>s</sub> could not reach `run_simulation`. That plumbing exists, so the test could only skip. | [`test_signal_epsilon.py`](../tests/test_signal_epsilon.py) asserts every `generate_signal` call receives the value. |
-| `test_real_horizon_raw_passes_validation` | Read a 213 KB git-ignored generated file, so it skipped everywhere but the author's machine. | Four tests build a synthetic frame with the real schema and shape (54 configurations × 8 seeds = 432 rows) and check the validator accepts it and rejects a short run, a wrong ε<sub>s</sub> and a non-finite outcome. |
-| `test_regeneration_reproduces_the_committed_tables` | Needed 17 MB of git-ignored simulation output. | Three tests build their own fixture inputs and check the generator is deterministic, exact through a CSV round trip, and refuses corrupt input. The real-data check runs as a pipeline step, described below. |
-
-> Removing the last one surfaced a real weakness. Its replacement feeds a NaN
-> through the generator, and the existing guard did not fire: every summary goes
-> through a pandas aggregation, those skip NaN by default, and so a corrupt
-> input became a healthy-looking mean over fewer rows. The generator now
-> validates on the way *in*, which is the only place the problem is visible.
 
 ### Enforcing real-table regeneration
 
@@ -105,6 +79,11 @@ Both directions are tested in
 [`tests/test_table_regeneration_check.py`](../tests/test_table_regeneration_check.py)
 against throwaway git repositories in `tmp_path`, so the failure modes are
 exercised without touching the real tables.
+
+> The generator validates its input on the way *in*, before anything is
+> aggregated. Every summary goes through a pandas aggregation and those skip
+> NaN by default, so a corrupt input checked any later would read as a
+> healthy-looking mean over fewer rows.
 
 ### Warning policy
 

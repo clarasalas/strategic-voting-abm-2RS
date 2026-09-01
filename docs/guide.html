@@ -345,7 +345,6 @@ footer p{max-width:none}
       <ul><li><a href="#tables">The 22 result tables</a></li></ul>
     </li>
     <li><a href="#codemap"><b>05</b><span>Code map</span></a></li>
-    <li><a href="#corrections"><b>06</b><span>Corrections</span></a></li>
   </ol>
 </nav>
 
@@ -764,9 +763,9 @@ def tau_absolute(tau_hat: float, K: int) -> float:
     check: two that could only ever skip once the code they guarded had changed, and two that read
     git-ignored generated files and therefore skipped everywhere but one machine. The latter two were
     rebuilt on fixtures they construct themselves.</p>
-    <p>Removing the last one surfaced a real weakness: feeding a NaN through the table generator did
-    <em>not</em> trip its guard, because every summary goes through a pandas aggregation and those skip
-    NaN by default. The generator now validates on the way <em>in</em>.</p>
+    <p>The table generator validates its input on the way <em>in</em>, before anything is aggregated.
+    Every summary goes through a pandas aggregation and those skip NaN by default, so a corrupt input
+    checked any later would read as a healthy-looking mean over fewer rows.</p>
   </div>
 
   <h3 id="matrix">Validation matrix</h3>
@@ -1276,34 +1275,6 @@ tools/                 run_empirical_rerun.sh, validate_rerun.py, archive_pre_re
       extraction (B3), the row builder (B4) and a binning helper (B5).</p>
     </div>
   </details>
-</section>
-
-<!-- ============ 06 CORRECTIONS ============ -->
-<section class="sec" id="corrections">
-  <div class="sec-head"><span class="sec-num">06</span><h2>Corrections to the previous fiche</h2></div>
-  <p class="lede">What this guide replaces, and what was wrong with it.</p>
-
-  <div class="tw">
-    <table>
-      <caption>Superseded claims</caption>
-      <thead><tr><th>Previous claim</th><th>Corrected</th></tr></thead>
-      <tbody>
-        <tr><td>"pytest 27 passed · 2.5 s", one test file</td><td><strong>570 passed, 0 skipped, 0 warnings</strong> across 20 files, green in CI</td></tr>
-        <tr><td>ε<sub>s</sub> = 10<sup>−4</sup></td><td><strong>1e-12</strong>, pinned by 25 tests</td></tr>
-        <tr><td>Empirical τ passed uncorrected (τ̂ straight through)</td><td>τ = τ̂ × 2/K, applied once; both values recorded per row</td></tr>
-        <tr><td>Empirical results from the pre-fix runs (trigger 1.2 %, top-2 0.33 …)</td><td>Superseded by the 14 000-simulation rerun of 2026-08-21</td></tr>
-        <tr><td>Panel C shows ε<sub>s</sub> invariance</td><td>The original panel was vacuous, because ε never reached the simulation. Regenerated; establishes <em>local</em> robustness at four points only</td></tr>
-        <tr><td>"The model converges by <em>T</em> = 25"</td><td>Aggregate results are robust to the ceiling; <strong>individual trajectories are not</strong></td></tr>
-        <tr><td>Sobol index tables "not on disk"</td><td><code>sobol_indices.csv</code> is <strong>committed</strong>, 120 rows</td></tr>
-        <tr><td>Parameter importance "no numeric table is written"</td><td><code>lhs_parameter_importance.csv</code> is <strong>committed</strong>, 15 rows</td></tr>
-        <tr><td>Protocol panel CSVs unavailable</td><td>All seven panels committed under <code>results/tables/</code></td></tr>
-        <tr><td>Importance values regenerate byte-identically</td><td><strong>Not byte-identical.</strong> Reproducible within tolerance; rankings stable; compare numerically</td></tr>
-        <tr><td>Open point: "τ̂ is passed in different units in the two pipelines"</td><td><strong>Resolved.</strong> That defect was real; it is what the rerun corrected</td></tr>
-        <tr><td>Open point: "nothing unit-tests the metrics or signals"</td><td><strong>Resolved.</strong> <code>test_metrics</code> (38) and <code>test_signals</code> (57)</td></tr>
-        <tr><td>Figures referenced from the fiche</td><td><strong>No figure is committed or linked.</strong> <code>figures/</code> is git-ignored in full and mixes current with pre-fix images, so nothing in it is authoritative</td></tr>
-      </tbody>
-    </table>
-  </div>
 
   <div class="note key">
     <span class="tag">Source of truth</span>

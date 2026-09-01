@@ -299,8 +299,8 @@ footer p{max-width:none}
     <p class="eyebrow">Model &amp; Validation Guide</p>
     <h1>Strategic Voting ABM</h1>
     <p class="standfirst">An agent-based model of strategic voting under a two-round runoff, replayed
-      against the French presidential first rounds of 2002 and 2022 — how it works, how it is verified,
-      and how to reproduce every number.</p>
+      against the French presidential first rounds of 2002 and 2022, covering how it works, how it is
+      verified, and how to reproduce every number.</p>
     <div class="chips">
       <span class="chip ok">570 passed · 0 skipped · 0 warnings</span>
       <span class="chip">570 tests · 20 files</span>
@@ -354,8 +354,8 @@ footer p{max-width:none}
 <!-- ============ 00 OVERVIEW ============ -->
 <section class="sec" id="overview">
   <div class="sec-head"><span class="sec-num">00</span><h2>Overview</h2></div>
-  <p class="lede">One decision rule, two elections with opposite outcomes, and a test suite built to
-  make the difference between them trustworthy.</p>
+  <p class="lede">One decision rule applied to two elections that came out opposite ways, with a test
+  suite built so the difference between them can be trusted.</p>
 
   <div class="note key">
     <span class="tag">This page is a mirror</span>
@@ -384,7 +384,7 @@ footer p{max-width:none}
   the contrasting case, with visible consolidation around a few candidates.</p>
 
   <h3>Scope</h3>
-  <p>The model covers <strong>the first round only</strong>. Round two is never simulated — it enters
+  <p>The model covers <strong>the first round only</strong>. Round two is never simulated. It enters
   solely as a <em>projection</em> voters form about who will qualify. There is no campaign, no turnout
   decision, no abstention, and no candidate entry or exit.</p>
 
@@ -406,14 +406,10 @@ footer p{max-width:none}
   generated, so <a href="#inert">every signal-generating parameter is inert</a>.</p>
 
   <div class="note key">
-    <span class="tag">What this project claims</span>
-    <p><strong>It does claim</strong> to be a coherent, tested, reproducible implementation of a specific
-    strategic-voting rule, with its behaviour under both abstract and real electoral structures
-    characterised and documented.</p>
-    <p><strong>It does not claim</strong> to be a predictive model of French elections, a fitted model, or
-    a parameter-recovery exercise. The empirical mode is <em>pattern-oriented</em>: one behavioural draw
-    is applied to both years, and only the environment changes. Where the model fails to reproduce
-    reality, that failure is documented rather than tuned away.</p>
+    <span class="tag">Scope</span>
+    <p>The empirical mode is <em>pattern-oriented</em>. One behavioural draw is applied to both years,
+    only the environment changes, and nothing is fitted to either election. Where the model diverges
+    from the real result, the divergence is recorded as it stands.</p>
   </div>
 </section>
 
@@ -428,7 +424,7 @@ footer p{max-width:none}
   <div class="tw"><table>
     <thead><tr><th>Field</th><th>Type</th><th>Meaning</th></tr></thead>
     <tbody>
-      <tr><td><code>partyID</code></td><td>int</td><td>positional index — <strong>all downstream data is indexed by this</strong></td></tr>
+      <tr><td><code>partyID</code></td><td>int</td><td>positional index; all downstream data is indexed by this</td></tr>
       <tr><td><code>position</code></td><td>float</td><td>ideology on [−1, 1]</td></tr>
     </tbody>
   </table></div>
@@ -445,7 +441,7 @@ footer p{max-width:none}
     <tbody>
       <tr><td><code>position</code></td><td>ideology on [−1, 1]</td></tr>
       <tr><td><code>sincereUtilities</code></td><td><em>u<sub>a</sub></em>(<em>j</em>) = −(<em>x<sub>a</sub></em> − <em>x<sub>j</sub></em>)²</td></tr>
-      <tr><td><code>contenders</code> (<em>C<sub>a</sub></em>)</td><td>parties within tolerance τ — the acceptable set</td></tr>
+      <tr><td><code>contenders</code> (<em>C<sub>a</sub></em>)</td><td>parties within tolerance τ, the acceptable set</td></tr>
       <tr><td><code>opponents</code> (<em>O<sub>a</sub></em>)</td><td>everything else</td></tr>
       <tr><td><code>attachment</code></td><td>the voter's expressive "home" party <em>j</em>*</td></tr>
       <tr><td><code>posteriorBeliefs</code> (<em>m<sub>a</sub></em>)</td><td>belief over who will place where</td></tr>
@@ -456,7 +452,7 @@ footer p{max-width:none}
 
   <h4>Public signal</h4>
   <p>A single shared vector <em>s<sup>t</sup></em> over the <em>K</em> candidates, summing to 1. Every
-  voter sees the same signal — there is no private information channel.</p>
+  voter sees the same signal, and there is no private information channel.</p>
 
   <h3 id="iteration">One complete iteration</h3>
   <figure class="flow" aria-label="One iteration of the model">
@@ -468,8 +464,8 @@ footer p{max-width:none}
       <li class="fs fs-q"><span class="fs-n">5</span><span class="fs-b"><b>Strategic trigger</b><span class="fs-d"><i>G<sub>a</sub></i> = 1 iff <i>C<sub>a</sub></i> ∩ <i>T<sub>R</sub></i> = ∅</span></span></li>
     </ol>
     <div class="flow-branch">
-      <div class="fb fb-no"><span class="fb-t">no — a contender can qualify</span><b>Sincere vote</b><span class="fs-d">choose the attachment <i>j</i>*</span></div>
-      <div class="fb fb-yes"><span class="fb-t">yes — none can qualify</span><b>Expressive-cost comparison</b><span class="fs-d">φ<sub>a</sub>(<i>j</i>) = LV·NV − μ·λ̂</span></div>
+      <div class="fb fb-no"><span class="fb-t">no: a contender can qualify</span><b>Sincere vote</b><span class="fs-d">choose the attachment <i>j</i>*</span></div>
+      <div class="fb fb-yes"><span class="fb-t">yes: none can qualify</span><b>Expressive-cost comparison</b><span class="fs-d">φ<sub>a</sub>(<i>j</i>) = LV·NV − μ·λ̂</span></div>
     </div>
     <ol class="flow-steps" start="6">
       <li class="fs"><span class="fs-n">6</span><span class="fs-b"><b>Vote update</b><span class="fs-d">argmax over <i>j</i> ∈ <i>C<sub>a</sub></i></span></span></li>
@@ -477,13 +473,13 @@ footer p{max-width:none}
     </ol>
     <p class="flow-loop">↻ the aggregate shares become the next iteration's true support</p>
   </figure>
-  <p>The loop runs to <code>max_iterations</code> — <em>T</em> = 25 in synthetic mode, the length of the
+  <p>The loop runs to <code>max_iterations</code>: <em>T</em> = 25 in synthetic mode, the length of the
   real poll sequence in empirical mode. Iteration 0 is the <strong>sincere</strong> allocation and carries
   no strategic step, which is why <code>history</code> has <em>n</em>+1 entries while the diagnostic series
   have <em>n</em>.</p>
   <div class="note">
-    <p>That offset is real and intended. The test pinning it —
-    <code>test_the_histories_line_up_on_the_documented_offset</code> — was written <em>after</em>
+    <p>That offset is real and intended. The test pinning it,
+    <code>test_the_histories_line_up_on_the_documented_offset</code>, was written <em>after</em>
     investigating an apparent failure, so it documents the structure rather than asserting a
     convenient falsehood.</p>
   </div>
@@ -496,7 +492,7 @@ footer p{max-width:none}
     <div class="pcard">
       <div class="sym">nearest</div>
       <div class="nm">deterministic</div>
-      <p><em>j</em>* = argmax<sub>j</sub> <em>u<sub>a</sub></em>(<em>j</em>) — simply the closest
+      <p><em>j</em>* = argmax<sub>j</sub> <em>u<sub>a</sub></em>(<em>j</em>), simply the closest
       candidate. One vote each, no randomness.</p>
     </div>
     <div class="pcard">
@@ -537,13 +533,13 @@ footer p{max-width:none}
   <div class="note stop">
     <span class="tag">Most error-prone quantity in the project</span>
     <p>Two different things are called "tau". Confusing them silently disables the entire strategic
-    mechanism — which is exactly what happened, and what the 2026-08-21 rerun corrected.</p>
+    mechanism, which is exactly what happened, and what the 2026-08-21 rerun corrected.</p>
   </div>
 
   <div class="tw"><table>
     <thead><tr><th></th><th>Symbol</th><th>Units</th><th>Where used</th></tr></thead>
     <tbody>
-      <tr><td><strong>Normalised</strong></td><td>τ̂ <code>tau_hat</code></td><td><em>zone lengths</em></td><td>the design variable — what every sweep draws and every CSV records</td></tr>
+      <tr><td><strong>Normalised</strong></td><td>τ̂ <code>tau_hat</code></td><td><em>zone lengths</em></td><td>the design variable, what every sweep draws and every CSV records</td></tr>
       <tr><td><strong>Absolute</strong></td><td>τ <code>tau</code></td><td>ideology units on [−1, 1]</td><td>what <code>run_simulation(tau=…)</code> actually consumes</td></tr>
     </tbody>
   </table></div>
@@ -552,7 +548,7 @@ footer p{max-width:none}
   <div class="eq">τ &nbsp;=&nbsp; <span class="em">τ̂ × (2 / K)</span></div>
 
   <h4>Why the absolute value differs between the two years</h4>
-  <p><em>K</em> is the number of candidates, and it differs by year — <span class="y02">15 in 2002</span>,
+  <p><em>K</em> is the number of candidates, and it differs by year: <span class="y02">15 in 2002</span>,
   <span class="y22">12 in 2022</span>. One shared τ̂ draw therefore maps to a <em>different</em> absolute
   tolerance in each year:</p>
   <div class="tw"><table>
@@ -563,8 +559,8 @@ footer p{max-width:none}
       <tr><td class="n">3.0</td><td class="n"><strong>0.400</strong></td><td class="n"><strong>0.500</strong></td></tr>
     </tbody>
   </table></div>
-  <p>That is the point: τ̂ is comparable across party systems of different size, which is exactly what a
-  two-election comparison needs.</p>
+  <p>That is what τ̂ is for: it stays comparable across party systems of different size, which is exactly
+  what a two-election comparison needs.</p>
 
   <h4>Where the conversion occurs</h4>
   <p><strong>Exactly once</strong>, in <code>core_model/metrics.py</code>:</p>
@@ -606,26 +602,26 @@ def tau_absolute(tau_hat: float, K: int) -> float:
     <thead><tr><th>Parameter</th><th>Meaning</th></tr></thead>
     <tbody>
       <tr><td><strong>θ</strong> <code>theta</code></td><td>signal <em>temperature</em>. θ &lt; 1 sharpens viability gaps; θ = 1 faithful; θ &gt; 1 compresses them.</td></tr>
-      <tr><td><strong>ρ<sub>s</sub></strong> <code>rho</code></td><td>Dirichlet precision — higher is less noisy.</td></tr>
+      <tr><td><strong>ρ<sub>s</sub></strong> <code>rho</code></td><td>Dirichlet precision. Higher is less noisy.</td></tr>
       <tr><td><strong>ε<sub>s</sub></strong> <code>signal_epsilon</code></td><td>numerical floor so a zero-support party still gets strictly positive concentration. Default <strong>1e-12</strong>.</td></tr>
     </tbody>
   </table></div>
   <div class="note warn">
     <span class="tag">ε<sub>s</sub> = 1e-12, not 1e-4</span>
-    <p>The floor is a numerical guard, not a smoothing parameter. Earlier documentation quoted
+    <p>The floor is a numerical guard with no smoothing role. Earlier documentation quoted
     <code>1e-4</code>; that value is obsolete. The current default is at <code>model.py:100</code> and is
     pinned by <code>tests/test_signal_epsilon.py</code> (25 tests).</p>
   </div>
 
   <h4><span class="lab emp">Empirical</span> exogenous poll timelines</h4>
-  <p>The signal sequence is the <strong>real poll timeline</strong> — no generation step. Weekly means by
+  <p>The signal sequence is the <strong>real poll timeline</strong>, with no generation step. Weekly means by
   default; individual polls as a robustness variant. <code>max_iterations</code> equals the length of
   that sequence.</p>
 
   <h4>Belief update</h4>
   <div class="eq"><em>t</em> = 0: m<sup>0</sup><sub>a</sub> = π<sub>a</sub> &nbsp;&nbsp;·&nbsp;&nbsp; <em>t</em> &gt; 0: m<sup>t</sup><sub>a</sub> = <span class="em">α · π<sub>a</sub> + (1 − α) · s<sup>t</sup></span></div>
-  <p>The previous posterior is <strong>never reused</strong> — inertia is anchored to the fixed prior
-  π<sub>a</sub>, not to an evolving belief state. At <em>t</em> = 0 the posterior is set to π<sub>a</sub>
+  <p>The previous posterior is never reused. Inertia is anchored to the fixed prior
+  π<sub>a</sub> rather than to an evolving belief state. At <em>t</em> = 0 the posterior is set to π<sub>a</sub>
   directly, avoiding double-counting <em>s</em><sup>0</sup>, which already generated π<sub>a</sub>.</p>
 
   <h4 id="inert">Which parameters are inactive in empirical replay</h4>
@@ -642,7 +638,7 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   </table></div>
   <p>The behavioural sweep deliberately <strong>excludes ρ<sub>s</sub> as a placebo dimension</strong> for
   exactly this reason. Active parameters in empirical mode are <strong>τ̂, μ, α, ρ<sub>π</sub></strong>
-  and — under probabilistic initialization — <strong>β</strong>.</p>
+  and, under probabilistic initialization, <strong>β</strong>.</p>
 
   <h3 id="choice">Strategic choice</h3>
   <h4>Contender set</h4>
@@ -665,14 +661,14 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   <div class="tw"><table>
     <thead><tr><th>Term</th><th>Definition</th></tr></thead>
     <tbody>
-      <tr><td>LV<sub>a,j</sub></td><td>local viability — <em>m<sub>a,j</sub></em> renormalised over <em>C<sub>a</sub></em></td></tr>
+      <tr><td>LV<sub>a,j</sub></td><td>local viability, <em>m<sub>a,j</sub></em> renormalised over <em>C<sub>a</sub></em></td></tr>
       <tr><td>NV<sub>a,j,k*</sub></td><td>projected runoff share of <em>j</em> against the strongest opponent <em>k</em>*</td></tr>
       <tr><td>λ̂<sub>a</sub>(<em>j</em>)</td><td>expressive cost, (<em>u<sub>a</sub></em>(<em>j</em>*) − <em>u<sub>a</sub></em>(<em>j</em>)) / ℓ² ≥ 0</td></tr>
       <tr><td><strong>μ</strong></td><td>loyalty weight. μ = 0 → pure instrumental choice; large μ pins the voter to <em>j</em>*.</td></tr>
     </tbody>
   </table></div>
   <p>No penalty is charged on <em>j</em> = <em>j</em>*. The cost is normalised by <strong>ℓ² =
-  (2/K)²</strong> so μ is comparable across party systems of different size — the same reasoning as for
+  (2/K)²</strong> so μ stays comparable across party systems of different size, for the same reason as
   τ̂.</p>
 
   <h4>Switching and conditional switching</h4>
@@ -690,7 +686,7 @@ def tau_absolute(tau_hat: float, K: int) -> float:
 
   <h3 id="outcomes">Outcome measures</h3>
   <div class="eq">ENP(δ) = 1 ⁄ Σ<sub>j</sub> δ<sub>j</sub>² &nbsp;&nbsp;·&nbsp;&nbsp; CENP(δ) = (K − ENP(δ)) ⁄ (K − 1)</div>
-  <p>ENP is the standard Laakso–Taagepera index: an electorate split evenly across 4 candidates has
+  <p>ENP is the standard Laakso-Taagepera index: an electorate split evenly across 4 candidates has
   ENP = 4. CENP rescales it so <strong>0 = maximal fragmentation</strong> and <strong>1 = full
   coordination</strong>, making different <em>K</em> comparable.</p>
 
@@ -713,12 +709,12 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   <details>
     <summary>Candidate-level outcomes and cliff statistics</summary>
     <div class="det-body">
-      <p>Per candidate: mean final share with a p05–p95 band, change from the first signal, and top-<em>k</em>
+      <p>Per candidate: mean final share with a p05-p95 band, change from the first signal, and top-<em>k</em>
       membership probability.</p>
-      <p><strong>Top-<em>k</em> accuracy is an exact set match</strong> — 1.0 only if the simulated top-<em>k</em>
+      <p>Top-<em>k</em> accuracy is an exact set match: 1.0 only if the simulated top-<em>k</em>
       set equals the actual top-<em>k</em> set, 0.0 otherwise. It is not a partial-credit measure, which is why
       values of exactly 0 are common.</p>
-      <p>The "cliff" is the largest gap in the sorted share vector — the point separating viable from
+      <p>The "cliff" is the largest gap in the sorted share vector, the point separating viable from
       non-viable candidates. <code>cliff_magnitude</code> is the size of that gap, <code>cliff_location</code>
       the rank where it falls, <code>cliff_ratio</code> the share mass above it. A sharp cliff means a clear
       viability boundary; a flat profile means none.</p>
@@ -734,20 +730,20 @@ def tau_absolute(tau_hat: float, K: int) -> float:
 
   <div class="note key">
     <span class="tag">Scope of this section</span>
-    <p>This is about <strong>implementation correctness</strong>, not about whether the model fits the
-    French elections well. Whether the empirical fit is good is a scientific finding — it is not evidence
-    of a working or broken implementation.</p>
+    <p>Implementation correctness: whether the code does what it claims, and whether the process is
+    reproducible. How well the model fits the French elections is recorded separately, in the rerun
+    record.</p>
   </div>
 
   <div class="tw"><table>
-    <caption>Verification snapshot — dated local runs, plus CI</caption>
+    <caption>Verification snapshot: dated local runs, plus CI</caption>
     <thead><tr><th>Field</th><th>Value</th></tr></thead>
     <tbody>
       <tr><td>Command</td><td><code>python -m pytest -ra</code></td></tr>
       <tr><td>Result</td><td class="pass">570 passed · 0 skipped · 0 warnings</td></tr>
       <tr><td>Date</td><td>2026-08-22</td></tr>
       <tr><td>Platform</td><td>Darwin 25.5.0, Python 3.11.7</td></tr>
-      <tr><td>Continuous integration</td><td>green on <code>main</code> — GitHub Actions runs the same command on every push and pull request</td></tr>
+      <tr><td>Continuous integration</td><td>green on <code>main</code>; GitHub Actions runs the same command on every push and pull request</td></tr>
     </tbody>
   </table></div>
 
@@ -760,8 +756,8 @@ def tau_absolute(tau_hat: float, K: int) -> float:
       <tr><td>CI-matched</td><td><strong>2.4.6</strong></td><td><strong>3.0.5</strong></td><td class="pass">570 passed · 0 skipped · 0 warnings</td></tr>
     </tbody>
   </table></div>
-  <p>Also run against a <strong>tracked-files-only checkout</strong> — no git-ignored data present, as
-  on a fresh clone — in both environments, with the same result. No test depends on generated output.</p>
+  <p>Also run against a tracked-files-only checkout, with no git-ignored data present as
+  on a fresh clone, in both environments, with the same result. No test depends on generated output.</p>
 
   <div class="note">
     <p><strong>How the suite reached zero skips.</strong> Four tests were removed across two passes, none replaced by a weaker
@@ -785,16 +781,16 @@ def tau_absolute(tau_hat: float, K: int) -> float:
         <tr><td class="n">4</td><td>Data integrity</td><td>Real-data files stay positionally aligned; results sum to 1</td><td><code>test_empirical</code></td><td class="n">27</td><td class="pass">pass</td></tr>
         <tr><td class="n">5</td><td>Dynamic invariants</td><td>Properties holding at <em>every</em> iteration of <em>any</em> run</td><td><code>test_dynamic_invariants</code></td><td class="n">24</td><td class="pass">pass</td></tr>
         <tr><td class="n">6</td><td>Golden regressions</td><td>Full output vectors pinned to 1e-12 across commits</td><td><code>test_empirical</code></td><td class="n">2</td><td class="pass">pass</td></tr>
-        <tr><td class="n">7</td><td>Metamorphic</td><td>Relabelling and left–right reflection invariance</td><td><code>test_decision_rule</code></td><td class="n">3</td><td class="pass">pass</td></tr>
+        <tr><td class="n">7</td><td>Metamorphic</td><td>Relabelling and left-right reflection invariance</td><td><code>test_decision_rule</code></td><td class="n">3</td><td class="pass">pass</td></tr>
         <tr><td class="n">8</td><td>Output isolation</td><td>Quick runs cannot touch full output; refusal precedes any write</td><td><code>test_quick_run_isolation</code>, <code>test_overwrite_protection</code></td><td class="n">18</td><td class="pass">pass</td></tr>
         <tr><td class="n">9</td><td>Resume equivalence</td><td>Resumed sweep is byte-identical to an uninterrupted one</td><td><code>test_sweep_resume</code></td><td class="n">27</td><td class="pass">pass</td></tr>
         <tr><td class="n">10</td><td>Pipeline contract</td><td>Consecutive stages agree on filenames, columns, paths</td><td><code>test_pipeline_contract</code></td><td class="n">9</td><td class="pass">pass</td></tr>
         <tr><td class="n">11</td><td>Horizon validation</td><td>State from a long run equals a short run at the same horizon</td><td><code>test_protocol_validation</code></td><td class="n">28</td><td class="pass">pass</td></tr>
-        <tr><td class="n">12</td><td>Population validation</td><td>SE of ΔCENP across seeds as a function of <em>N</em></td><td>— (analysis)</td><td class="n">—</td><td class="pass">complete</td></tr>
-        <tr><td class="n">13</td><td>Protocol robustness</td><td>Panels A–G justify every fixed constant</td><td><code>test_result_tables</code></td><td class="n">49</td><td class="pass">complete</td></tr>
-        <tr><td class="n">14</td><td>Global sensitivity</td><td>Sobol S1/ST with bootstrap CIs, 30 720 evaluations</td><td><code>test_result_tables</code></td><td class="n">—</td><td class="pass">complete</td></tr>
+        <tr><td class="n">12</td><td>Population validation</td><td>SE of ΔCENP across seeds as a function of <em>N</em></td><td>n/a (analysis)</td><td class="n">n/a</td><td class="pass">complete</td></tr>
+        <tr><td class="n">13</td><td>Protocol robustness</td><td>Panels A-G justify every fixed constant</td><td><code>test_result_tables</code></td><td class="n">49</td><td class="pass">complete</td></tr>
+        <tr><td class="n">14</td><td>Global sensitivity</td><td>Sobol S1/ST with bootstrap CIs, 30 720 evaluations</td><td><code>test_result_tables</code></td><td class="n">n/a</td><td class="pass">complete</td></tr>
         <tr><td class="n">15</td><td>Empirical replay</td><td>Every row records τ̂, τ and <em>K</em>; conversion applied once</td><td><code>test_tau_absolute_output</code>, <code>test_tau_units</code>, <code>test_empirical_tables</code></td><td class="n">67</td><td class="pass">pass</td></tr>
-        <tr><td class="n">16</td><td>Empirical robustness</td><td>Three perturbation variants, 600 runs</td><td>— (analysis)</td><td class="n">—</td><td class="pass">complete</td></tr>
+        <tr><td class="n">16</td><td>Empirical robustness</td><td>Three perturbation variants, 600 runs</td><td>n/a (analysis)</td><td class="n">n/a</td><td class="pass">complete</td></tr>
         <tr><td class="n">17</td><td>Stochastic noise</td><td>Within/between variance, bootstrap ICC, BH correction</td><td><code>test_protocol_posthoc</code></td><td class="n">30</td><td class="pass">complete</td></tr>
       </tbody>
     </table>
@@ -804,22 +800,22 @@ def tau_absolute(tau_hat: float, K: int) -> float:
     <summary>Why golden-value regressions exist</summary>
     <div class="det-body">
       <p>Comparing two runs of <em>today's</em> code only catches divergence between argument paths. A
-      change that moves every path equally — a rewrite of the sincere-init rule, a reordering of RNG
-      draws — leaves such a test green while every published number changes. Golden values are the
-      suite's memory of the past.</p>
-      <p>A failure is either a bug (fix the code, not the numbers) or a deliberate model change, in which
-      case re-record with the snippet in each docstring and say so in the commit message — every figure
+      change that moves every path equally, such as a rewrite of the sincere-init rule or a reordering of
+      RNG draws, leaves such a test green while every published number changes. Golden values are what the
+      suite remembers about earlier commits.</p>
+      <p>A failure is either a bug, in which case fix the code and not the numbers, or a deliberate model change, in which
+      case re-record with the snippet in each docstring and say so in the commit message. Every figure
       generated before that commit is then stale.</p>
     </div>
   </details>
 
   <details>
-    <summary>Metamorphic properties were derived, not assumed</summary>
+    <summary>Where the metamorphic properties come from</summary>
     <div class="det-body">
-      <p>Candidate-relabelling invariance and left–right reflection symmetry were <strong>derived from
-      the equations before being asserted</strong>. All 120 relabellings were exhaustively verified, and
+      <p>Candidate-relabelling invariance and left-right reflection symmetry were derived from the
+      equations before anything asserted them. All 120 relabellings were exhaustively verified, and
       reflection was checked at five voter positions. Both hold with no counterexample. Had one failed,
-      the contract would have been the thing in question — not the code.</p>
+      the contract itself would have been the thing in question, ahead of the code.</p>
     </div>
   </details>
 
@@ -835,15 +831,15 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   </details>
 
   <div class="note warn">
-    <span class="tag">Panel C — read its claim precisely</span>
+    <span class="tag">Panel C, read its claim precisely</span>
     <p><strong>Panel C evaluates six <code>signal_epsilon</code> values across four selected parameter
     configurations. It establishes local robustness for those tested configurations, not invariance
     across the full Saltelli parameter space.</strong></p>
     <p>The grid is ε<sub>s</sub> ∈ {1e-12, 1e-6, 1e-4, 1e-3, 1e-2, 1e-1} × {Baseline, Sweet-spot} ×
-    {θ = 0.3, θ = 1.0}, 10 repetitions each — 24 rows in
+    {θ = 0.3, θ = 1.0}, 10 repetitions each, giving 24 rows in
     <code>robustness_panel_C.csv</code>. Within those configurations, 1e-12, 1e-6 and 1e-4 return
     identical voting outcomes.</p>
-    <p>These numbers are a regeneration — in the panel's original form ε<sub>s</sub> never reached the
+    <p>These numbers are a regeneration. In the panel's original form ε<sub>s</sub> never reached the
     simulation, so every grid point was bit-identical and the invariance it appeared to show was
     vacuous; earlier copies of this panel disagree with the committed one.</p>
   </div>
@@ -855,21 +851,20 @@ def tau_absolute(tau_hat: float, K: int) -> float:
       <tr>
         <td><strong><em>N</em> = 2000</strong> voters</td>
         <td>Panel A</td>
-        <td>The <em>standard error of ΔCENP across seeds</em> has stabilised by <em>N</em> = 2000 — an estimator-stability criterion.</td>
+        <td>The <em>standard error of ΔCENP across seeds</em> has stabilised by <em>N</em> = 2000, which is an estimator-stability criterion.</td>
         <td>That any single run is accurate, or that a mean at <em>N</em> = 2000 equals the limit.</td>
       </tr>
       <tr>
         <td><strong><em>T</em><sub>max</sub> = 25</strong> iterations</td>
         <td>Panels B + G</td>
         <td>The <strong>mean across seeds</strong> is robust to the ceiling: extending to <em>T</em> = 60 moves it 0.3 % for ΔCENP and 0.04 % for final ENP.</td>
-        <td>That the dynamics converge. Panel B shows the diffuse regime (<em>c</em> = 2.5) never reaches a fixed point — 70 % of runs are still moving at the ceiling, and a single run's outcome moves by more than the between-seed SD (<code>drift_over_sd</code> ≈ 1.2–1.4).</td>
+        <td>That the dynamics converge. Panel B shows the diffuse regime (<em>c</em> = 2.5) never reaches a fixed point: 70 % of runs are still moving at the ceiling, and a single run's outcome moves by more than the between-seed SD (<code>drift_over_sd</code> ≈ 1.2-1.4).</td>
       </tr>
     </tbody>
   </table></div>
   <div class="note warn">
-    <p>The defensible statement is <strong>"aggregate results are robust to the <em>T</em> = 25 ceiling;
-    individual trajectories are not"</strong>. A flat claim that the model converges by <em>T</em> = 25
-    is not supported by these panels.</p>
+    <p>Aggregate results are robust to the <em>T</em> = 25 ceiling, while individual trajectories are
+    not. A flat claim that the model converges by <em>T</em> = 25 is unsupported by these panels.</p>
   </div>
 
   <h3 id="determinism">Reproducibility guarantees</h3>
@@ -894,11 +889,11 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   <p>Finalising a sweep file reads it and writes it back, so it has to be a fixed point: finalising
   twice must produce the same bytes as finalising once. Otherwise a resumed run and an uninterrupted
   run yield different files from identical numbers.</p>
-  <p>The cause of a failure CI caught on 2026-08-22 was the <strong>reader</strong>, not the writer:
-  pandas' default float parser is fast but not correctly rounded, so it can return a double one ulp
+  <p>CI caught a failure on 2026-08-22 that came from the reader rather than the writer. pandas'
+  default float parser is fast but not correctly rounded, so it can return a double one ulp
   from the value the text denotes. Reading with <code>float_precision="round_trip"</code> fixes it at
   source. Three writer representations were measured on 60 000 adversarial doubles in both dependency
-  environments — <code>repr</code> as a callable is rejected (under numpy 2 it emits
+  environments. <code>repr</code> as a callable is rejected (under numpy 2 it emits
   <code>np.float64(0.1)</code>), <code>"%.17g"</code> is rejected (it writes <code>-0.0</code> as
   <code>-0</code>, losing the sign of zero), and pandas' default shortest round-tripping form is
   bitwise exact throughout.</p>
@@ -912,21 +907,21 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   </table></div>
   <p><strong>Canonical finalisation makes uninterrupted and resumed sweep outputs byte-identical under
   the supported environments; this is regression-tested in CI.</strong> The hashes above are identical
-  across the two environments tested — a measurement of those configurations, not a guarantee for every
+  across the two environments tested. That is a measurement of those configurations, and not a guarantee for every
   future numpy or pandas, which is what the regression tests exist to catch.</p>
 
   <h4>Warning policy</h4>
   <p>The suite runs clean. Filters live in <code>pytest.ini</code> and no category is ignored
-  wholesale — every entry pins a specific message and, where possible, the module that raises it, so
+  wholesale. Every entry pins a specific message and, where possible, the module that raises it, so
   a <em>new</em> warning of the same category still surfaces.</p>
-  <p><strong>Numerical warnings are promoted to errors</strong> (<code>error::RuntimeWarning</code>):
-  an overflow, an invalid value or a divide-by-zero inside the model is a result-changing event, not
-  a note. The suite emits none, so this costs nothing and catches the next one.</p>
+  <p>Numerical warnings are promoted to errors (<code>error::RuntimeWarning</code>). An overflow, an
+  invalid value or a divide-by-zero inside the model changes results, so it should stop the suite
+  rather than print a note. The suite emits none, so this costs nothing and catches the next one.</p>
 
   <div class="note warn">
     <span class="tag">Two counts, two configurations</span>
     <p>These are not alternative totals of the same thing. A plain <code>pytest</code> run reported
-    <strong>5 578</strong> warnings, under Python's default filters — which hide
+    <strong>5 578</strong> warnings, under Python's default filters, which hide
     <code>ResourceWarning</code> entirely. Running under <code>-W always</code> exposed
     <strong>34 more</strong>, from a leaked file handle that would never have appeared in ordinary
     output. The complete audit therefore contained <strong>5 612</strong> occurrences.</p>
@@ -937,20 +932,20 @@ def tau_absolute(tau_hat: float, K: int) -> float:
     <caption>Complete audit, from the -W always run</caption>
     <thead><tr><th>Source</th><th class="n">Count</th><th>Disposition</th></tr></thead>
     <tbody>
-      <tr><td><code>is_sparse is deprecated</code> — scikit-learn calling a deprecated pandas API</td><td class="n">5 572</td><td><strong>Filtered.</strong> Raised inside sklearn's own validation layer. Nothing here calls <code>is_sparse</code>; it is fixed by upgrading scikit-learn. Pinned to message and module.</td></tr>
-      <tr><td>Unclosed file in <code>_row_count</code></td><td class="n">34</td><td><strong>Fixed</strong> — now a context manager. Hidden by default filtering; only <code>-W always</code> revealed it.</td></tr>
+      <tr><td><code>is_sparse is deprecated</code>, scikit-learn calling a deprecated pandas API</td><td class="n">5 572</td><td><strong>Filtered.</strong> Raised inside sklearn's own validation layer. Nothing here calls <code>is_sparse</code>; it is fixed by upgrading scikit-learn. Pinned to message and module.</td></tr>
+      <tr><td>Unclosed file in <code>_row_count</code></td><td class="n">34</td><td><strong>Fixed</strong>, now a context manager. Hidden by default filtering; only <code>-W always</code> revealed it.</td></tr>
       <tr><td>τ ≥ 2 guard warnings in <code>test_empirical.py</code></td><td class="n">3</td><td><strong>Asserted</strong>, not filtered. <code>tau=2.0</code> is deliberate there, so the tests use <code>pytest.warns</code> and fail if the guard stops firing.</td></tr>
       <tr><td>pandas <code>numexpr</code> / <code>bottleneck</code> notices</td><td class="n">2</td><td><strong>Filtered.</strong> Emitted once each at import; neither optional accelerator is used here.</td></tr>
-      <tr><td><code>salib.sample.saltelli</code> will be removed</td><td class="n">1</td><td><strong>Filtered — not a drop-in rename.</strong> <code>SALib.sample.sobol</code> scrambles the sequence and returns a <em>different</em> design: at <em>N</em> = 8, 16 and 1024 the maximum deviation is ~1.6 × 10², not zero. Switching would invalidate the committed <code>saltelli_results_K{6,8,9}.csv</code>.</td></tr>
+      <tr><td><code>salib.sample.saltelli</code> will be removed</td><td class="n">1</td><td><strong>Filtered.</strong> This is not a drop-in rename. <code>SALib.sample.sobol</code> scrambles the sequence and returns a <em>different</em> design: at <em>N</em> = 8, 16 and 1024 the maximum deviation is ~1.6 × 10², not zero. Switching would invalidate the committed <code>saltelli_results_K{6,8,9}.csv</code>.</td></tr>
     </tbody>
   </table></div>
 
   <h4>Known limitations of the validation</h4>
   <ul>
     <li><strong>Pooled parameter importance is not interpretable.</strong> Its 5-fold CV R² is
-    <strong>−0.187</strong> — worse than predicting the mean. Per-year scopes (R² 0.853 and 0.991) are
+    <strong>−0.187</strong>, worse than predicting the mean. Per-year scopes (R² 0.853 and 0.991) are
     sound; the pooled row should not be cited.</li>
-    <li><strong>No pre-fix baseline is archived for the nearest-party replay</strong> — see the incident
+    <li><strong>No pre-fix baseline is archived for the nearest-party replay.</strong> See the incident
     above. One could be regenerated from the pre-fix commit (<code>70e23f5</code>) under the fixed seed,
     but has not been.</li>
   </ul>
@@ -966,7 +961,7 @@ def tau_absolute(tau_hat: float, K: int) -> float:
     <thead><tr><th>Experiment</th><th>Mode</th><th>Script</th><th class="n">Simulations</th></tr></thead>
     <tbody>
       <tr><td>Global sensitivity (Sobol)</td><td><span class="lab syn">syn</span></td><td><code>saltelli_sensitivity.py</code></td><td class="n">30 720</td></tr>
-      <tr><td>Protocol robustness A–G</td><td><span class="lab syn">syn</span></td><td><code>robustness_checks.py</code></td><td class="n">~1 540</td></tr>
+      <tr><td>Protocol robustness A-G</td><td><span class="lab syn">syn</span></td><td><code>robustness_checks.py</code></td><td class="n">~1 540</td></tr>
       <tr><td>Horizon / population validation</td><td><span class="lab syn">syn</span></td><td><code>protocol_validation.py</code></td><td class="n">varies</td></tr>
       <tr><td>Stochastic-noise decomposition</td><td><span class="lab syn">syn</span></td><td><code>protocol_posthoc.py</code></td><td class="n">0</td></tr>
       <tr><td>Empirical replay, 4 specs</td><td><span class="lab emp">emp</span></td><td><code>empirical_2002_2022.py</code></td><td class="n">6 000</td></tr>
@@ -979,7 +974,7 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   </table></div>
 
   <h3 id="params">Parameter spaces</h3>
-  <h4><span class="lab syn">Synthetic</span> Saltelli design — 8 parameters</h4>
+  <h4><span class="lab syn">Synthetic</span> Saltelli design, 8 parameters</h4>
   <div class="tw"><table>
     <thead><tr><th>Parameter</th><th class="n">Bounds</th><th>Meaning</th></tr></thead>
     <tbody>
@@ -995,8 +990,9 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   </table></div>
   <div class="note warn">
     <span class="tag">Two similarly named epsilons</span>
-    <p><code>epsilon</code> here is the electorate floor weight ε<sub>F</sub>, <strong>not</strong> the
-    signal offset ε<sub>s</sub>. ε<sub>s</sub> is fixed at 1e-12 and is not in the Saltelli problem.</p>
+    <p><code>epsilon</code> here is the electorate floor weight ε<sub>F</sub>, and not the signal offset
+    ε<sub>s</sub>. They are different parameters with similar names. ε<sub>s</sub> is fixed at 1e-12
+    and is not in the Saltelli problem.</p>
   </div>
   <p>Run separately for <em>K</em> ∈ {6, 8, 9} to separate odd/even geometry.</p>
 
@@ -1009,8 +1005,9 @@ def tau_absolute(tau_hat: float, K: int) -> float:
 
   <div class="note key">
     <span class="tag">The defining design decision</span>
-    <p><strong>Pattern-oriented calibration, not parameter recovery.</strong> One behavioural draw is
-    applied to <em>both</em> years; only the environment changes between them. No parameter is fitted.</p>
+    <p>The empirical mode calibrates on patterns rather than recovering parameters. One behavioural draw
+    is applied to <em>both</em> years, only the environment changes between them, and no parameter is
+    fitted.</p>
   </div>
 
   <details>
@@ -1040,8 +1037,8 @@ def tau_absolute(tau_hat: float, K: int) -> float:
     </tbody>
   </table></div>
   <div class="note">
-    <p>The importance seed is <strong>42</strong>, not <code>20020422</code>. The latter is the
-    <em>design</em> seed and belongs to the sweep, not to the surrogate.</p>
+    <p>The importance seed is 42, not <code>20020422</code>. The latter is the <em>design</em> seed and
+    belongs to the sweep rather than to the surrogate.</p>
   </div>
 
   <div class="tw"><table>
@@ -1060,7 +1057,7 @@ def tau_absolute(tau_hat: float, K: int) -> float:
 
   <div class="note warn">
     <span class="tag">A gap in the record</span>
-    <p>Pre-fix raw outputs for the <code>nearest</code> specification were not archived — overwritten on
+    <p>Pre-fix raw outputs for the <code>nearest</code> specification were not archived. They were overwritten on
     2026-08-19 and never committed. Direct before/after comparison is available for the sweeps, the
     probabilistic variants and the diagnostics; for <code>nearest</code> a baseline could be regenerated
     from the pre-fix commit (<code>70e23f5</code>) under the fixed seed, but has not been.</p>
@@ -1084,7 +1081,7 @@ def tau_absolute(tau_hat: float, K: int) -> float:
       <tr><td>Flag</td><td><code>--quick</code></td><td>default</td></tr>
       <tr><td>Draws</td><td class="n">15</td><td class="n">300 / 800</td></tr>
       <tr><td>Output directory</td><td><code>data/smoke/</code></td><td><code>data/</code></td></tr>
-      <tr><td>Can overwrite full output?</td><td><strong>No — structurally impossible</strong></td><td>only with <code>--overwrite</code></td></tr>
+      <tr><td>Can overwrite full output?</td><td><strong>No, structurally impossible</strong></td><td>only with <code>--overwrite</code></td></tr>
     </tbody>
   </table></div>
 
@@ -1092,10 +1089,10 @@ def tau_absolute(tau_hat: float, K: int) -> float:
     <caption>Recovery rules</caption>
     <thead><tr><th>Situation</th><th>Correct action</th></tr></thead>
     <tbody>
-      <tr><td>Replay stage failed</td><td><strong>restart with <code>--overwrite</code></strong> — it has no resume</td></tr>
-      <tr><td>Sweep interrupted</td><td><strong><code>--resume</code></strong> — never <code>--overwrite</code>, which discards every completed draw</td></tr>
+      <tr><td>Replay stage failed</td><td>restart with <code>--overwrite</code>; it has no resume</td></tr>
+      <tr><td>Sweep interrupted</td><td>use <code>--resume</code>; never <code>--overwrite</code>, which discards every completed draw</td></tr>
       <tr><td>Target files already exist</td><td>run refuses unless <code>--overwrite</code> is passed</td></tr>
-      <tr><td>Both flags passed</td><td><strong>the CLI refuses</strong> — mutually exclusive</td></tr>
+      <tr><td>Both flags passed</td><td>the CLI refuses, because they are mutually exclusive</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -1106,8 +1103,7 @@ def tau_absolute(tau_hat: float, K: int) -> float:
   <p class="lede">Install, run a smoke example, regenerate every committed artefact.</p>
 
   <h3>Installation</h3>
-  <p>Requires <strong>Python 3.10 or later</strong>; every committed result was produced under
-  <strong>3.11</strong>.</p>
+  <p>Requires Python 3.10 or later. Every committed result was produced under 3.11.</p>
   <pre><code>git clone https://github.com/clarasalas/strategic-voting-abm-2RS.git
 cd strategic-voting-abm-2RS
 python -m pip install -r requirements.txt
@@ -1132,7 +1128,7 @@ print(f\"winner party {r['winner_id']}, {r['switching']['strategic']}/500 switch
   <pre><code>ENP 5.441 -&gt; 5.208
 winner party 4, 19/500 switched</code></pre>
   <p>Those exact numbers are pinned by <code>test_golden_synthetic_baseline</code>. Note that
-  <code>core_model</code> uses flat internal imports, so it must be on <code>sys.path</code> — that is how
+  <code>core_model</code> uses flat internal imports, so it must be on <code>sys.path</code>. That is how
   every script in <code>analysis/</code> loads it, and why <code>tau</code> must be converted explicitly.</p>
 
   <h3>Regenerating committed artefacts</h3>
@@ -1140,7 +1136,7 @@ winner party 4, 19/500 switched</code></pre>
   <pre><code>python analysis/synthetic/saltelli_sensitivity.py --analyze-existing
 python analysis/empirical/make_empirical_tables.py
 python analysis/empirical/lhs_importance.py</code></pre>
-  <p>The first recomputes <code>sobol_indices.csv</code> from the committed raw matrices — all 30 720
+  <p>The first recomputes <code>sobol_indices.csv</code> from the committed raw matrices; all 30 720
   evaluations are already on disk. The other two need raw empirical output in <code>data/</code>.</p>
 
   <h4>The whole empirical pipeline</h4>
@@ -1170,7 +1166,7 @@ python analysis/empirical/lhs_importance.py</code></pre>
         <td><code>lhs_parameter_importance</code></td>
         <td><code>lhs_importance.py</code></td>
         <td><span class="lab emp">empirical</span></td>
-        <td>Reproducible but <strong>not</strong> byte-identical — fitted in parallel, so the last bit moves. Deliberately outside the byte check; compare numerically.</td>
+        <td>Reproducible but not byte-identical, because it is fitted in parallel and the last bit moves. Deliberately outside the byte check; compare numerically.</td>
       </tr>
       <tr>
         <td class="n">7</td>
@@ -1196,9 +1192,8 @@ python analysis/empirical/lhs_importance.py</code></pre>
       </tr>
     </tbody>
   </table></div>
-  <p>So: <strong>6</strong> carry a byte-reproducibility contract; <strong>7</strong> were added by the
-  2026-08-21 empirical rerun (those 6 plus the importance table); <strong>15</strong> are synthetic and
-  predate it; <strong>22</strong> are tracked in total.</p>
+  <p>Of the 22 tracked tables, 6 carry a byte-reproducibility contract, 7 were added by the 2026-08-21
+  empirical rerun (those 6 plus the importance table), and 15 are synthetic and predate it.</p>
 
   <h3>What is committed and what is not</h3>
   <div class="tw"><table>
@@ -1210,7 +1205,7 @@ python analysis/empirical/lhs_importance.py</code></pre>
       <tr><td>All source, tests and docs</td><td><code>logs/</code>, <code>analysis/**/outputs/</code></td></tr>
     </tbody>
   </table></div>
-  <p>The principle: <strong>commit the numbers a reader needs to cite; regenerate the rest.</strong></p>
+  <p>The principle is to commit the numbers a reader needs to cite and regenerate the rest.</p>
 </section>
 
 <!-- ============ 05 CODE MAP ============ -->
@@ -1219,9 +1214,9 @@ python analysis/empirical/lhs_importance.py</code></pre>
   <p class="lede">Where each responsibility lives, which definition is canonical, and what only looks
   like a duplicate.</p>
 
-  <pre><code>core_model/            the model itself — no analysis, no result I/O
+  <pre><code>core_model/            the model itself: no analysis, no result I/O
 ├── agents.py            Elector and Party; the decision rule
-├── model.py             run_simulation() — the iteration loop
+├── model.py             run_simulation(), the iteration loop
 ├── functions.py         electorate construction, coordination_measures
 ├── metrics.py           ENP, CENP, dCENP, tau_absolute   &lt;- CANONICAL units
 ├── signals.py           temperature transform + Dirichlet draw
@@ -1241,7 +1236,7 @@ analysis/empirical/    real-election replay
 ├── lhs_importance.py, make_empirical_tables.py
 
 tests/                 18 files, 522 tests, no skips
-results/tables/        22 compact CSVs — the citable artefacts
+results/tables/        22 compact CSVs, the citable artefacts
 data/                  real inputs (committed) + raw output (ignored)
 docs/                  this guide
 tools/                 run_empirical_rerun.sh, validate_rerun.py, archive_pre_rerun.sh</code></pre>
@@ -1251,18 +1246,18 @@ tools/                 run_empirical_rerun.sh, validate_rerun.py, archive_pre_re
     <thead><tr><th>Concept</th><th>Canonical home</th><th>Rule</th></tr></thead>
     <tbody>
       <tr><td><strong>τ̂ → τ conversion</strong></td><td><code>metrics.py::tau_absolute</code></td><td>The <strong>only</strong> place the conversion may happen.</td></tr>
-      <tr><td>ENP / CENP</td><td><code>metrics.py</code></td><td>—</td></tr>
+      <tr><td>ENP / CENP</td><td><code>metrics.py</code></td><td>n/a</td></tr>
       <tr><td>Saltelli bounds</td><td><code>parameter_space.py::PROBLEM</code></td><td>Never re-declare bounds by hand.</td></tr>
       <tr><td>Swept predictors</td><td><code>lhs_importance.py::SWEPT_PREDICTORS</code></td><td>An explicit <strong>allowlist</strong> per design, never auto-detection plus exclusions.</td></tr>
-      <tr><td>Outcome extraction</td><td><code>empirical_outcomes.py</code></td><td>—</td></tr>
-      <tr><td>Observed ΔCENP targets</td><td><code>behavioral_targets.py</code></td><td>—</td></tr>
+      <tr><td>Outcome extraction</td><td><code>empirical_outcomes.py</code></td><td>n/a</td></tr>
+      <tr><td>Observed ΔCENP targets</td><td><code>behavioral_targets.py</code></td><td>n/a</td></tr>
     </tbody>
   </table></div>
 
-  <h3>Intentionally separate — do not merge</h3>
+  <h3>Intentionally separate: do not merge</h3>
   <div class="note key">
     <span class="tag">The two Latin-hypercube declarations</span>
-    <p>The <em>function</em> bodies are identical; the <em>dimension orders</em> are not —
+    <p>The <em>function</em> bodies are identical; the <em>dimension orders</em> are not, and
     <code>empirical_2002_2022</code> uses <code>tau_hat, rho_pi, alpha, [mu], [beta]</code> while
     <code>behavioral_sweep</code> uses <code>tau_hat, mu, alpha, rho_pi, beta</code>.</p>
     <p>The LHS routine draws one dimension at a time from a shared generator, so <strong>the order
@@ -1297,7 +1292,7 @@ tools/                 run_empirical_rerun.sh, validate_rerun.py, archive_pre_re
         <tr><td>ε<sub>s</sub> = 10<sup>−4</sup></td><td><strong>1e-12</strong>, pinned by 25 tests</td></tr>
         <tr><td>Empirical τ passed uncorrected (τ̂ straight through)</td><td>τ = τ̂ × 2/K, applied once; both values recorded per row</td></tr>
         <tr><td>Empirical results from the pre-fix runs (trigger 1.2 %, top-2 0.33 …)</td><td>Superseded by the 14 000-simulation rerun of 2026-08-21</td></tr>
-        <tr><td>Panel C shows ε<sub>s</sub> invariance</td><td>Original panel was <strong>vacuous</strong> — ε never reached the simulation. Regenerated; establishes <em>local</em> robustness at four points only</td></tr>
+        <tr><td>Panel C shows ε<sub>s</sub> invariance</td><td>The original panel was vacuous, because ε never reached the simulation. Regenerated; establishes <em>local</em> robustness at four points only</td></tr>
         <tr><td>"The model converges by <em>T</em> = 25"</td><td>Aggregate results are robust to the ceiling; <strong>individual trajectories are not</strong></td></tr>
         <tr><td>Sobol index tables "not on disk"</td><td><code>sobol_indices.csv</code> is <strong>committed</strong>, 120 rows</td></tr>
         <tr><td>Parameter importance "no numeric table is written"</td><td><code>lhs_parameter_importance.csv</code> is <strong>committed</strong>, 15 rows</td></tr>
@@ -1312,16 +1307,16 @@ tools/                 run_empirical_rerun.sh, validate_rerun.py, archive_pre_re
 
   <div class="note key">
     <span class="tag">Source of truth</span>
-    <p>This guide is generated from canonical Markdown under <code>docs/</code> —
+    <p>This guide is generated from canonical Markdown under <code>docs/</code>:
     <code>index.md</code>, <code>model.md</code>, <code>validation.md</code>,
-    <code>experiments.md</code>, <code>reproducibility.md</code>, <code>code_map.md</code> — which carry
+    <code>experiments.md</code>, <code>reproducibility.md</code> and <code>code_map.md</code>, which carry
     prev/next links and read directly on GitHub. When the two disagree, the repository is correct.</p>
   </div>
 
   <p class="tocback"><a href="#overview">↑ Back to top</a></p>
 
   <footer>
-    <p>Strategic Voting ABM — Model &amp; Validation Guide. Synchronized from the repository at commit
+    <p>Strategic Voting ABM: Model &amp; Validation Guide. Synchronized from the repository at commit
     <a href="https://github.com/clarasalas/strategic-voting-abm-2RS">clarasalas/strategic-voting-abm-2RS</a>.
     Suite: 570 passed, 0 skipped, 0 warnings (2026-08-22), green in CI on <code>main</code>. Last
     empirical rerun 2026-08-21, 14 000 simulations. <strong>The canonical source is the Markdown under

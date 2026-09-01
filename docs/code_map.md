@@ -8,9 +8,9 @@
 
 ```
 strategic-voting-abm-2RS/
-├── core_model/            the model itself — no analysis, no I/O of results
+├── core_model/            the model itself: no analysis, no I/O of results
 │   ├── agents.py            Elector and Party; the decision rule
-│   ├── model.py             run_simulation() — the iteration loop
+│   ├── model.py             run_simulation(), the iteration loop
 │   ├── functions.py         electorate construction, coordination_measures
 │   ├── metrics.py           ENP, CENP, ΔCENP, tau_absolute   ← CANONICAL units
 │   ├── signals.py           temperature transform + Dirichlet draw
@@ -21,7 +21,7 @@ strategic-voting-abm-2RS/
 │   ├── synthetic/         abstract-model experiments
 │   │   ├── parameter_space.py     the Saltelli PROBLEM  ← CANONICAL bounds
 │   │   ├── saltelli_sensitivity.py  Sobol indices (SALib)
-│   │   ├── robustness_checks.py     protocol panels A–G
+│   │   ├── robustness_checks.py     protocol panels A-G
 │   │   ├── protocol_validation.py   horizon + population validation
 │   │   ├── protocol_posthoc.py      seed-noise decomposition, BH correction
 │   │   └── main_results.py          synthetic headline figures
@@ -39,7 +39,7 @@ strategic-voting-abm-2RS/
 │       └── make_empirical_tables.py the 6 committed empirical tables
 │
 ├── tests/                 20 files, 570 tests, no skips
-├── results/tables/        22 compact CSVs — the citable artefacts
+├── results/tables/        22 compact CSVs, the citable artefacts
 ├── data/                  real inputs (committed) + raw output (ignored)
 ├── docs/                  this guide
 └── tools/                 operational scripts, not analysis
@@ -58,37 +58,37 @@ strategic-voting-abm-2RS/
 The model, and nothing else. No experiment design, no result files, no CLI. Both
 analysis trees import from here and share nothing else.
 
-> Uses **flat internal imports** (`from agents import …`), so `core_model` must
-> be on `sys.path`. Every script in `analysis/` does
+> Uses flat internal imports (`from agents import …`), so `core_model` must be
+> on `sys.path`. Every script in `analysis/` does
 > `sys.path.insert(0, str(REPO / "core_model"))`.
 
 ### `analysis/synthetic/`
 
 Experiments on the abstract model: which parameters matter, and is the protocol
-sound? Generated electorates and generated signals. Outputs the Sobol indices and
-the protocol panels.
+sound? Generated electorates and generated signals. Outputs the Sobol indices
+and the protocol panels.
 
 ### `analysis/empirical/`
 
-Replay against the real 2002/2022 structure. Real positions, real electorate,
-**exogenous** real poll timelines. Answers whether the rule reproduces the
-observed contrast.
+Replay against the real 2002/2022 structure, with real positions, a real
+electorate, and exogenous real poll timelines. Answers whether the rule
+reproduces the observed contrast.
 
 ### `tests/`
 
 See the [validation matrix](validation.md#validation-matrix). Organised by
-contract, not by source file.
+contract rather than by source file.
 
 ### `results/tables/`
 
-The only committed derived output. Compact, deterministic, diff-readable —
-documented in [`results/README.md`](../results/README.md).
+The only committed derived output: compact, deterministic and diff-readable.
+Documented in [`results/README.md`](../results/README.md).
 
 ### `data/`
 
-Real inputs are **committed** (`polls_*`, `results_*`, `party_positions_*`,
-`voters_ideology_*`, `FR-*`), plus the raw Saltelli matrices so the Sobol table
-regenerates without simulation. Everything the model *writes* is ignored.
+Real inputs are committed (`polls_*`, `results_*`, `party_positions_*`,
+`voters_ideology_*`, `FR-*`), along with the raw Saltelli matrices so the Sobol
+table regenerates without simulation. Everything the model *writes* is ignored.
 
 ### `docs/`
 
@@ -109,16 +109,16 @@ Where the same idea could live in several places, exactly one is authoritative.
 
 | Concept | Canonical home | Rule |
 |---|---|---|
-| **τ̂ → τ conversion** | `core_model/metrics.py::tau_absolute` | The **only** place the conversion may happen. Callers convert once and record both values. |
+| **τ̂ → τ conversion** | `core_model/metrics.py::tau_absolute` | The only place the conversion may happen. Callers convert once and record both values. |
 | **ENP / CENP** | `core_model/metrics.py` | |
 | **Saltelli bounds** | `analysis/synthetic/parameter_space.py::PROBLEM` | Never re-declare bounds by hand. |
-| **Swept predictors** | `lhs_importance.py::SWEPT_PREDICTORS` | An explicit **allowlist** per design, never auto-detection plus exclusions. Metadata columns can never become predictors. |
+| **Swept predictors** | `lhs_importance.py::SWEPT_PREDICTORS` | An explicit allowlist per design, never auto-detection plus exclusions. Metadata columns can never become predictors. |
 | **Outcome extraction** | `core_model/empirical_outcomes.py` | |
 | **Observed ΔCENP targets** | `analysis/empirical/behavioral_targets.py` | |
 
 ---
 
-## Intentionally separate — do not merge
+## Intentionally separate: do not merge
 
 These look like duplicates and are not.
 
@@ -126,12 +126,12 @@ These look like duplicates and are not.
 
 | | Baseline |
 |---|---|
-| `functions.coordination_measures(sincere, final)` | the model's **own iteration-0 sincere shares** |
-| `behavioral_sweep.py:199` — `cenp(final) − cenp(s⁰)` | the **exogenous opening poll** |
+| `functions.coordination_measures(sincere, final)` | the model's own iteration-0 sincere shares |
+| `behavioral_sweep.py:199`, `cenp(final) − cenp(s⁰)` | the exogenous opening poll |
 
-**Different quantities answering different questions.** Only the second is
-comparable to observation. A contract test pins both against drift and
-deliberately does **not** assert they are equal.
+These are different quantities answering different questions, and only the
+second is comparable to observation. A contract test pins both against drift and
+deliberately does not assert they are equal.
 
 ### The two Latin-hypercube declarations
 
@@ -142,10 +142,10 @@ The *function* bodies are identical; the *dimension orders* are not:
 | `empirical_2002_2022` | `tau_hat, rho_pi, alpha, [mu], [beta]` |
 | `behavioral_sweep` | `tau_hat, mu, alpha, rho_pi, beta` |
 
-> The LHS routine draws one dimension at a time from a shared generator, so
-> **the order determines the design.** Reordering the list changes every drawn
-> value and would silently invalidate the comparison the reruns exist to
-> produce. The function may be lifted; the orders must not move.
+> The LHS routine draws one dimension at a time from a shared generator, so the
+> order determines the design. Reordering the list changes every drawn value and
+> would silently invalidate the comparison the reruns exist to produce. The
+> function may be lifted; the orders must not move.
 
 ### `initialization_benchmarks` passing `tau=2.0`
 
@@ -162,8 +162,8 @@ safely regenerated. Full reasoning in [`analysis_map.md`](analysis_map.md).
 
 | | Item | Action |
 |---|---|---|
-| A1 | LHS function | consolidate — keep both call orders, fingerprint first |
-| A2 | ENP/CENP duplicates | consolidate — equivalence already pinned |
+| A1 | LHS function | consolidate; keep both call orders, fingerprint first |
+| A2 | ENP/CENP duplicates | consolidate; equivalence already pinned |
 | A3 | Parameter ranges | consolidate |
 | B3 | Outcome extraction | consolidate |
 | B4 | Row builder | consolidate |

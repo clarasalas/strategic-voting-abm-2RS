@@ -9,7 +9,7 @@ The corrected conversion is
 tau_absolute = tau_hat * (2.0 / K)
 ```
 
-with `K` year-specific — 15 in 2002, 12 in 2022 — so one shared `tau_hat` draw
+with `K` year-specific (15 in 2002, 12 in 2022), so one shared `tau_hat` draw
 becomes a **different absolute distance in each year**. `tau_hat = 3.0` is
 `0.40` in 2002 and `0.50` in 2022.
 
@@ -23,18 +23,18 @@ becomes a **different absolute distance in each year**. `tau_hat = 3.0` is
 |---|---|---|
 | 1 | Empirical replay 2002 + 2022, main and robustness | Pre-fix; also only a 15-draw smoke run survives |
 | 2 | Three probabilistic-initialisation variants | Pre-fix (6 June) |
-| 3 | Behavioural sweeps, both years | Pre-fix (7–8 June) |
-| 4–7 | Diagnostics, figures, comparison, LHS importance | Derived from 1–3 |
+| 3 | Behavioural sweeps, both years | Pre-fix (7-8 June) |
+| 4-7 | Diagnostics, figures, comparison, LHS importance | Derived from 1-3 |
 
 ### Must not be rerun
 
-Saltelli/Sobol, the main synthetic runs, robustness panels A–G, the Panel C
+Saltelli/Sobol, the main synthetic runs, robustness panels A-G, the Panel C
 epsilon analysis, horizon validation, population validation, and the protocol
 post-hoc analysis.
 
 PR #6 did touch the three synthetic runners, which the original plan did not
 anticipate. Line by line, that change replaced `tau_hat * (2.0 / K)` with
-`tau_absolute(tau_hat, K)` — the same product, so identical outputs. The audit
+`tau_absolute(tau_hat, K)`, the same product, so identical outputs. The audit
 found no other behavioural dependency: the `signal_epsilon` plumbing added in
 PR #11 is additive and its default is still `1e-12` (`core_model/model.py:100`).
 
@@ -69,7 +69,7 @@ the replay has no resume mechanism to conflict with.
 
 Copy the preamble once, then run the steps in order.
 
-### Preamble — failure cannot be hidden
+### Preamble: failure cannot be hidden
 
 ```bash
 set -o errexit
@@ -95,7 +95,7 @@ run () {
 }
 ```
 
-### Step 1 — empirical replay, nearest-party baseline
+### Step 1: empirical replay, nearest-party baseline
 
 300 main draws per year plus 100 draws × 3 robustness variants per year;
 1,200 simulations; ~17 min. Seed `MASTER_SEED = 20020422`, fixed in source.
@@ -114,7 +114,7 @@ deliberately, and it is archived.
 Writes `data/empirical_runs_{2002,2022}.csv`,
 `data/empirical_candidate_shares_{2002,2022}.csv`,
 `data/empirical_candidate_draws_{2002,2022}.csv`,
-`data/empirical_robustness_{2002,2022}.csv` — replacing the 15-row smoke run.
+`data/empirical_robustness_{2002,2022}.csv`, replacing the 15-row smoke run.
 No resume: each invocation rewrites its outputs from the start.
 
 **Validate:**
@@ -145,7 +145,7 @@ run 01_check_draws_2022 \
         --year 2022 --expect-rows 3600
 ```
 
-### Step 2 — probabilistic-initialisation variants
+### Step 2: probabilistic-initialisation variants
 
 800 draws per year per variant; 1,600 simulations each, 4,800 total; ~65 min.
 `--overwrite` is required: the pre-fix June outputs hold 800 rows each and are
@@ -186,7 +186,7 @@ for v in signal prior signal_mu0; do
 done
 ```
 
-### Step 3 — behavioural sweeps (longest stage)
+### Step 3: behavioural sweeps (longest stage)
 
 1,000 draws × 4 repeats = 4,000 simulations per year, 8,000 total.
 ~3 h 30 min per year, ~7 h total. Per-run seed is
@@ -237,9 +237,9 @@ run 03_check_sweep_2022 \
         --year 2022 --expect-rows 1000 --log logs/03b_sweep_2022.log
 ```
 
-### Step 4 — diagnostics
+### Step 4: diagnostics
 
-Depends on steps 1–2. No simulation; reads the CSVs. Minutes.
+Depends on steps 1-2. No simulation, and it reads the CSVs. Minutes.
 
 ```bash
 run 04a_diag_nearest \
@@ -271,9 +271,9 @@ run 04_check \
              done'
 ```
 
-### Step 5 — empirical figures
+### Step 5: empirical figures
 
-Depends on steps 1–2. Minutes. Overwrites the empirical PNG/PDF pairs in
+Depends on steps 1-2. Minutes. Overwrites the empirical PNG/PDF pairs in
 `figures/`.
 
 ```bash
@@ -281,7 +281,7 @@ run 05_figures \
     python analysis/empirical/empirical_figures.py
 ```
 
-### Step 6 — behavioural comparison and sweep figure
+### Step 6: behavioural comparison and sweep figure
 
 Depends on step 3. Minutes.
 
@@ -297,7 +297,7 @@ Writes `data/behavioral_compare_2002_2022.csv` and
 `figures/behavioral_sweep.{png,pdf}`. `behavioral_targets.csv` involves no
 simulation and is unaffected.
 
-### Step 7 — LHS parameter importance
+### Step 7: LHS parameter importance
 
 Depends on step 3. Requires `scikit-learn`. Minutes.
 
@@ -306,7 +306,7 @@ run 07_lhs_importance \
     python analysis/empirical/lhs_importance.py
 ```
 
-Writes `results/tables/lhs_parameter_importance.csv` — a **new committed
+Writes `results/tables/lhs_parameter_importance.csv`, a **new committed
 file**, and the one that turns 4 currently skipped tests into passes.
 `tau_absolute` and `K` are excluded from the predictor set: `tau_absolute` is
 perfectly collinear with `tau_hat` within a year, and `K` is constant.
@@ -320,7 +320,7 @@ run 07_check \
 
 Expected: the 4 `lhs_parameter_importance.csv not generated yet` skips are gone.
 
-### Step 8 — full suite and comparison
+### Step 8: full suite and comparison
 
 ```bash
 run 08a_pytest \
@@ -333,15 +333,15 @@ run 08b_archive_intact \
 
 Then the before/after comparison, against the archive. **State explicitly in
 any write-up that no archived raw before-versus-after comparison of the main
-replay exists** — the pre-fix full outputs were overwritten on 2026-08-19 by a
+replay exists.** The pre-fix full outputs were overwritten on 2026-08-19 by a
 `--quick` run and were never committed. One could be regenerated from commit
 `70e23f5` under the fixed seed, but has not been.
 
 A genuine raw comparison *is* available for the parts never overwritten:
 `behavioral_sweep_{2002,2022}.csv`, `empirical_runs_prob_*.csv` and
-`empirical_diagnostics_*.csv`, all from 6–8 June.
+`empirical_diagnostics_*.csv`, all from 6-8 June.
 
-### Step 9 — fiche technique (after approval of the comparison)
+### Step 9: fiche technique (after approval of the comparison)
 
 Not part of the compute. Once the rerun comparison is approved, the fiche is
 updated to carry the corrected conversion, the corrected empirical results, the
@@ -362,12 +362,12 @@ completed synthetic validation, and the final test and CI status.
 | 1 · replay | 1,200 | ~17 min |
 | 2 · prob variants | 4,800 | ~65 min |
 | 3 · sweeps | 8,000 | ~7 h 05 min |
-| 4–8 · derived | 0 | ~10 min |
+| 4-8 · derived | 0 | ~10 min |
 | **Total** | **14,000** | **~8 h 40 min** |
 
 Estimates come from each script's own history: ~0.83 s/simulation for the
 replay path, measured from the 19 Aug smoke run's timestamps, and
-~3.18 s/simulation for the sweep, measured from the 7–8 June run. The sweep is
+~3.18 s/simulation for the sweep, measured from the 7-8 June run. The sweep is
 slower per simulation because it runs to `T_MAX = 25` while the replay stops at
 the length of the poll sequence. Treat these as ±30%.
 

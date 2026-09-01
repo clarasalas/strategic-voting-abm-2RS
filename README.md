@@ -135,8 +135,7 @@ regenerate from a seed. Only the derived tables are committed.
 
 The Markdown documentation in this repository is the canonical version.
 Everything needed to understand, verify or reproduce this project lives under
-[`docs/`](docs/index.md) and reads directly on GitHub, with no documentation
-site, no build step and no external service.
+[`docs/`](docs/index.md) and reads directly on GitHub.
 
 A [navigable single-page rendering](https://clarasalas.github.io/strategic-voting-abm-2RS/guide.html) of the same material is published
 through GitHub Pages as a convenience mirror. Treat it as optional. It is

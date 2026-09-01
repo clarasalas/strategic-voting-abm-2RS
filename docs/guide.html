@@ -764,9 +764,9 @@ def tau_absolute(tau_hat: float, K: int) -> float:
     check: two that could only ever skip once the code they guarded had changed, and two that read
     git-ignored generated files and therefore skipped everywhere but one machine. The latter two were
     rebuilt on fixtures they construct themselves.</p>
-    <p>Removing the last one surfaced a real weakness: feeding a NaN through the table generator did
-    <em>not</em> trip its guard, because every summary goes through a pandas aggregation and those skip
-    NaN by default. The generator now validates on the way <em>in</em>.</p>
+    <p>The table generator validates its input on the way <em>in</em>, before anything is aggregated.
+    Every summary goes through a pandas aggregation and those skip NaN by default, so a corrupt input
+    checked any later would read as a healthy-looking mean over fewer rows.</p>
   </div>
 
   <h3 id="matrix">Validation matrix</h3>

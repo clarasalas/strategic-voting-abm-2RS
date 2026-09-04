@@ -9,7 +9,7 @@ still fit together:
 
 Nothing here checks a scientific conclusion or what a figure looks like. It
 checks the seams: filenames, column names and paths. Those are what break when
-a runner gains a column, a stem is renamed, or an output moves directory -- and
+a runner gains a column, a stem is renamed, or an output moves directory, and
 they break silently, hours into a rerun, because each stage is a separate
 process and the failure only appears at the next one.
 
@@ -174,7 +174,7 @@ def small_forest(monkeypatch):
     Shrink the surrogate for the schema test: 20 trees, single process.
 
     fit_and_importance hardcodes 500 trees and n_jobs=-1, which together cost
-    ~20 s on a fixture this small -- almost all of it joblib spinning up worker
+    ~20 s on a fixture this small, almost all of it joblib spinning up worker
     processes for a few milliseconds of arithmetic. This test asserts column
     names and finiteness, not importances, so neither the tree count nor the
     worker count matters to what it checks. The real code path is unchanged.

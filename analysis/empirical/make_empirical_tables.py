@@ -49,11 +49,11 @@ CSV_READ_KW = dict(float_precision="round_trip")
 def _read(path):
     """Read an input CSV exactly, and refuse a corrupt one.
 
-    The finiteness check is on the way IN, not only on the way out. Every
+    The finiteness check is on the way IN, not only on the way out.  Every
     summary here goes through a pandas aggregation, and those skip NaN by
-    default -- so a NaN in the raw output would silently become a healthy
-    looking mean over fewer rows, and the output guard would never fire.
-    Catching it at the source is the only place it is visible.
+    default, so a NaN in the raw output would quietly become a healthy looking
+    mean over fewer rows and the output guard would never fire.  The source is
+    the only place it is visible.
     """
     df = pd.read_csv(path, encoding="utf-8", **CSV_READ_KW)
     num = df.select_dtypes(include=[np.number])

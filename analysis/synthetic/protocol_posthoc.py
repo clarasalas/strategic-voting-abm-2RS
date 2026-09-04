@@ -6,7 +6,7 @@ from the COMPLETED horizon run.  This module launches no simulations.
 
 1. Configuration-specific drift.
    Pooling 432 runs showed the signed mean change from T=25 is near zero.  That
-   is consistent with a stationary process -- and equally consistent with some
+   is consistent with a stationary process, and equally consistent with some
    parameter configurations drifting up while others drift down.  The two are
    distinguished by testing each configuration separately, and by asking whether
    movement PERSISTS from T25->T50 into T50->T100 or reverses.
@@ -18,29 +18,28 @@ from the COMPLETED horizon run.  This module launches no simulations.
    substantially decomposing noise.  A one-way random-effects decomposition on
    the balanced 54 x 8 validation design estimates the ratio directly.
 
-   What that ratio does and does not license: a high ICC supports reading the
-   broad importance structure with confidence.  It is NOT a replication audit of
-   individual Saltelli rows, and it does not establish that any individual Sobol
-   estimate is unbiased.
+   What the ratio licenses: a high ICC supports reading the broad importance
+   structure with confidence.  It is NOT a replication audit of individual
+   Saltelli rows, and it does not show that any individual Sobol estimate is
+   unbiased.
 
-   More precisely.  When stochastic variation is independent of the parameters,
-   it generally lowers first-order indices by adding unexplained outcome
-   variance; if the amount of stochastic variation changes across the parameter
-   space, as it may here, its effect can be more complex.  With one realisation
-   per row, stochastic variation contributes to uncertainty in the estimated
-   indices -- the bootstrap S1_conf and ST_conf columns describe uncertainty in
-   the Sobol estimates from the observed design, but they do not isolate seed
-   uncertainty or constitute a replication-based estimate of stochastic noise.
-   Total-order estimates carry no guarantee of the same attenuation, so
-   closely-spaced rankings can change while clearly separated importance groups
-   remain the credible reading.
+   Stochastic variation that is independent of the parameters usually lowers
+   first-order indices, by adding unexplained outcome variance; where the
+   amount of it changes across the parameter space, as it may here, the effect
+   is harder to predict.  With one realisation per row that variation feeds
+   into the uncertainty of the estimated indices.  The bootstrap S1_conf and
+   ST_conf columns describe uncertainty in the Sobol estimates from the
+   observed design; they do not isolate seed uncertainty, and they are not a
+   replication-based estimate of stochastic noise.  Total-order estimates come
+   with no guarantee of the same attenuation, so closely spaced rankings can
+   change while clearly separated importance groups stay the credible reading.
 
-A "configuration" here is one fixed combination of ALL synthetic parameters --
+A "configuration" here is one fixed combination of ALL synthetic parameters:
 K, c, tau_hat, mu, theta, rho_s, rho_pi, alpha, epsilon.  The eight seeds are
 stochastic repetitions of that same combination.
 
-Endpoint outcomes and the 10-iteration tail means are computed side by side and
-kept clearly separate throughout.
+Endpoint outcomes and the 10-iteration tail means are computed side by side,
+and kept apart throughout.
 
 Reads
 -----
@@ -109,9 +108,9 @@ def column_for(outcome: str, statistic: str, horizon: int) -> str:
 
 def validate_horizon_raw(df: pd.DataFrame, expected: dict = None) -> dict:
     """
-    Check the raw file is the complete full run before anything is computed on
-    it.  Returns a dict of findings; raises ValueError on anything that would
-    make the analysis invalid.
+    Check the raw file is the complete full run before computing anything on
+    it.  Returns a dict of findings, and raises ValueError on anything that
+    would make the analysis invalid.
     """
     exp = dict(EXPECTED if expected is None else expected)
     problems = []
@@ -316,9 +315,9 @@ def persistence_summary(drift: pd.DataFrame) -> pd.DataFrame:
     Per (outcome, statistic): how many configurations move, and whether the
     movement persists into the second interval or reverses.
 
-    Persistence is the discriminating evidence.  A configuration genuinely
-    drifting keeps going in the same direction; one fluctuating around a stable
-    level is as likely to reverse.
+    Persistence is what discriminates.  A configuration that is genuinely
+    drifting keeps going the same way; one fluctuating around a stable level is
+    as likely to turn back.
     """
     rows = []
     for (outcome, statistic), grp in drift.groupby(["outcome", "statistic"]):
@@ -364,8 +363,8 @@ def variance_components(values, groups, n_per_group: int = None) -> dict:
         ICC            = sigma_config^2 / (sigma_config^2 + sigma_seed^2)
 
     The max(., 0) truncation is standard for the ANOVA estimator, which can go
-    negative when the true between-group variance is near zero; a truncated
-    estimate is reported as exactly 0 and the ICC with it.
+    negative when the true between-group variance is near zero.  A truncated
+    estimate is reported as exactly 0, and the ICC with it.
     """
     values = np.asarray(values, dtype=float)
     groups = np.asarray(groups)

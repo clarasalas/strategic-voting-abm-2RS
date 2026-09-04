@@ -9,10 +9,9 @@ Fixed parameters (justified by preliminary analyses)
     N          = 2000     (N robustness check)
     M          = 2        (French two-round institutional rule)
     Tmax       = 25       (convergence diagnostic: p95 across regimes)
-    eps_signal = 1e-12    (numerical floor; the value these committed
-                           results were produced under. The 1e-4 quoted
-                           here previously was never in force -- see
-                           robustness_checks Panel C.)
+    eps_signal = 1e-12    (numerical floor, the value these committed results
+                           were produced under.  The 1e-4 once quoted here was
+                           never in force; see robustness_checks Panel C.)
     xi         = 0.0      (symmetric benchmark; xi analysis showed
                            geometric artifact, not behavioral signal)
     K          ∈ {6,8,9}  (run separately; odd/even geometry distinction)
@@ -38,24 +37,25 @@ Outcome measures
 
 Run cost
 --------
-    This design uses calc_second_order=False, so the Saltelli sample size is
-    N_saltelli * (k + 2) evaluations -- NOT the N * (2k + 2) of the full
-    second-order design.  Second-order indices are not estimated, which is what
-    saves the extra N * k runs.
+    This design sets calc_second_order=False, so the sample is
+    N_saltelli * (k + 2) evaluations, not the N * (2k + 2) of the full
+    second-order design.  Skipping the second-order indices is what saves the
+    extra N * k runs.
 
     k=8 parameters → N_saltelli * 10 runs
     N_saltelli=1024 → 10,240 runs per K value
     3 K values     → 30,720 total runs
 
     That is exactly the row count of the committed
-    data/saltelli_results_K{6,8,9}.csv files (10,240 each); the 2k+2 formula
-    would imply a non-integer base sample of 568.9 and is simply wrong here.
+    data/saltelli_results_K{6,8,9}.csv files (10,240 each).  The 2k+2 formula
+    would imply a base sample of 568.9, which is not an integer, so it is the
+    wrong formula for this design.
 
     At ~0.1s per run (N=2000 electors): ~50 minutes total.
     At ~0.05s per run: ~25 minutes.
 
-    The committed result files mean this cost can be avoided entirely: use
-    --analyze-existing to recompute the Sobol indices from them.
+    None of that cost is necessary: --analyze-existing recomputes the Sobol
+    indices from the committed result files.
 
 Reads
 -----
@@ -112,7 +112,7 @@ from model import run_simulation
 # =========================================================================== #
 
 # Parameter space, K values, outcomes and the fixed protocol constants live in
-# parameter_space.py -- a side-effect-free module, so protocol_validation.py and
+# parameter_space.py, which has no side effects, so protocol_validation.py and
 # the tests can import the definitions without pulling in SALib, matplotlib or
 # the model.  Re-exported here so existing references keep working.
 from parameter_space import (                                  # noqa: E402
@@ -125,13 +125,13 @@ from parameter_space import (                                  # noqa: E402
 # N_SALTELLI = 64      # quick test: 64 * 10 = 640 runs per K
 N_SALTELLI = 1024      # full run:   1024 * 10 = 10240 runs per K
 
-# NOTE: the signal offset eps_s is NOT set here and never was.  A constant
-# EPS_SIGNAL = 1e-4 used to sit at this spot, unreferenced by any code path.
-# run_simulation has no eps_s parameter, so the value actually in force is the
-# default of signals.generate_signal (1e-12).  Use
-# parameter_space.signal_epsilon_in_force() to read it rather than assuming.
+# The signal offset eps_s is NOT set here and never was.  An unused constant
+# EPS_SIGNAL = 1e-4 used to sit at this spot, referenced by no code path.
+# run_simulation takes no eps_s, so the value in force is whatever
+# signals.generate_signal defaults to (1e-12).  Read it with
+# parameter_space.signal_epsilon_in_force() rather than assuming.
 
-# Plot colours — defined once, reused across all K iterations
+# Plot colours, defined once and reused across all K iterations
 COLOR_S1 = plt.cm.Spectral(0.32)
 COLOR_ST = plt.cm.Spectral(0.1)
 
@@ -229,8 +229,8 @@ def _run_analysis(K: int) -> dict:
         try:
             outcomes = run_one(params, K=K, seed=i)
         except Exception as e:
-            # On rare failures (e.g. degenerate parameter combinations),
-            # fill with NaN and continue rather than crashing the whole run.
+            # A rare failure (a degenerate parameter combination, say) fills
+            # with NaN and continues, rather than losing the whole run.
             print(f"    WARNING: run {i} failed ({e}). Filling with NaN.")
             outcomes = {o: np.nan for o in OUTCOMES}
 
@@ -308,7 +308,7 @@ def _run_analysis(K: int) -> dict:
             ax.legend(fontsize=8)
 
     fig.suptitle(
-        f"Sobol sensitivity indices — K={K}\n"
+        f"Sobol sensitivity indices, K={K}\n"
         f"(N_saltelli={N_SALTELLI}, {n_runs} model runs, "
         f"N_electors={N_ELECTORS})",
         fontsize=11,
@@ -351,7 +351,7 @@ def _plot_cross_k(all_sobol: dict) -> None:
                         label=f"K={K}", color=color, alpha=0.6)
 
         for ax, title in zip(axes, ["S1 (first-order)", "ST (total-order)"]):
-            ax.set_title(f"{OUTCOME_LABELS[outcome]} — {title}", fontsize=10)
+            ax.set_title(f"{OUTCOME_LABELS[outcome]}: {title}", fontsize=10)
             ax.set_xticks(x)
             ax.set_xticklabels(params_list, rotation=45, ha="right", fontsize=9)
             ax.set_ylim(bottom=0)
@@ -390,9 +390,9 @@ def _print_summary() -> None:
 
     print("""
 Done. Key output files:
-  saltelli_sobol_K{6,8,9}.png           — Sobol indices per K
-  saltelli_comparison_{outcome}.png     — cross-K comparison per outcome
-  saltelli_sobol_all.csv                — all indices in one file
+  saltelli_sobol_K{6,8,9}.png           Sobol indices per K
+  saltelli_comparison_{outcome}.png     cross-K comparison per outcome
+  saltelli_sobol_all.csv                all indices in one file
 
 Interpretation guide
 --------------------
@@ -433,7 +433,7 @@ def infer_base_sample(n_rows: int, num_vars: int = None) -> int:
     Recover the Saltelli base sample size N from a result file's row count.
 
     With calc_second_order=False the design is N * (D + 2) evaluations, so
-    N = n_rows / (D + 2).  Raises if that is not an exact integer -- a
+    N = n_rows / (D + 2).  Raises if that is not an exact integer: a
     non-integer means the file does not come from this design at all.
     """
     D = PROBLEM["num_vars"] if num_vars is None else num_vars
@@ -456,9 +456,9 @@ def load_existing_results(K: int, verify_design: bool = True) -> tuple:
       * every parameter column and every outcome column is present;
       * the row count implies an integer Saltelli base sample size;
       * (verify_design) the parameter columns reproduce the Saltelli sample
-        that saltelli.sample(PROBLEM, N, calc_second_order=False) generates --
-        this checks row ORDER as well as count, and the Sobol estimator is
-        order-sensitive, so it is the check that actually matters.
+        that saltelli.sample(PROBLEM, N, calc_second_order=False) generates.
+        This checks row ORDER as well as count, and the Sobol estimator is
+        order-sensitive, so it is the check that matters.
 
     Returns (dataframe, n_base).
     """

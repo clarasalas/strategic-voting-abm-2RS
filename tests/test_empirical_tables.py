@@ -162,8 +162,8 @@ def _write_fixture_inputs(data_dir):
     The real inputs are 17 MB of git-ignored simulation output, so a test that
     reads them can only skip in CI. These fixtures carry the same columns and
     the same per-year candidate counts, with values chosen to be awkward for a
-    float round-trip -- so the test exercises the generator's contract, not the
-    size of the data.
+    float round-trip, so the test exercises the generator's contract rather
+    than the size of the data.
     """
     data_dir = Path(data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -236,7 +236,7 @@ def _write_fixture_inputs(data_dir):
 def test_generator_is_deterministic_on_fixture_inputs(tmp_path):
     """Two runs over identical inputs must produce identical bytes.
 
-    This is the property that makes the committed tables trustworthy -- they
+    This is the property that makes the committed tables trustworthy: they
     are a pure function of the raw output, with nothing time- or
     environment-dependent in between. It runs everywhere, including CI, because
     it builds its own inputs.
@@ -292,12 +292,12 @@ def test_generator_guard_rails_reject_a_non_finite_input(tmp_path):
 # The committed tables are also checked against the REAL raw outputs, but not
 # from here: that check needs 17 MB of git-ignored simulation output, so as a
 # test it could only ever skip in CI and on a fresh clone. It runs instead as
-# the last step of the pipeline --
+# the last step of the pipeline:
 #
 #     python analysis/empirical/make_empirical_tables.py && git status --short
 #
 # which must leave results/tables/ unchanged. The contract that makes it
-# meaningful -- that the generator is a deterministic pure function of its
-# inputs, exact through a CSV round trip, and refuses corrupt input -- is
+# meaningful, that the generator is a deterministic pure function of its
+# inputs, exact through a CSV round trip, and refuses corrupt input, is
 # covered above by tests that build their own fixtures and therefore run
 # everywhere.

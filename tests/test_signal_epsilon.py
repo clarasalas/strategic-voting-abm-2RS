@@ -150,7 +150,7 @@ def test_large_epsilon_changes_the_run_signal():
     a = run_simulation(signal_epsilon=1e-12, **BASE_KWARGS)
     b = run_simulation(signal_epsilon=0.1, **BASE_KWARGS)
     assert not np.allclose(a["signal"], b["signal"]), (
-        "eps_s did not change the signal -- the parameter is not reaching "
+        "eps_s did not change the signal, so the parameter is not reaching "
         "generate_signal")
 
 

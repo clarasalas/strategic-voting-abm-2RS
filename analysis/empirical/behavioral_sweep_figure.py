@@ -140,7 +140,7 @@ def plot_delta_cenp_violin(samples: dict, targets: dict, stem: Path, dpi: int) -
     ax.set_ylim(-0.13, 0.16)
 
     handles = [Patch(facecolor=COLORS[YEARS[0]], alpha=0.55,
-                     label=f"{YEARS[0]}–{YEARS[-1]} draws"),
+                     label=f"{YEARS[0]}-{YEARS[-1]} draws"),
                Line2D([0], [0], marker="D", color=OBS_COLOR, linestyle="none",
                       markersize=10, label="real ΔCENP")]
     leg = ax.legend(handles=handles, loc="lower right",

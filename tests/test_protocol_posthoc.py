@@ -380,8 +380,8 @@ def _horizon_frame(n_configs=54, n_seeds=8, **overrides):
 
     Built here rather than read from disk: the real file is a 213 KB generated
     output that is git-ignored, so a test depending on it can only skip in CI.
-    The validator's contract does not need the real numbers -- it needs the
-    real *shape*, which this reproduces exactly.
+    The validator's contract does not need the real numbers, only the real
+    *shape*, which this reproduces exactly.
     """
     rng = np.random.default_rng(0)
     rows = []

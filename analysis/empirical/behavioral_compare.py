@@ -6,23 +6,23 @@ Is the achievable coordination gain ΔCENP different between 2002 and 2022?
 Reads the per-draw behavioral sweeps (one row per parameter draw, holding each
 year's real electoral structure fixed) and tests whether the distribution of
 ΔCENP differs between the two years. Each draw is summarized by its mean ΔCENP
-over repeats — the same quantity plotted by behavioral_sweep_figure.py.
+over repeats, the same quantity behavioral_sweep_figure.py plots.
 
 Two metrics are compared:
 
     raw ΔCENP        the coordination gain as-is.
-    relative gain    ΔCENP / (1 − CENP(s⁰)) — the fraction of the *available*
+    relative gain    ΔCENP / (1 − CENP(s⁰)), the fraction of the *available*
                      headroom toward full coordination that got closed. This
                      controls for initial fragmentation: the baseline poll s⁰
                      is fixed per year, so its CENP(s⁰) is a single constant per
                      year (0.572 for 2002, 0.557 for 2022) and is perfectly
-                     confounded with `year` — it cannot be used as a regression
+                     confounded with `year`, so it cannot serve as a regression
                      covariate. Normalizing by headroom is the meaningful way to
                      put the two years on a comparable starting footing.
 
 For each metric, two complementary tests are reported:
 
-    Mann–Whitney U   non-parametric; no normality assumption. Effect size:
+    Mann-Whitney U   non-parametric, no normality assumption. Effect size:
                      rank-biserial correlation and the common-language effect
                      size CLES = P(metric_2002 > metric_2022).
     Welch's t-test   difference of means with unequal variances. Effect size:
@@ -95,7 +95,7 @@ def compare(a: np.ndarray, b: np.ndarray, metric: str) -> list:
         print(f"  {year}: n={d['n']:4d}  mean={d['mean']:+.4f}  "
               f"median={d['median']:+.4f}  sd={d['std']:.4f}")
 
-    # Mann–Whitney U (two-sided). U reported for the first sample (2002).
+    # Mann-Whitney U (two-sided). U reported for the first sample (2002).
     u_stat, p_mw = stats.mannwhitneyu(a, b, alternative="two-sided")
     n1, n2 = a.size, b.size
     cles = u_stat / (n1 * n2)              # P(random 2002 draw > random 2022 draw)
@@ -105,7 +105,7 @@ def compare(a: np.ndarray, b: np.ndarray, metric: str) -> list:
     t_stat, p_t = stats.ttest_ind(a, b, equal_var=False)
     d = cohens_d(a, b)
 
-    print("  Mann–Whitney U : "
+    print("  Mann-Whitney U : "
           f"U={u_stat:.1f}  p={p_mw:.3e}  "
           f"CLES(2002>2022)={cles:.3f}  rank-biserial r={rank_biserial:+.3f}")
     print("  Welch's t      : "

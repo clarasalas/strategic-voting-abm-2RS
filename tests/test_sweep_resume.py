@@ -3,8 +3,8 @@ test_sweep_resume.py
 --------------------
 The behavioural sweep is roughly 3.5 hours per year, so an interruption must
 cost one draw, not the whole run.  These tests cover --resume: that it keeps
-completed work, that it refuses anything it cannot prove compatible, and -- the
-property that matters most -- that a resumed sweep and an uninterrupted one
+completed work, that it refuses anything it cannot prove compatible, and, the
+property that matters most, that a resumed sweep and an uninterrupted one
 produce the same file.
 
 No simulation runs here.  run_one is replaced by an analytic stand-in that is a

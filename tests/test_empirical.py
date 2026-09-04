@@ -265,8 +265,8 @@ def test_invalid_init_options_raise():
 #
 # The tests above compare two runs of the CURRENT code against each other, so
 # they only catch a divergence between two argument paths.  A change that moves
-# every path equally -- a rewrite of the sincere-init rule, a reordering of the
-# RNG draws, a different trigger condition -- leaves them all green while every
+# every path equally (a rewrite of the sincere-init rule, a reordering of the
+# RNG draws, a different trigger condition) leaves them all green while every
 # published number silently changes.
 #
 # The two tests below are the missing anchor: they pin the actual output of one
@@ -326,8 +326,8 @@ def test_golden_empirical_probabilistic():
     tau_hat = 1.75 is the mid-range value used throughout the synthetic figures,
     converted here through tau_absolute exactly as the empirical runner does:
     for K = 12 it is an absolute tau of 0.2917.  Re-recorded when the tau_hat
-    unit bug was fixed -- the previous values were taken with tau passed in
-    absolute units, which is no longer what the runner does.
+    unit bug was fixed: the earlier values were taken with tau passed in
+    absolute units, which is not what the runner does.
 
     Re-record with:
 

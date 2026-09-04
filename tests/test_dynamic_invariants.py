@@ -5,9 +5,9 @@ Invariants that must hold at EVERY iteration, not only at the end.
 
 tests/test_empirical.py checks the final state: shares sum to one, the run is
 reproducible. That leaves the trajectory unchecked. A loop that produced a
-malformed intermediate state -- a vote for a party index that does not exist, a
+malformed intermediate state (a vote for a party index that does not exist, a
 share vector that stops summing to one halfway through, a trigger count above
-the electorate -- can still land on a well-formed final state, and every
+the electorate) can still land on a well-formed final state, and every
 published number is a function of that trajectory.
 
 These run the real model on small electorates with fixed seeds.
@@ -142,8 +142,8 @@ def test_the_histories_line_up_on_the_documented_offset(runs, cfg):
     """
     The recorded series are not all the same length, and should not be.
 
-    history and intention_history include iteration 0 -- the sincere vote,
-    before any strategic reasoning -- so they hold n + 1 entries. Switching and
+    history and intention_history include iteration 0, the sincere vote before
+    any strategic reasoning, so they hold n + 1 entries. Switching and
     the per-iteration diagnostics are undefined at t = 0 and start at t = 1, so
     they hold n. Any per-iteration analysis that zips them together depends on
     exactly this offset, so it is pinned here rather than left to be

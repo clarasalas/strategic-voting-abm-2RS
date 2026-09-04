@@ -28,7 +28,7 @@ Re-run the probabilistic sweep first if this file is missing, e.g.
     python analysis/empirical/empirical_2002_2022.py \
         --sincere-init probabilistic --salience-source signal
 
-Outputs (data/, figures/  -- all tag-suffixed)
+Outputs (data/, figures/; all tag-suffixed)
 ----------------------------------------------
     empirical_beta_bins_candidates_<tag>_<year>.csv  mean final share by
                                                      candidate x beta bin
@@ -193,7 +193,7 @@ def error_by_bin(df: pd.DataFrame) -> pd.DataFrame:
     RMSE and MAE of final share vs actual, by beta bin.
 
     Error is computed per draw (across that draw's candidates), then averaged
-    over draws in the bin — so each draw weighs equally regardless of K.
+    over draws in the bin, so every draw weighs the same whatever K is.
     """
     def _per_draw(g):
         err = g["final_share"].to_numpy() - g["actual_share"].to_numpy()

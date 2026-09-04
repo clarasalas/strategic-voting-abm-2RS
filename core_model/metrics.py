@@ -1,12 +1,11 @@
 """
-Shared coordination metrics used across the analysis scripts.
-
-These are model-level quantities (not specific to any one analysis), so they
-live in ``core_model`` where both the empirical and synthetic analyses can
-import them.
+Coordination metrics, shared by both analysis lanes.
 
     ENP(δ)  = 1 / Σ_j δ_j²                  effective number of parties
     CENP(δ) = (K − ENP(δ)) / (K − 1)        coordination-scaled ENP, in [0, 1]
+
+They sit in ``core_model`` because the empirical and synthetic scripts both
+need them.
 """
 
 import numpy as np
@@ -34,26 +33,22 @@ def delta_cenp(poll, result) -> float:
 #  Tolerance-threshold units                                                   #
 # --------------------------------------------------------------------------- #
 #
-# Two different quantities are both called "tau" in this project:
+# Two quantities in this project are called "tau".
 #
-#   tau_hat  the NORMALISED tolerance threshold.  This is the design variable:
-#            it is what the Saltelli problem, the empirical parameter design and
-#            the behavioural sweep all draw, what every CSV records, and what the
-#            paper reports.  It is measured in zone lengths, so it is comparable
-#            across party systems of different size.
+#   tau_hat  the NORMALISED threshold, measured in zone lengths.  Every design
+#            draws it, every CSV records it, the paper reports it.  Being in
+#            zone lengths, it compares across party systems of different size.
 #
-#   tau      the ABSOLUTE tolerance threshold, in ideological-space units on
-#            [-1, 1].  This is what ``run_simulation(tau=...)`` and
-#            ``Elector(tau=...)`` expect, and the only unit the model itself
-#            understands.
+#   tau      the ABSOLUTE threshold, in ideological units on [-1, 1].  The only
+#            unit the model itself understands: ``run_simulation(tau=...)`` and
+#            ``Elector(tau=...)`` both expect this one.
 #
-# The two are related through the zone length 2/K, so the SAME tau_hat maps to a
-# DIFFERENT absolute tau in each party system -- notably to a different value in
-# each election year of the empirical replay (K = 15 in 2002, K = 12 in 2022).
-# Converting is therefore not optional: passing a tau_hat straight into
-# run_simulation silently reinterprets it as an absolute distance, which for
-# tau_hat >= 2 makes every party a contender for every voter and disables the
-# Ca/Oa distinction entirely.
+# One zone is 2/K wide, so a single tau_hat becomes a different absolute tau in
+# each party system, and so a different one in each year of the replay (K = 15
+# in 2002, K = 12 in 2022).  Passing tau_hat straight into run_simulation
+# silently reinterprets it as an absolute distance.  At tau_hat >= 2 that makes
+# every party a contender for every voter, which switches the Ca/Oa distinction
+# off altogether.
 
 def zone_length(K: int) -> float:
     """Width of one party zone on [-1, 1] for a K-party system."""
@@ -66,7 +61,7 @@ def tau_absolute(tau_hat: float, K: int) -> float:
 
         tau = tau_hat * (2 / K)
 
-    Any experiment runner that draws ``tau_hat`` must pass the result of this
-    function to ``run_simulation(tau=...)``, never ``tau_hat`` itself.
+    A runner that draws ``tau_hat`` passes this result to
+    ``run_simulation(tau=...)``, never ``tau_hat`` itself.
     """
     return tau_hat * zone_length(K)

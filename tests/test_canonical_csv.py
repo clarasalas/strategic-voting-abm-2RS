@@ -4,8 +4,8 @@ Canonical CSV serialisation: lossless, byte-idempotent, atomic.
 `finalise_output` reads a sweep CSV and writes it back, so it must be a
 fixed point: finalising twice has to produce the same bytes as finalising
 once. Otherwise a resumed run and an uninterrupted run yield different files
-from identical numbers -- which is exactly what CI caught on 2026-08-22, on a
-platform whose float values differ from the development machine's.
+from identical numbers, which is what CI caught on 2026-08-22, on a platform
+whose float values differ from the development machine's.
 
 The cause was the reader, not the writer: pandas' default float parser is fast
 but not correctly rounded, so it can return a double one ulp from the text.
@@ -98,7 +98,7 @@ def _frame(values):
 
 @pytest.mark.parametrize("value", NASTY)
 def test_each_difficult_value_survives_a_round_trip_bitwise(tmp_path, value):
-    """Not "close to" -- the identical double, including the sign of zero."""
+    """Not "close to": the identical double, including the sign of zero."""
     out = tmp_path / "s.csv"
     bs.write_canonical(pd.DataFrame({"x": [value]}), out)
     back = bs.read_canonical(out)["x"].to_numpy()[0]

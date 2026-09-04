@@ -2,8 +2,8 @@
 test_decision_rule.py
 ---------------------
 Direct, deterministic tests of the strategic decision rule and the contender
-set -- the two pieces of Section 3 that every empirical number rests on and
-that nothing in the suite exercised on their own.
+set, the two pieces of Section 3 that every empirical number rests on and that
+nothing else in the suite exercises on their own.
 
 Existing coverage stops at the ends of a run: tests/test_empirical.py checks
 that final shares sum to one and that a repeat run is identical, and
@@ -47,7 +47,7 @@ BELIEFS_FAR = np.array([0.05, 0.10, 0.15, 0.30, 0.40])
 # contender is projected to qualify and the voter has no reason to deviate.
 BELIEFS_NEAR = np.array([0.05, 0.40, 0.10, 0.15, 0.30])
 
-VOTER = -0.55          # distances 0.45, 0.05, 0.55, 1.05, 1.55 -- all distinct
+VOTER = -0.55          # distances 0.45, 0.05, 0.55, 1.05, 1.55, all distinct
 TAU = 0.6              # Ca = {-1.0, -0.5, 0.0}
 MU = 0.3
 
@@ -246,8 +246,8 @@ def test_contender_set_is_never_empty_and_always_holds_the_attachment():
     The singleton case, and the guarantee that makes the empty case impossible.
 
     _updatePartition appends j* when the tolerance ball excludes it, so however
-    small tau gets, Ca is a singleton rather than empty -- and chooseCandidate,
-    which maxes over Ca, therefore always has something to return.
+    small tau gets, Ca is a singleton rather than empty, so chooseCandidate,
+    which maxes over Ca, always has something to return.
     """
     for tau in (1e-9, 0.0, -1.0):
         e, parties, choice = _decide(tau=tau)

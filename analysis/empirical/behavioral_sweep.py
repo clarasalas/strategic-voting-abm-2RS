@@ -24,10 +24,10 @@ ENP(δ)       : 1 / Σ_j δ_j²                          (main_results.enp)
 CENP(δ)      : (K − ENP(δ)) / (K − 1)                (main_results.cenp)
 ΔCENP        : CENP(δ_final) − CENP(s⁰)              (SAME s⁰ for every run)
 
-NOTE: we do NOT use functions.coordination_measures()["delta_cenp"] here — that
-quantity is defined relative to the model's iteration-0 SINCERE shares, a
-different baseline.  The spec for this experiment is an s⁰ baseline, so ΔCENP is
-computed explicitly below as cenp(final, K) − cenp(s⁰, K).
+NOTE: we do NOT use functions.coordination_measures()["delta_cenp"] here.  That
+quantity is defined against the model's iteration-0 SINCERE shares, a different
+baseline.  This experiment is specified on an s⁰ baseline, so ΔCENP is computed
+explicitly below as cenp(final, K) − cenp(s⁰, K).
 
 δ⁰ initialization
 -----------------
@@ -66,10 +66,10 @@ sweep and an uninterrupted one produce the same output.
     rho_pi  (ρπ) ∈ [5, 200]        -> run_simulation(rho_pi=…)
     beta    (β)  ∈ [0, 20]         -> run_simulation(beta=…)
 
-NOTE: ρs (signal precision ``rho``) is intentionally NOT swept.  The signal is
-exogenous (empirical polls), so ``rho`` plays no role in empirical replay
-(model.py uses exogenous_signals and never draws from rho); sweeping it would be
-a pure placebo dimension.  It is left at the run_simulation default.
+NOTE: ρs (signal precision ``rho``) is deliberately NOT swept.  The signal is
+exogenous (empirical polls), so ``rho`` does nothing in empirical replay:
+model.py uses exogenous_signals and never draws from rho.  Sweeping it would be
+a placebo dimension.  It stays at the run_simulation default.
 
 Reads
 -----
@@ -285,8 +285,8 @@ def load_resumable(out: Path, meta: dict, design: pd.DataFrame) -> set:
 
     Every check refuses rather than repairs.  A full sweep is roughly seven
     hours of compute, and silently merging two incompatible partial runs would
-    produce a file that looks finished and is quietly wrong -- much worse than
-    being told to start again.
+    produce a file that looks finished and is quietly wrong.  Being told to
+    start again is much the better outcome.
     """
     mpath = meta_path(out)
     if not mpath.exists():
@@ -300,7 +300,7 @@ def load_resumable(out: Path, meta: dict, design: pd.DataFrame) -> set:
 
     for key in ("year", "seed", "n_draws", "n_repeats"):
         if prev.get(key) != meta[key]:
-            _refuse(f"{key} differs -- the partial run used {prev.get(key)!r}, "
+            _refuse(f"{key} differs: the partial run used {prev.get(key)!r}, "
                     f"this one asks for {meta[key]!r}.  Different experiments.")
     if prev.get("schema_version") != meta["schema_version"]:
         _refuse(f"schema_version differs (file {prev.get('schema_version')!r}, "
@@ -339,8 +339,8 @@ def load_resumable(out: Path, meta: dict, design: pd.DataFrame) -> set:
         _refuse(f"{out.name} has draw id(s) outside [0, {meta['n_draws']}): "
                 f"{bad_range[:10]}.")
 
-    # A truncated final row -- the likely shape of a kill mid-write -- shows up
-    # as a non-finite value here.
+    # A truncated final row, the likely shape of a kill mid-write, shows up as
+    # a non-finite value here.
     for c in OUTPUT_COLS:
         if c == "draw":
             continue
@@ -391,19 +391,19 @@ def load_resumable(out: Path, meta: dict, design: pd.DataFrame) -> set:
 # doubles (uniformly random bit patterns, subnormals, extremes, signed zero) in
 # both the local and the CI dependency environments:
 #
-#   repr as a callable  -- REJECTED.  Under numpy 2 the callable receives a
-#                          numpy scalar, so it emits "np.float64(0.1)" instead
-#                          of "0.1" and corrupts the file outright.
-#   "%.17g"             -- REJECTED.  Not lossless: it writes -0.0 as "-0",
-#                          which parses back as +0.0, losing the sign of zero.
-#   pandas default      -- CHOSEN.  Shortest round-tripping representation.
-#                          Bitwise exact on every value tested, including
-#                          signed zero and subnormals, and byte-idempotent
-#                          across repeated cycles in both environments.
+#   repr as a callable  : REJECTED.  Under numpy 2 the callable receives a
+#                         numpy scalar, so it emits "np.float64(0.1)" instead
+#                         of "0.1" and corrupts the file outright.
+#   "%.17g"             : REJECTED.  Not lossless: it writes -0.0 as "-0",
+#                         which parses back as +0.0, losing the sign of zero.
+#   pandas default      : CHOSEN.  Shortest round-tripping representation.
+#                         Bitwise exact on every value tested, including signed
+#                         zero and subnormals, and byte-idempotent across
+#                         repeated cycles in both environments.
 #
 # pandas does not document its default float format as shortest-round-trip, so
-# that property is pinned by tests rather than assumed -- see
-# tests/test_canonical_csv.py, which fails loudly if a future pandas changes it.
+# tests pin that property rather than assuming it: tests/test_canonical_csv.py
+# fails loudly if a future pandas changes it.
 
 CSV_READ_KW = dict(float_precision="round_trip")
 
@@ -480,9 +480,9 @@ def run_sweep(year: int, n_draws: int, n_repeats: int, seed: int,
 
             # Nothing left to do.  load_resumable has already validated the
             # sidecar metadata, the design fingerprint and every retained row,
-            # so completion is established -- and the correct action for an
-            # already-complete file is to touch nothing at all.  Returning
-            # here leaves its bytes, checksum and mtime exactly as they were.
+            # so the file is established as complete.  The right action for a
+            # complete file is to touch nothing at all: returning here leaves
+            # its bytes, checksum and mtime exactly as they were.
             #
             # This is an optimisation of the complete case, not a substitute
             # for canonical serialisation: an interrupted resume still merges

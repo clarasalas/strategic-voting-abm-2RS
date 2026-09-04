@@ -211,7 +211,7 @@ def fig_candidate_shares(year: int, tag: str = "") -> None:
     ax.set_xticks(x)
     ax.set_xticklabels(df["party"], rotation=45, ha="right")
     ax.set_ylabel("first-round share")
-    ax.set_title(f"{year}: simulated final share (mean, p05–p95) vs actual")
+    ax.set_title(f"{year}: simulated final share (mean, p05-p95) vs actual")
     ax.legend(frameon=False, loc="upper left")
     _position_colorbar(fig, ax)
     fig.tight_layout()
@@ -305,7 +305,7 @@ def fig_enp_deltacenp(tag: str = "") -> None:
 def contact_sheet(names: list) -> None:
     """
     Tile all generated PNGs into one preview image for fast eyeballing.
-    Temporary helper — safe to delete once the layouts are settled.
+    Temporary helper, safe to delete once the layouts are settled.
     """
     paths = [FIG_DIR / f"{n}.png" for n in names]
     paths = [p for p in paths if p.exists()]

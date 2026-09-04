@@ -5,53 +5,49 @@ Main simulation loop for the strategic voting ABM.
 
 Entry point
 -----------
-- run_simulation : run the full ABM for one parameter configuration and
-                   return a results dict (see Returns section of its
-                   docstring for the full key listing).
+- run_simulation : run the ABM for one parameter configuration and return a
+                   results dict.  Its docstring lists every key.
 
 Execution flow
 --------------
-1.  Build K equal zones on [-1, 1]; party positions at zone midpoints.
-2.  Build voter distribution (uniform or unimodal; see environment.py).
-3.  Place N electors by sampling from the voter distribution.
-4.  Iteration 0: sincere vote (argmax u_a); derive true support shares.
-5.  Generate initial poll signal s^0 via temperature transform + Dirichlet draw.
-6.  Generate fixed prior beliefs π_a ~ Dirichlet(ρ_π · s^0), once per elector.
+1.  Build K equal zones on [-1, 1]; party positions at the zone midpoints.
+2.  Build the voter distribution (uniform or unimodal; see environment.py).
+3.  Place N electors by sampling from it.
+4.  Iteration 0: sincere vote (argmax u_a), giving the true support shares.
+5.  Draw the initial poll signal s^0: temperature transform, then Dirichlet.
+6.  Draw fixed prior beliefs π_a ~ Dirichlet(ρ_π · s^0), once per elector.
 7.  Strategic loop (t = 1 … T):
-      a. t = 1: posterior m^0_{a,j} = π_{a,j}  (prior only, no signal mixing).
+      a. t = 1: posterior m^0_{a,j} = π_{a,j}, prior only, no signal mixing.
          t > 1: posterior m^t_{a,j} = α π_{a,j} + (1-α) s^t_j.
-      b. All electors compute strategic utilities φ_a(j).
-      c. Vote tallies recomputed via chooseCandidate.
-      d. Signal refreshed from current vote shares starting at t = 2.
-      e. Loop runs for exactly T iterations; there is no early stopping.
+      b. Every elector computes its strategic utilities φ_a(j).
+      c. chooseCandidate retallies the votes.
+      d. From t = 2 the signal is refreshed from the current vote shares.
+      e. The loop always runs T iterations.  Nothing stops it early.
 
 Signal model
 ------------
     s̃_i = (δ_i + ε)^(1/θ) / Σ_j (δ_j + ε)^(1/θ)   (temperature transform)
     s   ~ Dirichlet(ρ · s̃)                            (Dirichlet draw)
 
-θ < 1  →  coordination-enhancing signal (viability gaps amplified).
-θ = 1  →  faithful signal (no distortion).
-θ > 1  →  fragmentation-enhancing signal (viability gaps compressed).
-ρ      →  signal precision; higher ρ means less noise.
+θ shapes the signal and ρ sets its precision.  signals.py says what each
+value does.
 
 Belief update
 -------------
-Priors are fixed at initialisation and do not evolve across iterations:
+Priors are drawn once at initialisation and never move:
 
-    π_a ~ Dirichlet(ρ_π · s^0)          (drawn once from the initial signal)
+    π_a ~ Dirichlet(ρ_π · s^0)          (drawn from the initial signal)
 
-    m^0_{a,j} = π_{a,j}                  (first update = prior only)
-    m^t_{a,j} = α π_{a,j} + (1-α) s^t_j  (t > 0: fixed-prior mixing rule)
+    m^0_{a,j} = π_{a,j}                  (first update, prior only)
+    m^t_{a,j} = α π_{a,j} + (1-α) s^t_j  (t > 0, fixed-prior mixing)
 
-α = 0  →  posterior equals the current signal (no prior inertia).
-α = 1  →  posterior equals the fixed prior (signal ignored).
-ρ_π < ρ (recommended)  →  prior less precise than the signal.
+At α = 0 the posterior is the current signal; at α = 1 it is the fixed prior
+and the campaign is ignored.  ρ_π < ρ keeps the prior less precise than the
+signal, which is the intended regime.
 
 Diagnostics
 -----------
-Pass collect_diagnostics=True to instrument the run.  The return dict
-will then include a "diagnostics" key with:
+collect_diagnostics=True instruments the run and adds a "diagnostics" key:
 
     s_tilde_0                                : np.ndarray (K,)
     iterations                               : list of dicts, one per strategic iter
@@ -62,14 +58,14 @@ will then include a "diagnostics" key with:
 
 Mu calibration
 --------------
-Pass collect_mu_calibration=True (with mu=0) to extract per-triggered-voter
-data for calibrating the meaningful range of mu.  Adds a "mu_calibration" key:
+collect_mu_calibration=True, with mu=0, adds a "mu_calibration" key holding
+one row per triggered voter, for working out the useful range of mu:
 
     list of dicts, one per triggered voter, each containing:
         voter_id, j_star, j_alt, S_jstar, S_jalt, lambda_jalt, mu_crit
 
-Only rows where lambda_jalt > 0 and S_jalt > S_jstar are included.
-Should be run with mu=0 so strategic utilities equal raw strategic gains.
+Rows appear only where lambda_jalt > 0 and S_jalt > S_jstar.  Run it with
+mu=0, so the strategic utilities are the raw strategic gains.
 """
 
 import warnings
@@ -152,7 +148,7 @@ def run_simulation(
         Centre of the unimodal mode.
         None  →  0.0 (ideological centre).
     floor_weight : float in [0, 1)
-        Weight of the uniform floor component.  Recommended 0.05–0.15.
+        Weight of the uniform floor component.  Recommended 0.05-0.15.
     skewness : float
         Skew-normal shape parameter α for the unimodal mode.
         0.0 = symmetric; < 0 = left-leaning; > 0 = right-leaning.
@@ -172,9 +168,8 @@ def run_simulation(
         Prior weight in Bayesian update.
     sincere_init_mode : {"nearest", "probabilistic"}
         Rule for each voter's initial expressive party (iteration 0).
-          "nearest"       — deterministic argmax_j u_a(j) (default; original
-                            behaviour, fully backward compatible).
-          "probabilistic" — draw the initial party from the contender set Ca
+          "nearest"       : deterministic argmax_j u_a(j).  The default.
+          "probabilistic" : draw the initial party from the contender set Ca,
                             with P_a(j) ∝ salience_{a,j} · exp(-beta·(x_a-x_j)^2).
         The drawn party becomes the iteration-0 vote, the switching reference,
         and the anchor of the expressive cost.
@@ -184,8 +179,8 @@ def run_simulation(
         draw; large beta → collapses onto the nearest contender.
     salience_source : {"signal", "prior"}
         Salience used in the probabilistic draw.
-          "signal" (default) — common first public signal s^0_j.
-          "prior"            — voter-specific prior pi_{a,j}.
+          "signal" (default) : the shared first public signal s^0_j.
+          "prior"            : the voter's own prior pi_{a,j}.
         Ignored when sincere_init_mode == "nearest".
     K_runoff : int
     max_iterations : int
@@ -202,34 +197,28 @@ def run_simulation(
 
             s~_i = (delta_i + signal_epsilon)^(1/theta) / sum_j (...)
 
-        Its job is to give ZERO-SUPPORT COMPONENTS a strictly positive
-        Dirichlet concentration.  The signal is drawn as s ~ Dirichlet(rho*s~),
-        so without the floor a party at zero support has concentration exactly
-        zero and its sampled signal share is pinned at exactly zero -- it can
-        never be reported as viable, however the race moves.  (0^(1/theta) is
-        finite, so that is not the failure being guarded against.)
+        It gives ZERO-SUPPORT COMPONENTS a strictly positive Dirichlet
+        concentration.  The signal is drawn as s ~ Dirichlet(rho*s~), so
+        without the floor a party at zero support has concentration exactly
+        zero, its sampled share stays pinned at zero however the race moves,
+        and it can never be reported as viable.  (0^(1/theta) is finite, so
+        that is not the failure being guarded against.)  An ALL-zero support
+        vector is a separate case, caught by generate_signal's uniform
+        fallback (delta = ones/K when the total is zero).
 
-        The separate degenerate case of an ALL-zero support vector is handled by
-        generate_signal's existing uniform fallback (delta = ones/K when the
-        total is zero), not by this parameter.
-
-        signal_epsilon = 1e-12 is the fixed synthetic specification: it is the
-        value every committed synthetic result was produced under.
-
-        It is not a behavioural parameter, and it is NOT the Saltelli parameter
-        named ``epsilon``, which is the electorate floor weight eps_F passed as
+        Must be finite and non-negative.  1e-12 is the fixed synthetic
+        specification, the value every committed result was produced under,
+        and changing it changes the signal and so the run.  It is not a
+        behavioural parameter, and it is NOT the Saltelli parameter named
+        ``epsilon``, which is the electorate floor weight eps_F passed as
         ``floor_weight``.
 
-        Must be finite and non-negative.  The default 1e-12 is the value every
-        result in this repository was produced under; changing it changes the
-        signal and therefore the run.
-
-        Synthetic runs only: with ``exogenous_signals`` the polls are supplied,
-        no signal is generated, and this parameter has no effect.
+        Synthetic runs only.  With ``exogenous_signals`` the polls are given,
+        nothing is generated, and this has no effect.
 
     Returns
     -------
-    dict — see module docstring for full key listing.
+    dict.  The module docstring lists every key.
     """
     if K < 1:
         raise ValueError("K must be at least 1.")
@@ -252,10 +241,9 @@ def run_simulation(
     # ------------------------------------------------------------------ #
     # Empirical replay mode                                               #
     # ------------------------------------------------------------------ #
-    # When override arrays are supplied the model uses empirical party
-    # positions, empirical voter positions, and/or an exogenous poll-signal
-    # timeline instead of the synthetic generators.  All three default to
-    # None, in which case behaviour is identical to the original model.
+    # Override arrays swap in empirical party positions, empirical voter
+    # positions and an exogenous poll timeline, in any combination, in place
+    # of the synthetic generators.  All three default to None.
     if party_positions_override is not None:
         party_positions_override = np.asarray(party_positions_override,
                                               dtype=float)
@@ -277,9 +265,9 @@ def run_simulation(
 
     rng = np.random.default_rng(seed)
     signal_rng = np.random.default_rng(seed + 1 if seed is not None else None)
-    # Dedicated stream for probabilistic sincere initialization draws, kept
-    # separate from voter placement (rng) and signal/prior draws (signal_rng)
-    # so a fixed seed makes the initialization fully reproducible.
+    # Its own stream for the probabilistic initialization draws, kept apart
+    # from voter placement (rng) and signal/prior draws (signal_rng), so a
+    # fixed seed reproduces the initialization exactly.
     init_rng = np.random.default_rng(seed + 2 if seed is not None else None)
 
     if not np.isfinite(signal_epsilon) or signal_epsilon < 0:
@@ -367,11 +355,11 @@ def run_simulation(
     # ------------------------------------------------------------------ #
     # 4. Nearest-party support (basis for the signal in synthetic mode)   #
     # ------------------------------------------------------------------ #
-    # At this point no expressive attachment has been drawn, so the
-    # iteration-0 tally is the deterministic nearest-party sincere vote.
-    # In synthetic mode this defines the true support that seeds the poll
-    # signal; in probabilistic-init mode the official iteration-0 shares are
-    # recomputed in step 6b after attachments are drawn.
+    # No expressive attachment has been drawn yet, so this tally is the
+    # deterministic nearest-party vote.  In synthetic mode it is the true
+    # support that seeds the poll signal.  Under probabilistic init the
+    # official iteration-0 shares are recomputed in step 6b, once the
+    # attachments exist.
     nearest_counts = functions.countVoteIntentions(
         allElectors, allParties, iteration=0
     )
@@ -413,9 +401,9 @@ def run_simulation(
     # ------------------------------------------------------------------ #
     # Draw each voter's initial expressive party from Ca with probabilities
     #     P_a(j) ∝ salience_{a,j} · exp(-beta · (x_a - x_j)^2).
-    # The drawn party overrides the nearest party as the iteration-0 vote and
+    # The drawn party replaces the nearest one as the iteration-0 vote and as
     # the anchor of the expressive cost.  "nearest" mode leaves
-    # expressiveChoice unset, preserving the original behaviour exactly.
+    # expressiveChoice unset.
     if sincere_init_mode == "probabilistic":
         for idx, elector in enumerate(allElectors):
             salience = signal if salience_source == "signal" else pi_priors[idx]
@@ -424,10 +412,10 @@ def run_simulation(
             )
 
     # ------------------------------------------------------------------ #
-    # 6c. Iteration 0 — official initial (expressive) vote                 #
+    # 6c. Iteration 0: the official initial (expressive) vote              #
     # ------------------------------------------------------------------ #
-    # Reflects the active initialization rule: nearest-party in "nearest"
-    # mode, the drawn attachments in "probabilistic" mode.
+    # Follows whichever initialization rule is active: nearest-party, or the
+    # drawn attachments.
     sincere_counts = functions.countVoteIntentions(
         allElectors, allParties, iteration=0
     )
@@ -456,9 +444,9 @@ def run_simulation(
     sw_history = []
     current_counts = sincere_counts[:]
 
-    # Track individual vote intentions at each iteration for convergence analysis.
-    # intention_history[0] = sincere choices (iteration 0).
-    # intention_history[t] = vote choices at strategic iteration t.
+    # Per-voter intentions each iteration, for convergence analysis.
+    #   intention_history[0] = sincere choices (iteration 0)
+    #   intention_history[t] = vote choices at strategic iteration t
     sincere_intentions = np.array([
         e.sincereChoice for e in allElectors
     ], dtype=int)
@@ -469,17 +457,15 @@ def run_simulation(
 
     for iteration in range(1, max_iterations + 1):
 
-        # Refresh signal each iteration.
-        #   Empirical mode : pull the next exogenous poll signal s^t,
-        #                    clamping to the last available signal once the
-        #                    timeline is exhausted (hold-last behaviour).
-        #   Synthetic mode : regenerate the signal from current vote shares.
+        # Refresh the signal.
+        #   Empirical : take the next exogenous poll s^t, holding the last one
+        #               once the timeline runs out.
+        #   Synthetic : regenerate it from the current vote shares.
         if exogenous_signals is not None:
-            # iteration 1 is prior-only (belief_t=0), so the signal there is
-            # never mixed; iteration t>=2 consumes exogenous_signals[t-1].
-            # s0 (index 0) feeds the prior only.  Once the timeline is
-            # exhausted the last signal is held (relevant only when
-            # max_iterations exceeds the timeline length).
+            # Iteration 1 is prior-only (belief_t=0), so nothing is mixed
+            # there; from t>=2 the update takes exogenous_signals[t-1].
+            # Index 0 feeds the prior alone.  Holding the last signal matters
+            # only when max_iterations runs past the timeline.
             idx = min(iteration - 1, len(exogenous_signals) - 1)
             signal = exogenous_signals[idx].copy()
         elif iteration > 1:

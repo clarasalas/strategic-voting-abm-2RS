@@ -15,9 +15,9 @@ checked by eye against the definitions:
               d* = size of that drop
               r' = d* / (d* + mean of the remaining drops)
 
-The formulas currently live in two places -- core_model/metrics.py and the
-nested helpers inside functions.coordination_measures -- so the last test class
-pins that the two agree.
+The formulas live in two places, core_model/metrics.py and the nested helpers
+inside functions.coordination_measures, so the last test class pins that the
+two agree.
 
 Run with:  pytest tests/test_metrics.py
 """
@@ -204,7 +204,7 @@ _AGREEMENT_CASES = [
 @pytest.mark.parametrize("shares", _AGREEMENT_CASES)
 def test_metrics_enp_agrees_with_coordination_measures(shares):
     """
-    ENP is implemented twice -- metrics.enp and the nested _enp inside
+    ENP is implemented twice: metrics.enp, and the nested _enp inside
     functions.coordination_measures.  They must not drift apart.
     """
     cm = functions.coordination_measures(shares, shares)

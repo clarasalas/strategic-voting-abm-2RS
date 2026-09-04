@@ -18,9 +18,21 @@ Two output styles share the same surrogate-fitting core:
                normalized to % within each year, transparent background:
                    lhs_importance_by_year_slide.png / .pdf
 
+Reads (data/, written by behavioral_sweep.py)
+---------------------------------------------
+    behavioral_sweep_2002.csv
+    behavioral_sweep_2022.csv
+
+Writes
+------
+    results/tables/lhs_parameter_importance.csv
+    figures/lhs_importance_*.png and .pdf
+
+Runs no simulation.
+
 Usage:
-    python analysis/lhs_importance.py            # paper figures
-    python analysis/lhs_importance.py --slide     # slide figure
+    python analysis/empirical/lhs_importance.py            # paper figures
+    python analysis/empirical/lhs_importance.py --slide     # slide figure
 """
 
 import argparse

@@ -121,6 +121,7 @@ python -m pytest -ra          # 570 passed, 0 skipped, 0 warnings
 | [`core_model/`](core_model) | The model: agents, iteration loop, metrics, signals. No analysis. |
 | [`analysis/synthetic/`](analysis/synthetic) | Sobol sensitivity, protocol validation, robustness panels. |
 | [`analysis/empirical/`](analysis/empirical) | 2002/2022 replay, behavioural sweeps, diagnostics. |
+| [`analysis/README.md`](analysis/README.md) | Which script needs which, and what each one writes. |
 | [`tests/`](tests) | 20 files, 570 tests, no skips. |
 | [`results/tables/`](results/README.md) | 22 compact CSVs, the citable numbers. |
 | [`docs/`](docs/index.md) | The Model & Validation Guide. |

@@ -25,7 +25,7 @@ Both saved as PNG (>= 200 dpi) and PDF.
 
 Usage
 -----
-    python analysis/behavioral_sweep_figure.py
+    python analysis/empirical/behavioral_sweep_figure.py
 """
 
 import argparse

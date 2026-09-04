@@ -1,6 +1,6 @@
 """
-main_results_figures.py
------------------------
+main_results.py
+---------------
 Generate the four main result figures.
 
 Figures
@@ -45,9 +45,17 @@ Outputs
     fig3_trajectory_deltacenp.png
     fig4_empirical_range_cenp.png
 
+Reads
+-----
+    data/FR-electoral_data.csv              real election data (Figure 4)
+    data/saltelli_results_K{6,8,9}.csv      <- saltelli_sensitivity.py, optional:
+                                            if absent, Figure 4 simply omits the
+                                            model range band
+    Figures 1-3 simulate directly and read nothing.
+
 Usage
 -----
-    python main_results_figures.py
+    python analysis/synthetic/main_results.py
 
     Reduce N_REPS to 50 for a quick test run.
 """

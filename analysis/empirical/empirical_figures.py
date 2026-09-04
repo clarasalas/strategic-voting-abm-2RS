@@ -3,8 +3,16 @@ empirical_figures.py
 --------------------
 Thesis-ready figures for the empirical 2002 / 2022 replay.
 
-Reads the CSVs produced by ``empirical_2002_2022.py`` and writes high-resolution
-PNG + PDF figures to ``figures/``.
+Reads (data/, written by empirical_2002_2022.py)
+------------------------------------------------
+    empirical_candidate_shares<tag>_<year>.csv
+    empirical_runs<tag>_<year>.csv
+
+Writes
+------
+    figures/fig_*.png and .pdf  (high resolution; no CSV output)
+
+Runs no simulation.
 
 Design conventions
 ------------------

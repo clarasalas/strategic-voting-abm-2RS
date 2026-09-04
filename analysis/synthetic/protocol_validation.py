@@ -38,6 +38,12 @@ Part 2 -- population validation
     A smaller subset of the same configurations at N in {1000, 2000, 5000},
     same config_ids and seeds.  N = 5000 is the higher-resolution reference.
 
+Reads
+-----
+    Nothing.  Simulates from scratch; parameter_space.py is an imported
+    library, not a prior stage.  Its horizon_raw.csv output is what
+    protocol_posthoc.py later consumes.
+
 Outputs
 -------
     analysis/synthetic/outputs/protocol_validation/    detailed, git-ignored

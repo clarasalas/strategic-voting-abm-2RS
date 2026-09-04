@@ -71,23 +71,37 @@ exogenous (empirical polls), so ``rho`` plays no role in empirical replay
 (model.py uses exogenous_signals and never draws from rho); sweeping it would be
 a pure placebo dimension.  It is left at the run_simulation default.
 
-Output (one row per draw, flushed incrementally)
+Reads
+-----
+    Real data only, via core_model/empirical_data.py.  This is a ROOT stage:
+    it depends on no other analysis script.
+
+Writes (one row per draw, flushed incrementally)
 ------------------------------------------------
+    data/behavioral_sweep_<year>.csv         the sweep itself, columns:
     draw, tau_hat, mu, alpha, rho_pi, beta,
     mean_delta_cenp   (mean ΔCENP across repeats),
     mean_final_enp    (mean final ENP across repeats),
     std_delta_cenp    (repeat std of ΔCENP),
     n_repeats, seed
+    data/behavioral_sweep_<year>_design.csv   the full LHS design
+    data/behavioral_sweep_<year>_meta.json    resume sidecar (seed, fingerprint)
+
 Rows are appended to the CSV as each draw completes, so Ctrl+C keeps all
 completed draws.  The fixed RNG seed and the full LHS design are logged (design
 CSV next to --out).
 
+Consumed by
+-----------
+    behavioral_compare.py, behavioral_sweep_figure.py, lhs_importance.py,
+    make_empirical_tables.py
+
 Usage
 -----
-    python analysis/behavioral_sweep.py --year 2002 --n_draws 300 \
+    python analysis/empirical/behavioral_sweep.py --year 2002 --n_draws 300 \
         --n_repeats 4 --seed 20020422 --out data/behavioral_sweep_2002.csv
 
-    python analysis/behavioral_sweep.py --year 2002 --time_one_run
+    python analysis/empirical/behavioral_sweep.py --year 2002 --time_one_run
 """
 
 import argparse

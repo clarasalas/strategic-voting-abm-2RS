@@ -25,7 +25,7 @@ The per-draw, per-candidate table written by the runner:
 
 Re-run the probabilistic sweep first if this file is missing, e.g.
 
-    python analysis/empirical_2002_2022.py \
+    python analysis/empirical/empirical_2002_2022.py \
         --sincere-init probabilistic --salience-source signal
 
 Outputs (data/, figures/  -- all tag-suffixed)
@@ -39,8 +39,8 @@ Outputs (data/, figures/  -- all tag-suffixed)
 
 Usage
 -----
-    python analysis/empirical_beta_bins.py --tag main_prob_signal
-    python analysis/empirical_beta_bins.py --tag main_prob_signal --bins quantile
+    python analysis/empirical/empirical_beta_bins.py --tag main_prob_signal
+    python analysis/empirical/empirical_beta_bins.py --tag main_prob_signal --bins quantile
 """
 
 import argparse

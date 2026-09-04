@@ -15,14 +15,23 @@ violins and these targets are directly comparable.
 
 CENP reused from analysis/main_results.py (ENP = 1/Σδ², CENP = (K−ENP)/(K−1)).
 
-Output
+Reads
+-----
+    Real data only, via core_model/empirical_data.py.  This is a ROOT stage:
+    it depends on no other analysis script, and runs in seconds.
+
+Writes
 ------
     data/behavioral_targets.csv
         year, K, cenp_s0, cenp_real, delta_cenp_real
 
+Consumed by
+-----------
+    behavioral_compare.py, behavioral_sweep_figure.py, make_empirical_tables.py
+
 Usage
 -----
-    python analysis/behavioral_targets.py
+    python analysis/empirical/behavioral_targets.py
 """
 
 import sys

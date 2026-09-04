@@ -42,6 +42,17 @@ stochastic repetitions of that same combination.
 Endpoint outcomes and the 10-iteration tail means are computed side by side and
 kept clearly separate throughout.
 
+Reads
+-----
+    analysis/synthetic/outputs/protocol_validation/horizon_raw.csv
+        <- protocol_validation.py --mode horizon --full  (override with --raw)
+
+Writes (results/tables/)
+------------------------
+    protocol_horizon_drift_by_config.csv
+    protocol_horizon_drift_summary.csv
+    protocol_seed_noise_decomposition.csv
+
 Usage
 -----
     python analysis/synthetic/protocol_posthoc.py

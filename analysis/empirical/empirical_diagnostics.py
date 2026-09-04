@@ -17,10 +17,15 @@ by ``empirical_2002_2022.py`` (``empirical_runs_<year>.csv``) and changes
 nothing about the model, the trigger rule, the outcome definitions, or the
 simulation design.
 
-Outputs (data/)
----------------
-    empirical_diagnostics_<year>.csv   tidy per-draw diagnostic table
-    empirical_activation_summary.csv   activation shares by year + shared draws
+Reads (data/, written by empirical_2002_2022.py)
+------------------------------------------------
+    empirical_runs<tag>_<year>.csv
+
+Writes (data/)
+--------------
+    empirical_diagnostics<tag>_<year>.csv      tidy per-draw diagnostic table
+    empirical_activation_summary<tag>.csv      activation shares by year
+    empirical_shared_activating_draws<tag>.csv draws that activate in both years
 
 Figures (figures/)
 ------------------
@@ -29,7 +34,7 @@ Figures (figures/)
 
 Usage
 -----
-    python analysis/empirical_diagnostics.py
+    python analysis/empirical/empirical_diagnostics.py
 """
 
 import sys

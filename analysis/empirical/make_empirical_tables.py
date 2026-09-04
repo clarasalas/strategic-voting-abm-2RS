@@ -10,6 +10,25 @@ Every table is deterministic: fixed row order, fixed column order, no
 timestamps, no run-dependent metadata.  Re-running this script on unchanged
 inputs rewrites byte-identical files.
 
+This is the TERMINAL empirical stage: it needs every root stage to have run.
+
+Reads (data/)
+-------------
+    empirical_runs<tag>_<year>.csv           <- empirical_2002_2022.py
+    empirical_robustness_<year>.csv          <- empirical_2002_2022.py
+    empirical_candidate_shares<tag>_<year>.csv <- empirical_2002_2022.py
+    behavioral_sweep_<year>.csv              <- behavioral_sweep.py
+    behavioral_targets.csv                   <- behavioral_targets.py
+
+Writes (results/tables/, all committed)
+---------------------------------------
+    empirical_replay_summary.csv       empirical_year_contrast.csv
+    empirical_robustness_summary.csv   empirical_candidate_fit.csv
+    empirical_activation_summary.csv   behavioral_sweep_quantiles.csv
+
+Verified by tools/check_tables_reproduce.py, which re-runs this script and
+fails if any committed table changes.
+
 Usage:
     python analysis/empirical/make_empirical_tables.py
 """

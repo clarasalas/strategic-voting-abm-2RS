@@ -28,14 +28,20 @@ Panel E : 0 (analytical)
 Panel F : 2 regimes × 8 mu values × 30 reps    =  480 runs
 Total   : ~1 540 runs  (~2–4 minutes)
 
+Reads
+-----
+    Nothing.  Every panel simulates from scratch, so this script depends on no
+    other analysis script and can run at any time.
+
 Usage
 -----
-    python robustness_checks.py              # run all panels
-    python robustness_checks.py --panels A B # run specific panels only
+    python analysis/synthetic/robustness_checks.py              # all panels
+    python analysis/synthetic/robustness_checks.py --panels A B # specific panels
 
 Outputs
 -------
-All files written to outputs/robustness_checks/
+results/tables/robustness_panel_{A..G}.csv   compact, committed summaries
+The detailed files below go to outputs/robustness_checks/ (git-ignored)
     panel_A_N_robustness.png   / panel_A_raw.csv
     panel_B_tmax_convergence.png / panel_B_raw.csv
     panel_C_epsilon_stability.png / panel_C_raw.csv

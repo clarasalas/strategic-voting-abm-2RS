@@ -34,23 +34,39 @@ absolute distance is part of the environment, exactly like the party positions.
 Fixed / unused: theta, rho_s, eps_s, xi, c, eps_F -- the signal is exogenous
 (empirical polls), so the signal-generating parameters play no role here.
 
-Outputs (written to data/)
---------------------------
-    empirical_runs_<year>.csv              one row per draw, all scalar metrics
-    empirical_candidate_shares_<year>.csv  per-candidate aggregates
-    empirical_robustness_<year>.csv        scalar metrics under 3 robustness
-                                           variants
+Reads
+-----
+    Real data only, via core_model/empirical_data.py (party positions, voter
+    ideology histograms, weekly-mean poll timelines).  This is a ROOT stage:
+    it depends on no other analysis script.
+
+Writes (to data/; <tag> is empty for the nearest specification)
+--------------------------------------------------------------
+    empirical_runs<tag>_<year>.csv              one row per draw, all scalar
+                                                metrics
+    empirical_candidate_shares<tag>_<year>.csv  per-candidate aggregates
+    empirical_candidate_draws<tag>_<year>.csv   per-draw x per-candidate table
+                                                (consumed by empirical_beta_bins)
+    empirical_robustness_<year>.csv             scalar metrics under 3
+                                                robustness variants
+    empirical_init_benchmarks_<year>.csv        the three attachment rules
+                                                compared on identical footing
+
+Consumed by
+-----------
+    empirical_diagnostics.py, empirical_figures.py, empirical_beta_bins.py,
+    make_empirical_tables.py
 
 Usage
 -----
-    python analysis/empirical_2002_2022.py            # main + robustness
-    python analysis/empirical_2002_2022.py --quick    # few draws, smoke run
+    python analysis/empirical/empirical_2002_2022.py            # main + robustness
+    python analysis/empirical/empirical_2002_2022.py --quick    # few draws, smoke run
 
 --quick writes to data/smoke/ instead of data/, so a smoke run can never
 overwrite a full experiment.  --out-dir overrides both.
 
 Then build figures with:
-    python analysis/empirical_figures.py
+    python analysis/empirical/empirical_figures.py
 """
 
 import argparse

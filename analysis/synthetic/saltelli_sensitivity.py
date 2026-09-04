@@ -57,6 +57,12 @@ Run cost
     The committed result files mean this cost can be avoided entirely: use
     --analyze-existing to recompute the Sobol indices from them.
 
+Reads
+-----
+    Nothing on a full re-run.  With --analyze-existing, the committed
+    data/saltelli_results_K{6,8,9}.csv matrices.  Depends on no other analysis
+    script; parameter_space.py is an imported library, not a prior stage.
+
 Outputs
 -------
     saltelli_samples_K{k}.csv           raw parameter samples

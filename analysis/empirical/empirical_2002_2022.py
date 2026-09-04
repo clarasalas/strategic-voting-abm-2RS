@@ -12,7 +12,7 @@ plausible behavioural parameters.
 
 Varied behavioural parameters (shared across years)
 ---------------------------------------------------
-    tau_hat  in [0.5, 3.0]   NORMALISED (zone lengths) -- see units note below
+    tau_hat  in [0.5, 3.0]   NORMALISED (zone lengths); see the units note
     rho_pi   in [5, 200]
     alpha    in [0.0, 0.9]
     mu       in [0.0, 1.0]
@@ -25,14 +25,14 @@ runner converts with metrics.tau_absolute:
 
     tau = tau_hat * (2 / K)
 
-K is year-specific (15 in 2002, 12 in 2022), so ONE shared tau_hat draw maps to
-a DIFFERENT absolute tau in each year -- tau_hat = 3.0 becomes 0.40 in 2002 and
-0.50 in 2022.  That is the intended behaviour: the shared draw is a shared
-*behavioural* setting (tolerance measured in zone lengths), and the year-specific
-absolute distance is part of the environment, exactly like the party positions.
+K is year-specific (15 in 2002, 12 in 2022), so ONE shared tau_hat draw maps
+to a DIFFERENT absolute tau in each year: tau_hat = 3.0 becomes 0.40 in 2002
+and 0.50 in 2022.  That is intended.  The shared draw is a shared *behavioural*
+setting, tolerance in zone lengths, and the year-specific absolute distance
+belongs to the environment, exactly like the party positions.
 
-Fixed / unused: theta, rho_s, eps_s, xi, c, eps_F -- the signal is exogenous
-(empirical polls), so the signal-generating parameters play no role here.
+Fixed and unused: theta, rho_s, eps_s, xi, c, eps_F.  The signal is exogenous
+(empirical polls), so the signal-generating parameters have nothing to do.
 
 Reads
 -----
@@ -91,11 +91,10 @@ from metrics import tau_absolute
 DATA_DIR = REPO / "data"
 
 # Smoke runs write here, never into DATA_DIR.  A --quick run produces 15 draws
-# under the same stem as a 300-draw run, so sharing a directory means a smoke
-# test silently destroys a full experiment -- which is exactly what happened on
-# 2026-08-19, when a --quick run overwrote the full 2002/2022 replay outputs.
-# Separating the directories makes that structurally impossible rather than a
-# matter of remembering.
+# under the same stem as a 300-draw run, so sharing a directory lets a smoke
+# test destroy a full experiment.  That is what happened on 2026-08-19, when a
+# --quick run overwrote the full 2002/2022 replay outputs.  Separate
+# directories make it impossible, instead of something to remember.
 SMOKE_DIR = DATA_DIR / "smoke"
 
 YEARS = (2002, 2022)
@@ -192,8 +191,8 @@ def run_single(params: dict, positions: np.ndarray, voters: np.ndarray,
     #
     # This is the ONLY tau conversion on the replay path.  Every CSV column
     # downstream reads tau_absolute back out of the returned outcome dict, so
-    # the number written to disk is literally the number handed to
-    # run_simulation -- it cannot drift from it, and it cannot be applied twice.
+    # the number written to disk is the number handed to run_simulation.  It
+    # cannot drift from it, and it cannot be applied twice.
     tau_abs = tau_absolute(params["tau_hat"], K)
     res = run_simulation(
         K=K,
@@ -234,9 +233,9 @@ _SCALAR_KEYS = [
 
 def _scalar_row(params: dict, outcome: dict) -> dict:
     # tau_absolute and K come from the outcome, not from a second conversion:
-    # see run_single.  K is recorded so the row is self-describing -- the
-    # relation tau_absolute = tau_hat * (2 / K) is checkable from the CSV alone,
-    # without knowing which year the file belongs to.
+    # see run_single.  K is recorded so the row describes itself, and the
+    # relation tau_absolute = tau_hat * (2 / K) is checkable from the CSV
+    # alone, without knowing which year the file belongs to.
     row = {"draw": params["draw"], "tau_hat": params["tau_hat"],
            "tau_absolute": outcome["tau_absolute"], "K": outcome["K"],
            "rho_pi": params["rho_pi"], "alpha": params["alpha"],
@@ -261,9 +260,9 @@ def _refuse_existing_outputs(targets: list, overwrite: bool) -> None:
     Existence is the whole test.  Size is not consulted: replacing a 300-row
     file with a 300-row file still destroys a result that took twenty minutes
     to produce, and "the new one has at least as many rows" is not a reason to
-    do it silently.  This is the same policy behavioral_sweep.py applies, and
-    for the same reason -- re-running the command is the obvious thing to do
-    and it must not be the destructive thing to do.
+    do it silently.  behavioral_sweep.py applies the same policy for the same
+    reason: re-running the command is the obvious thing to do, and it must not
+    be the destructive one.
 
     All targets are checked BEFORE any of them is written, so a refusal leaves
     every existing file untouched rather than aborting halfway through a year.
@@ -271,10 +270,10 @@ def _refuse_existing_outputs(targets: list, overwrite: bool) -> None:
     means an earlier run died, and quietly filling the gaps would produce a
     directory whose files came from two different runs.
 
-    The empirical replay has no resume mechanism -- each invocation rewrites
-    its outputs from the start -- so --overwrite has nothing to conflict with
-    here.  (behavioral_sweep.py does have one, and refuses --resume together
-    with --overwrite.)
+    The empirical replay has no resume mechanism (each invocation rewrites its
+    outputs from the start), so --overwrite has nothing to conflict with here.
+    behavioral_sweep.py does have one, and refuses --resume together with
+    --overwrite.
     """
     if overwrite:
         return
@@ -286,7 +285,7 @@ def _refuse_existing_outputs(targets: list, overwrite: bool) -> None:
              else f"    {p.name}" for p in existing]
     scope = ("all %d target file(s) already exist" % len(existing)
              if len(existing) == len(targets)
-             else "%d of %d target file(s) already exist (a partial set -- an "
+             else "%d of %d target file(s) already exist (a partial set: an "
                   "earlier run may have died)" % (len(existing), len(targets)))
 
     raise SystemExit(
@@ -352,10 +351,10 @@ def per_draw_candidate_table(bundle: dict, design: pd.DataFrame,
     Long-format per-draw, per-candidate final shares for one year.
 
     One row per (draw, candidate), carrying the draw's behavioural parameters
-    (incl. beta) alongside the candidate's simulated final share and the actual
-    result.  This is the input for beta-binned candidate diagnostics
-    (analysis/empirical_beta_bins.py); the wide candidate-shares CSV averages
-    over all draws and so cannot be re-binned by beta.
+    (beta included) alongside the candidate's simulated final share and the
+    actual result.  empirical_beta_bins.py reads this; the wide
+    candidate-shares CSV averages over all draws, so it cannot be re-binned by
+    beta.
     """
     parties = bundle["parties"]
     positions = bundle["positions"]
@@ -517,8 +516,8 @@ def run_init_benchmarks(beta: float = 5.0, rho_pi: float = 50.0) -> None:
     plus mean_final_share columns merged from any candidate-shares CSVs already
     written for the matching mode (nearest / prob_signal / prob_prior).
 
-    The key question is whether prob_* reduce over-allocation to small parties
-    near dense voter regions relative to nearest.
+    The question is whether the prob_* rules reduce over-allocation to small
+    parties in dense voter regions, compared with nearest.
     """
     for year in YEARS:
         bundle = load_year(year, signal_mode="weekly")

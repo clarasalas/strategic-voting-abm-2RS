@@ -71,7 +71,7 @@ def test_sobol_table_is_committed():
     others it must always be present.
     """
     assert SOBOL_TABLE.exists(), (
-        "results/tables/sobol_indices.csv missing -- regenerate with "
+        "results/tables/sobol_indices.csv missing; regenerate with "
         "python analysis/synthetic/saltelli_sensitivity.py --analyze-existing")
 
 
@@ -111,7 +111,7 @@ def test_sobol_row_count_is_the_full_grid():
 def test_sobol_design_metadata_is_consistent():
     """
     n_evaluations must equal n_base * (D + 2) for the calc_second_order=False
-    design -- the N*(2D+2) formula does not apply and would not satisfy this.
+    design.  The N*(2D+2) formula does not apply and would not satisfy this.
     """
     import saltelli_sensitivity as ss
 
@@ -275,7 +275,7 @@ def test_only_analytic_panels_omit_repetitions():
 
 def test_panel_E_is_deterministic_and_matches_the_plotted_transform():
     """
-    Panel E runs no simulation, so the table must reproduce exactly -- and its
+    Panel E runs no simulation, so the table must reproduce exactly, and its
     transformed shares must equal transform_signal, which is what the figure
     draws.
     """
@@ -340,7 +340,7 @@ def test_importance_builder_is_deterministic_on_fixed_input():
     """
     The exporter itself must be deterministic and must agree with the helper the
     slide figure uses.  Runs on a fixed in-memory frame, so it needs no sweep
-    data -- deliberately, since the sweeps on disk are stale pending the
+    data, deliberately, since the sweeps on disk are stale pending the
     corrected tau_hat rerun.
     """
     import lhs_importance as lhs

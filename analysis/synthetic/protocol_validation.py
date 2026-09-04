@@ -25,7 +25,7 @@ Configurations are a deterministic stratified subset of the COMMITTED Saltelli
 parameter rows (data/saltelli_results_K{6,8,9}.csv), not a fresh LHS.  See
 build_design() for why.
 
-Part 1 -- horizon validation
+Part 1: horizon validation
     One run per (config, seed) to T = 100.  The states at T = 25, 50 and 100 are
     read out of that single trajectory, so the three horizons lie on exactly the
     same stochastic path; running three separate simulations would confound the
@@ -34,7 +34,7 @@ Part 1 -- horizon validation
     synthetic model keeps drawing noisy signals forever and a single endpoint can
     move even when the process is stationary.
 
-Part 2 -- population validation
+Part 2: population validation
     A smaller subset of the same configurations at N in {1000, 2000, 5000},
     same config_ids and seeds.  N = 5000 is the higher-resolution reference.
 
@@ -55,7 +55,7 @@ Outputs
         protocol_population_stability_by_c.csv
 
 Continuous differences are the result.  Threshold flags exist, are configurable
-via --stability-threshold, and are reported ALONGSIDE the continuous values --
+via --stability-threshold, and are reported ALONGSIDE the continuous values,
 never in place of them.
 
 Usage
@@ -80,7 +80,7 @@ validation of an undocumented protocol.
 
 The value every result in this repository was produced under is 1e-12.  The
 corrected Panel C found identical voting outcomes across 1e-12, 1e-6 and 1e-4 in
-the four configurations it tests -- local robustness at those points, not
+the four configurations it tests: local robustness at those points, not
 invariance across the Saltelli space.
 """
 
@@ -184,12 +184,12 @@ def build_design(configs_per_cell: int,
     A fresh LHS would only share the bounding box, and any conclusion would need
     the extra step of assuming the two designs explore it comparably.
 
-    Selection inside a (K, c stratum) cell is by evenly spaced positions in the
-    file's own order.  The Saltelli sequence is low-discrepancy, so evenly spaced
-    positions inherit its spread; and because no random draw is involved, the
-    design is reproducible without depending on an RNG implementation.
-    design_seed is therefore recorded but unused here -- it is accepted so that
-    switching to an LHS design later cannot silently change the CLI.
+    Selection inside a (K, c stratum) cell is by evenly spaced positions in
+    the file's own order.  The Saltelli sequence is low-discrepancy, so evenly
+    spaced positions inherit its spread, and with no random draw involved the
+    design reproduces without depending on an RNG implementation.
+    design_seed is recorded but unused here; it is accepted so that switching
+    to an LHS design later cannot silently change the CLI.
 
     Returns one row per configuration: config_id, K, c_stratum, source_row and
     the eight parameter values.
@@ -393,7 +393,7 @@ def _append_rows(path: Path, rows: list) -> None:
 
 
 # =========================================================================== #
-#  PART 1 — HORIZON                                                            #
+#  PART 1: HORIZON                                                             #
 # =========================================================================== #
 
 def run_horizon(design: pd.DataFrame, seeds: list, horizons: list,
@@ -520,7 +520,7 @@ def summarise_horizon(raw: pd.DataFrame, horizons: list,
 
 
 # =========================================================================== #
-#  PART 2 — POPULATION                                                         #
+#  PART 2: POPULATION                                                          #
 # =========================================================================== #
 
 def run_population(design: pd.DataFrame, seeds: list, populations: list,
@@ -576,12 +576,12 @@ def summarise_population(raw: pd.DataFrame, reference_n: int,
     """
     Compare the outcome distribution at compare_n against reference_n.
 
-    Paired on (config_id, seed), so each difference holds the configuration and
-    the seed fixed.  That difference is NOT pure finite-population error: two
-    runs at different N consume different numbers of random draws, so it is
-    total stochastic run-to-run variation between the two settings, of which
-    population size is one component.  seed_sd reports the dispersion across
-    seeds at the reference size for scale.
+    Paired on (config_id, seed), so each difference holds the configuration
+    and the seed fixed.  That difference is NOT pure finite-population error:
+    two runs at different N consume different numbers of random draws, so what
+    it measures is the total run-to-run variation between the two settings,
+    with population size one component of it.  seed_sd gives the spread across
+    seeds at the reference size, for scale.
     """
     rows_k, rows_c = [], []
 
@@ -677,9 +677,9 @@ def resolve_signal_epsilon(requested, is_full: bool) -> float:
     """
     Decide the eps_s this run uses, and refuse to guess for a --full run.
 
-    A full validation that inherited its epsilon silently would be validating an
-    undocumented protocol -- exactly the failure this whole change exists to fix.
-    --quick may default, because a smoke run asserts nothing.
+    A full validation that inherited its epsilon silently would be validating
+    an undocumented protocol, which is the failure this whole change exists to
+    fix.  --quick may default, because a smoke run asserts nothing.
     """
     if requested is None:
         if is_full:
@@ -783,7 +783,7 @@ def main(argv=None) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 70)
-    print(f"  Protocol validation — mode={args.mode} "
+    print(f"  Protocol validation: mode={args.mode} "
           f"({'quick' if quick else 'full' if args.full else 'dry-run'})")
     print("=" * 70)
     signal_epsilon = resolve_signal_epsilon(args.signal_epsilon, args.full)

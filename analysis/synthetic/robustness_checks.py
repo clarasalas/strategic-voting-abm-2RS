@@ -6,14 +6,14 @@ No pre-existing CSV files required.
 
 Panels
 ------
-A — N robustness:        SE of ΔCENP across N ∈ {250, 500, 1000, 2000, 5000}
-B — Tmax convergence:    hard fixed-point convergence time distribution
-C — epsilon stability:   ΔCENP invariance across signal offset εs values
-D — xi (mode position):  final vs sincere ENP across electorate centre ξ
-E — signal temperature:  mechanical effect of θ (analytical, no simulation)
-F — mu (expressive cost): conditional switching rate vs expressive cost μ
+A   N robustness         SE of ΔCENP across N ∈ {250, 500, 1000, 2000, 5000}
+B   Tmax convergence     hard fixed-point convergence time distribution
+C   epsilon stability    ΔCENP invariance across signal offset εs values
+D   xi (mode position)   final vs sincere ENP across electorate centre ξ
+E   signal temperature   mechanical effect of θ (analytical, no simulation)
+F   mu (expressive cost) conditional switching rate vs expressive cost μ
 
-Panels A–D are the simulation protocol checks (Appendix B in the paper).
+Panels A-D are the simulation protocol checks (Appendix B in the paper).
 Panel E verifies the signal mechanism (Appendix C).
 Panel F documents the behavioral parameter μ (Appendix D).
 
@@ -26,7 +26,7 @@ Panel C : 4 configs × 5 eps values × 10 reps   =  200 runs
 Panel D : 9 xi values × 20 reps                =  180 runs
 Panel E : 0 (analytical)
 Panel F : 2 regimes × 8 mu values × 30 reps    =  480 runs
-Total   : ~1 540 runs  (~2–4 minutes)
+Total   : ~1 540 runs  (~2-4 minutes)
 
 Reads
 -----
@@ -48,7 +48,7 @@ The detailed files below go to outputs/robustness_checks/ (git-ignored)
     panel_D_xi_analysis.png    / panel_D_raw.csv
     panel_E_signal_temperature.png
     panel_F_mu_analysis.png    / panel_F_raw.csv
-    protocol_grid.png           2×2 grid of A–D  (requires Pillow)
+    protocol_grid.png           2×2 grid of A-D  (requires Pillow)
 """
 
 import argparse
@@ -105,16 +105,15 @@ plt.rcParams.update({
 SPECTRAL = plt.cm.Spectral
 
 # =========================================================================== #
-#  SHARED SIMULATION PARAMETERS (panels A–D)                                  #
+#  SHARED SIMULATION PARAMETERS (panels A-D)                                  #
 # =========================================================================== #
 #
-# Panels A–D use K=6, the protocol-check baseline.
-# Panel F uses K=8 to match the main figures — see its own constants below.
+# Panels A-D use K=6, the protocol-check baseline.
+# Panel F uses K=8 to match the main figures; its constants are below.
 #
-# Note on rho_pi: the original T_max_check.py used rho_pi=10 while
-# epsilon_check.py used rho_pi=100.  We unify on 100 here to match the
-# main Saltelli baseline; the key finding (stability / convergence) is
-# insensitive to this choice.
+# rho_pi is 100 here, matching the main Saltelli baseline.  The earlier
+# T_max_check.py used 10 and epsilon_check.py used 100, and neither the
+# stability nor the convergence finding moves with the choice.
 
 BASE_K       = 6
 BASE_TAU_ABS = tau_absolute(1.0, BASE_K)   # τ̂ = 1.0 in absolute units
@@ -126,7 +125,7 @@ BASE_RHO_PI  = 100.0
 BASE_FLOOR   = 0.1
 BASE_TMAX    = 25
 
-# Width regimes used across panels A and B
+# Width regimes shared by panels A and B
 REGIMES: dict = {
     "baseline":   ("Low ($c=0.5$)",       0.5,  SPECTRAL(0.15)),
     "width_A":    ("Active A ($c=1.25$)", 1.25, SPECTRAL(0.38)),
@@ -156,13 +155,12 @@ def _save(fig: plt.Figure, name: str) -> None:
 
 
 # =========================================================================== #
-#  PANEL A — N ROBUSTNESS                                                     #
+#  PANEL A: N ROBUSTNESS                                                      #
 # =========================================================================== #
 #
-# How many voters does the model need before ΔCENP estimates stabilise?
-# We compute the SE of ΔCENP across N_REPS_A runs for each (regime, N) pair
-# and plot SE as a function of N.  A dashed line marks N = N_CHOSEN,
-# the value adopted for the main analyses.
+# How many voters does the model need before ΔCENP estimates settle?
+# SE of ΔCENP across N_REPS_A runs for each (regime, N) pair, plotted against
+# N.  The dashed line marks N = N_CHOSEN, the value the main analyses use.
 
 N_VALUES_A = [250, 500, 1000, 2000, 5000]
 N_REPS_A   = 30
@@ -256,7 +254,7 @@ def _plot_N_robustness(df: pd.DataFrame) -> plt.Figure:
 
 
 # =========================================================================== #
-#  PANEL B — TMAX CONVERGENCE                                                 #
+#  PANEL B: TMAX CONVERGENCE                                                  #
 # =========================================================================== #
 #
 # Does the model reach a hard fixed point within Tmax iterations?
@@ -264,8 +262,8 @@ def _plot_N_robustness(df: pd.DataFrame) -> plt.Figure:
 # iterations.  This is the strictest possible convergence check.
 # Runs that hit the Tmax ceiling are counted and annotated in the figure.
 
-TMAX_CEILING_B = 30   # generous ceiling to observe tail behaviour
-N_B            = 500  # cheap N — sufficient for timing the fixed point
+TMAX_CEILING_B = 30   # generous ceiling, so the tail is visible
+N_B            = 500  # cheap N, enough for timing the fixed point
 N_REPS_B       = 20
 
 
@@ -369,7 +367,7 @@ def _plot_tmax(df_raw: pd.DataFrame) -> plt.Figure:
 
 
 # =========================================================================== #
-#  PANEL C — EPSILON STABILITY                                                #
+#  PANEL C: EPSILON STABILITY                                                 #
 # =========================================================================== #
 #
 # Is ΔCENP invariant to the numerical offset εs added before the temperature
@@ -381,10 +379,10 @@ def _plot_tmax(df_raw: pd.DataFrame) -> plt.Figure:
 # we temporarily patch signals.generate_signal to inject the desired value.
 # The original function is always restored in the finally block.
 
-# 1e-12 is the value every result in this repository was actually produced
-# under -- it is generate_signal's default and, until signal_epsilon was plumbed
-# through run_simulation, the only value any run could have used.  It heads the
-# grid because it is the incumbent, not because it was chosen.
+# 1e-12 is the value every result in this repository was produced under: it is
+# generate_signal's default and, until signal_epsilon was plumbed through
+# run_simulation, the only value any run could have used.  It heads the grid
+# because it is the incumbent, not because anyone chose it.
 EPS_VALUES_C = [1e-12, 1e-6, 1e-4, 1e-3, 1e-2, 1e-1]
 CHOSEN_EPS   = 1e-12  # value actually in force in all main analyses
 N_C          = 1000
@@ -399,12 +397,12 @@ CONFIGS_C = [
 ]
 
 
-# NOTE: this panel used to vary eps by rebinding signals.generate_signal.  That
+# eps goes through run_simulation(signal_epsilon=...) like any other argument.
+# An earlier version varied it by rebinding signals.generate_signal, which
 # never worked: model.py binds `from signals import generate_signal` at import
-# time, so it kept its own reference and the patch never reached the simulation.
-# The committed table from that version showed delta_cenp identical to the last
-# digit across all five eps values -- the same computation five times.  eps is
-# now passed through run_simulation(signal_epsilon=...) like any other argument.
+# time, keeps its own reference, and never saw the patch.  Its committed table
+# showed delta_cenp identical to the last digit across all five eps values,
+# because it was the same computation five times.
 
 
 def _simulate_epsilon() -> pd.DataFrame:
@@ -504,14 +502,14 @@ def _plot_epsilon(df: pd.DataFrame) -> plt.Figure:
 
 
 # =========================================================================== #
-#  PANEL D — XI (MODE POSITION) ANALYSIS                                      #
+#  PANEL D: XI (MODE POSITION) ANALYSIS                                       #
 # =========================================================================== #
 #
 # Does shifting the electorate centre ξ change coordination outcomes, or
 # does the pattern just track the geometric relationship between ξ and the
 # equal-spacing party positions?  We expect a zigzag in both sincere and
-# final ENP that aligns with party positions — a geometric artefact, not a
-# behavioural effect.  This motivates fixing ξ = 0 in the main analyses.
+# final ENP that aligns with party positions, a geometric artefact, not a
+# behavioural effect.  That is why the main analyses fix ξ = 0.
 
 XI_VALUES_D = np.linspace(-0.75, 0.75, 9)
 N_D         = 1000
@@ -613,7 +611,7 @@ def _plot_xi(df: pd.DataFrame) -> plt.Figure:
 
 
 # =========================================================================== #
-#  PANEL E — MECHANICAL EFFECT OF SIGNAL TEMPERATURE (ANALYTICAL)            #
+#  PANEL E: MECHANICAL EFFECT OF SIGNAL TEMPERATURE (ANALYTICAL)             #
 # =========================================================================== #
 #
 # This panel requires no simulation.  It shows how θ distorts the signal
@@ -682,14 +680,14 @@ def _plot_theta_mechanical() -> plt.Figure:
 
 
 # =========================================================================== #
-#  PANEL F — MU (EXPRESSIVE COST) ANALYSIS                                   #
+#  PANEL F: MU (EXPRESSIVE COST) ANALYSIS                                    #
 # =========================================================================== #
 #
 # Does μ suppress conditional switching monotonically, independently of
 # electorate width?  Panel F uses K=8 to match the main figures, not K=6.
 # The two-regime comparison (active vs low width) shows that width governs
 # the pool of triggered voters while μ governs what fraction of that pool
-# acts — the two layers operate independently.
+# acts.  The two layers work independently.
 
 K_F       = 8
 N_F       = 1000
@@ -778,7 +776,7 @@ def _plot_mu(df: pd.DataFrame) -> plt.Figure:
 
 
 # =========================================================================== #
-#  PANEL G — OUTCOME STABILITY UNDER TRUNCATION                               #
+#  PANEL G: OUTCOME STABILITY UNDER TRUNCATION                                #
 # =========================================================================== #
 #
 # Panel B shows that the diffuse regime (c = 2.5) does NOT reach a hard fixed
@@ -794,8 +792,8 @@ def _plot_mu(df: pd.DataFrame) -> plt.Figure:
 # This panel measures the difference directly: run to a generous ceiling, then
 # compare each outcome at T = 25 against its value at T = 60.  The drift is
 # reported against the between-seed standard deviation, because that is the
-# dispersion the Sobol analysis already integrates over -- a drift far below it
-# cannot change a variance decomposition.
+# dispersion the Sobol analysis already integrates over, and a drift far below
+# it cannot change a variance decomposition.
 
 T_CUT_G   = 25    # the ceiling actually used by the main analyses
 T_LONG_G  = 60    # generous ceiling for this diagnostic
@@ -887,8 +885,8 @@ def _agg_truncation(df: pd.DataFrame) -> pd.DataFrame:
     Grouped statistics behind panel G, shared by the plot and the table.
 
     drift_over_sd is the headline: mean absolute drift between T=25 and T=60,
-    divided by the between-seed SD at T=60.  Well below 1 means truncation is
-    immaterial next to the run-to-run dispersion the analysis already carries.
+    over the between-seed SD at T=60.  Well below 1 means truncation does not
+    matter next to the run-to-run dispersion the analysis already carries.
     """
     g = df.groupby(["regime", "c", "metric"]).agg(
         n_reps=("seed", "size"),
@@ -1011,9 +1009,9 @@ def table_panel_E() -> pd.DataFrame:
     """
     Panel E: the analytic signal-temperature distortion.
 
-    This panel runs no simulation, so it previously existed only as a figure.
+    No simulation is involved, so the table comes straight from the transform.
     One row per (theta, party) carrying the transformed share, plus the
-    distribution-level ENP distortion that the right-hand plot draws:
+    distribution-level ENP distortion the right-hand plot draws:
 
         delta_enp = ENP(s_tilde) - ENP(delta_0)
     """
@@ -1074,16 +1072,16 @@ def write_panel_table(panel: str, df) -> Path:
 
 
 # =========================================================================== #
-#  COMBINED 2×2 GRID (PANELS A–D)                                             #
+#  COMBINED 2×2 GRID (PANELS A-D)                                             #
 # =========================================================================== #
 
 
 def _assemble_protocol_grid() -> None:
-    """Tile panels A–D into a single 2×2 PNG.  Requires Pillow."""
+    """Tile panels A-D into a single 2×2 PNG.  Requires Pillow."""
     try:
         from PIL import Image
     except ImportError:
-        print("  Pillow not installed — skipping 2×2 grid. "
+        print("  Pillow not installed, skipping 2×2 grid. "
               "Install with: pip install Pillow")
         return
 
@@ -1096,7 +1094,7 @@ def _assemble_protocol_grid() -> None:
     try:
         imgs = [Image.open(OUT_DIR / n) for n in names]
     except FileNotFoundError as e:
-        print(f"  Grid skipped — missing file: {e}")
+        print(f"  Grid skipped, missing file: {e}")
         return
 
     w, h = imgs[0].size
@@ -1104,7 +1102,7 @@ def _assemble_protocol_grid() -> None:
     for img, pos in zip(imgs, [(0, 0), (w, 0), (0, h), (w, h)]):
         grid.paste(img, pos)
     grid.save(OUT_DIR / "protocol_grid.png", dpi=(300, 300))
-    print(f"  → {OUT_DIR}/protocol_grid.png  (2×2: A–D)")
+    print(f"  → {OUT_DIR}/protocol_grid.png  (2×2: A-D)")
 
 
 # =========================================================================== #
@@ -1134,8 +1132,8 @@ def main(panels: list = None) -> None:
 
     for panel in panels:
         if panel == "E":
-            # Analytical — no simulation
-            print("Panel E — signal temperature (analytical) …")
+            # Analytical, no simulation
+            print("Panel E: signal temperature (analytical) …")
             _save(_plot_theta_mechanical(), "panel_E_signal_temperature.png")
             write_panel_table("E", table_panel_E())
             continue
@@ -1145,7 +1143,7 @@ def main(panels: list = None) -> None:
             continue
 
         simulate_fn, plot_fn, fname = _SIMULATE[panel]
-        print(f"Panel {panel} — {fname.split('_', 2)[-1].replace('.png', '')} …")
+        print(f"Panel {panel}: {fname.split('_', 2)[-1].replace('.png', '')} …")
         df = simulate_fn()
         df.to_csv(OUT_DIR / f"panel_{panel}_raw.csv", index=False)
         _save(plot_fn(df), fname)

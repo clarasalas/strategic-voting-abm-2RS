@@ -9,7 +9,7 @@ Figures
 2.  Two-panel sweep: trigger rate and conditional switching varying c.
 3.  Dynamic trajectory: ΔCENP across iterations for three width regimes.
 4.  Empirical validation: poll-to-result ΔCENP across French presidential
-    elections, with model mean and p05–p95 range overlaid.
+    elections, with model mean and p05-p95 range overlaid.
 
 Fixed baseline parameters
 -------------------------
@@ -24,12 +24,6 @@ Fixed baseline parameters
     mu      =  0.1    low expressive cost
     eps     =  0.1    uniform floor weight
     xi      =  0.0    symmetric electorate
-
-Data sources  (Figure 4)
-------------------------
-    FR-electoral_data.csv              empirical election data
-    saltelli_results_K{6,8,9}.csv      Saltelli output (model range)
-    If Saltelli CSVs are not found, the model range band is omitted.
 
 Run cost
 --------
@@ -111,7 +105,7 @@ EPS_F   = 0.1     # floor weight
 XI      = 0.0
 N_MODES = 1
 
-# Reps per condition — reduce to 50 for a quick test run
+# Reps per condition; reduce to 50 for a quick test run
 N_REPS  = 100
 
 # =========================================================================== #
@@ -222,7 +216,7 @@ def plot_figure1() -> None:
     ax.set_xlabel(r"Normalised tolerance $\hat{\tau}$")
     ax.set_ylabel(r"Width factor $c$")
     ax.set_title(
-        r"$\mathbf{Trigger\ rate}$ — $c \times \hat{\tau}$",
+        r"$\mathbf{Trigger\ rate}$: $c \times \hat{\tau}$",
         fontsize=11, pad=4,
     )
     ax.text(
@@ -273,7 +267,7 @@ def plot_figure2() -> None:
     color_main = SPECTRAL(0.88)
     param_spec = (
         f"$K={K}$, $\\hat{{\\tau}}={TAU_HAT_FX}$, "
-        f"$\\theta={THETA}$, $\\mu={MU}$ — mean $\\pm$ 1 SE "
+        f"$\\theta={THETA}$, $\\mu={MU}$: mean $\\pm$ 1 SE "
         f"({N_REPS} runs per condition)"
     )
 
@@ -309,7 +303,7 @@ def plot_figure2() -> None:
 
 
 # =========================================================================== #
-#  FIGURE 3: DYNAMIC TRAJECTORY — ΔCENP ACROSS ITERATIONS                    #
+#  FIGURE 3: ΔCENP TRAJECTORY ACROSS ITERATIONS                               #
 # =========================================================================== #
 
 
@@ -327,7 +321,7 @@ def plot_figure3() -> None:
     regime_colors = [SPECTRAL(0.2), SPECTRAL(1.0), SPECTRAL(0.85)]
     param_spec = (
         f"$K={K}$, $\\hat{{\\tau}}={TAU_HAT_TRAJ}$, "
-        f"$\\theta={THETA}$, $\\mu={MU}$ — single representative run"
+        f"$\\theta={THETA}$, $\\mu={MU}$: single representative run"
     )
 
     fig, axes = plt.subplots(1, 3, figsize=(13, 4), sharey=False)
@@ -417,10 +411,10 @@ def load_model_range(saltelli_ks: tuple = (6, 8, 9)) -> dict:
             dfs.append(pd.read_csv(fname))
             print(f"  Loaded {fname.name} ({len(dfs[-1])} rows)")
         except FileNotFoundError:
-            print(f"  {fname.name} not found — skipping")
+            print(f"  {fname.name} not found, skipping")
 
     if not dfs:
-        print("  No Saltelli files found — model range band will be omitted.")
+        print("  No Saltelli files found, so the model range band is omitted.")
         return {}
 
     sal_vals = pd.concat(dfs, ignore_index=True)["delta_cenp"].dropna()
@@ -435,7 +429,7 @@ def load_model_range(saltelli_ks: tuple = (6, 8, 9)) -> dict:
 
 
 # =========================================================================== #
-#  FIGURE 4: EMPIRICAL VALIDATION — ΔCENP ACROSS FRENCH ELECTIONS             #
+#  FIGURE 4: EMPIRICAL ΔCENP ACROSS FRENCH ELECTIONS                          #
 # =========================================================================== #
 
 
@@ -445,7 +439,7 @@ def plot_figure4(
 ) -> None:
     """
     Compare poll-to-result ΔCENP across French presidential elections
-    with model mean and p05–p95 range overlaid.
+    with model mean and p05-p95 range overlaid.
 
     Parameters
     ----------

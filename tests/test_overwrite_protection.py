@@ -5,7 +5,7 @@ The empirical replay refuses to overwrite existing outputs unless told to.
 
 behavioral_sweep.py already worked this way. The replay did not: it only
 refused to replace a file with a SMALLER one, which left the ordinary case
-unguarded -- re-running the same command overwrote a completed 300-draw
+unguarded: re-running the same command overwrote a completed 300-draw
 experiment without a word, because 300 is not smaller than 300.
 
 Existence is now the whole test. Size is not consulted, because "the new file
@@ -251,7 +251,7 @@ def test_the_refusal_names_the_files_and_the_way_out(sandbox, monkeypatch):
 def test_the_replay_has_no_resume_flag_to_conflict_with():
     """
     --overwrite must be incompatible with any resume mechanism. The replay has
-    none -- each invocation rewrites from the start -- so there is nothing to
+    none (each invocation rewrites from the start), so there is nothing to
     conflict with, and this pins that fact: if a resume is ever added, this
     test fails and the mutual exclusion has to be written.
     """

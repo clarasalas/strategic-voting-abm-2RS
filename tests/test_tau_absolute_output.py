@@ -3,8 +3,8 @@ test_tau_absolute_output.py
 ---------------------------
 tau exists in two units and only one of them is meaningful to run_simulation:
 
-    tau_hat       normalised, in zone lengths -- what every design draws
-    tau_absolute  on [-1, 1]                  -- tau_hat * (2 / K)
+    tau_hat       normalised, in zone lengths : what every design draws
+    tau_absolute  on [-1, 1]                  : tau_hat * (2 / K)
 
 tests/test_tau_units.py pins the conversion and the fact that the runners apply
 it.  This file pins the other half: that both units are RECORDED, that the
@@ -12,7 +12,7 @@ recorded absolute value is the one that was actually simulated, and that the
 conversion happens exactly once on the way from the design to the CSV.
 
 The motivating failure is silent.  If a later edit converted a second time, the
-CSV would hold tau_hat * (2/K)^2 -- still plausible-looking numbers, and no
+CSV would hold tau_hat * (2/K)^2, still plausible-looking numbers, and no
 warning anywhere.  Comparing the emitted column against the value the spy saw
 enter run_simulation is what makes that detectable.
 
@@ -119,7 +119,7 @@ def test_replay_converts_exactly_once_per_simulation(tmp_path, monkeypatch):
     One conversion per simulation and no more.
 
     Two draws over two years is four simulations, so four conversions.  A
-    second conversion site -- in the row builder, say -- would show up here as
+    second conversion site, in the row builder say, would show up here as
     eight.
     """
     import empirical_2002_2022 as runner
@@ -167,7 +167,7 @@ def test_replay_leaves_tau_hat_unchanged(tmp_path, monkeypatch):
     tau_hat must reach the CSV exactly as the design drew it.
 
     Both years share one design, so the recorded tau_hat must also be identical
-    across years -- that shared draw is the whole point of the paired design.
+    across years: that shared draw is the whole point of the paired design.
     """
     import empirical_2002_2022 as runner
 
@@ -271,7 +271,7 @@ def test_sweep_converts_exactly_once_per_run(monkeypatch):
 def test_absolute_tau_respects_the_year_specific_ceiling(year, bound):
     """
     The largest absolute tau a design can produce is tau_hat_max * (2 / K),
-    which is 0.4 in 2002 and 0.5 in 2022 -- not a single shared number.
+    which is 0.4 in 2002 and 0.5 in 2022, not a single shared number.
 
     The bound is inclusive: tau_hat = 3.0 is the top of the swept range, so
     0.4 and 0.5 are attainable values, not open limits.

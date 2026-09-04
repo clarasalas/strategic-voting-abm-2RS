@@ -3,13 +3,13 @@ test_tau_units.py
 -----------------
 The tolerance threshold exists in two units, and mixing them up is silent:
 
-    tau_hat   normalised, in zone lengths  -- what every design/sweep draws
-    tau       absolute, on [-1, 1]         -- what run_simulation expects
+    tau_hat   normalised, in zone lengths  : what every design/sweep draws
+    tau       absolute, on [-1, 1]         : what run_simulation expects
 
 These tests pin the conversion and, more importantly, pin the fact that the
 empirical runners actually apply it.  Before this was fixed, both empirical
 runners passed tau_hat straight through, so a swept tau_hat of 3.0 became an
-absolute tau of 3.0 -- past the tau >= 2 threshold at which every party is a
+absolute tau of 3.0, past the tau >= 2 threshold at which every party is a
 contender for every voter and the Ca/Oa distinction is disabled.
 
 Run with:  pytest tests/test_tau_units.py

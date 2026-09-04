@@ -5,7 +5,7 @@ The predictor set is declared, and nothing a runner adds to its output can
 change it.
 
 Selection used to work by exclusion: every numeric column was a predictor
-unless a name pattern ruled it out. That inverts the burden -- a new column is
+unless a name pattern ruled it out. That inverts the burden: a new column is
 a parameter by default, and only becomes metadata if somebody remembers to
 exclude it. Adding tau_absolute and K for traceability would have quietly added
 two predictors, and tau_absolute is exactly tau_hat * (2 / K), so within a year

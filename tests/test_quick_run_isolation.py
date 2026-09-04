@@ -8,8 +8,8 @@ the filenames holding the 300-draw experiment.  data/ is git-ignored and the
 outputs had never been committed, so the full pre-fix results are simply gone.
 
 The fix is structural rather than procedural: a quick run writes to data/smoke/,
-never to data/.  The complementary guard -- refusing to replace any existing
-output without --overwrite -- lives in tests/test_overwrite_protection.py.
+never to data/.  The complementary guard, refusing to replace any existing
+output without --overwrite, lives in tests/test_overwrite_protection.py.
 
 Run with:  pytest tests/test_quick_run_isolation.py
 """

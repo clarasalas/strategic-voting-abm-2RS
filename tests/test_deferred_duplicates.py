@@ -41,7 +41,7 @@ TOL = 1e-12
 
 
 # --------------------------------------------------------------------------- #
-#  A2 -- ENP and CENP exist twice                                              #
+#  A2: ENP and CENP exist twice                                                #
 # --------------------------------------------------------------------------- #
 #
 #   core_model/metrics.py            enp / cenp
@@ -116,7 +116,7 @@ def test_both_implementations_agree_on_unnormalised_input():
 
 
 # --------------------------------------------------------------------------- #
-#  A1 -- the Latin-hypercube routine exists twice                              #
+#  A1: the Latin-hypercube routine exists twice                                #
 # --------------------------------------------------------------------------- #
 
 def test_the_two_latin_hypercube_implementations_are_interchangeable():
@@ -155,7 +155,7 @@ def test_the_two_runners_declare_different_parameter_orders():
 
 
 # --------------------------------------------------------------------------- #
-#  A3 -- the parameter ranges are declared twice                               #
+#  A3: the parameter ranges are declared twice                                 #
 # --------------------------------------------------------------------------- #
 
 SHARED_RANGE_NAMES = ["TAU_RANGE", "MU_RANGE", "ALPHA_RANGE",
@@ -199,7 +199,7 @@ def test_every_shared_bound_is_a_well_formed_interval(name):
 
 def test_the_two_delta_cenp_baselines_are_documented_as_different():
     """
-    Not an equivalence test -- the opposite.
+    Not an equivalence test.  The opposite.
 
     Both docstrings must keep saying what their baseline is, because the names
     do not distinguish them and the next reader has only the docstring.

@@ -4,14 +4,14 @@ test_protocol_validation.py
 Tests for the protocol-validation design and machinery.
 
 Everything here is deliberately cheap: tiny populations, short horizons, few
-configurations.  The expensive question -- whether Tmax = 25 and N = 2000 hold
-up -- is answered by running the script, not by the test suite.  What the suite
+configurations.  The expensive question, whether Tmax = 25 and N = 2000 hold
+up, is answered by running the script, not by the test suite.  What the suite
 defends is that the machinery answering it is correct:
 
     * the design is deterministic, in-bounds, and covers every cell;
     * config_ids are stable and unique;
     * reading iteration t out of a long trajectory gives the same state as a
-      run that stopped at t -- the assumption the whole single-trajectory
+      run that stopped at t, the assumption the whole single-trajectory
       design rests on;
     * tail windows, aggregation and sorting are right;
     * resume does not duplicate work.
@@ -133,8 +133,8 @@ _TRAJ_KWARGS = dict(
 def test_state_read_from_a_long_run_equals_a_short_run():
     """
     The design reads T=25, 50 and 100 out of ONE trajectory.  That is only valid
-    if a long run's prefix is identical to a run that stopped early -- i.e. the
-    ceiling does not change the path.  Checked here at a cheap horizon.
+    if a long run's prefix is identical to a run that stopped early, that is,
+    if the ceiling does not change the path.  Checked at a cheap horizon.
     """
     cut = 12
     short = run_simulation(max_iterations=cut, **_TRAJ_KWARGS)

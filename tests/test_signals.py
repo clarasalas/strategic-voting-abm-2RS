@@ -77,7 +77,7 @@ def test_sharpening_is_monotone_in_theta():
 
 
 def test_transform_preserves_ordering():
-    """No θ may reorder the parties -- the transform is monotone in δ."""
+    """No θ may reorder the parties: the transform is monotone in δ."""
     for theta in (0.3, 0.5, 1.0, 2.0, 3.0):
         out = transform_signal(SKEWED, theta=theta)
         assert np.all(np.diff(out) < 0)     # SKEWED is strictly decreasing

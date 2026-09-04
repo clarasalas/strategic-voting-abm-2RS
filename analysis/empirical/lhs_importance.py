@@ -1,12 +1,12 @@
 """
-What drives the simulations? — Exploratory sensitivity from an LHS parameter sweep.
+What drives the simulations?  Exploratory sensitivity from an LHS sweep.
 
 This script fits a surrogate model (RandomForest) that predicts the simulated
 outcome (ΔCENP) from the parameters varied in a Latin-Hypercube-Sampling sweep,
 then uses permutation importance to rank which parameters matter most.
 
-We deliberately call this an *exploratory* / LHS sensitivity analysis rather than a
-formal Sobol/Saltelli analysis, because the design is LHS (not a Saltelli sequence).
+It is called an *exploratory* LHS sensitivity analysis, not a formal
+Sobol/Saltelli one, because the design is an LHS and not a Saltelli sequence.
 
 Two output styles share the same surrogate-fitting core:
 
@@ -93,8 +93,8 @@ NON_PREDICTOR_PATTERNS = [
 # The predictors are declared, not inferred.  Detection by exclusion is the
 # wrong default here: it treats every numeric column as a predictor unless
 # somebody remembered to exclude it, so adding a provenance column to an output
-# silently adds a parameter to the analysis.  That is exactly what happened when
-# tau_absolute and K were introduced -- both would have been picked up as swept
+# silently adds a parameter to the analysis.  That is what happened when
+# tau_absolute and K were introduced: both would have been picked up as swept
 # parameters, and tau_absolute is perfectly collinear with tau_hat within a
 # year, so permutation importance would have split one parameter's importance
 # across two columns and changed the ranking.
@@ -102,7 +102,7 @@ NON_PREDICTOR_PATTERNS = [
 # Each design sweeps a different set, so each set is named separately rather
 # than merged into one permissive union:
 #
-#   behavioral_sweep      analysis/empirical/behavioral_sweep.py -- always
+#   behavioral_sweep      analysis/empirical/behavioral_sweep.py, always
 #                         probabilistic initialisation, so beta is swept.
 #   replay_nearest        empirical_2002_2022.py with --sincere-init nearest.
 #                         beta is written as a constant 0.0 and is NOT swept.
@@ -219,7 +219,7 @@ def fit_and_importance(X, y, label):
     print(f"  5-fold CV R² = {cv_r2.mean():.3f} ± {cv_r2.std():.3f}")
     if cv_r2.mean() < 0.1:
         print(f"  WARNING: very low predictive performance (CV R²={cv_r2.mean():.3f}). "
-              f"Importances for [{label}] are not reliable — interpret with caution.")
+              f"Importances for [{label}] are not reliable; read them with caution.")
 
     # Fit on all data, then permutation importance (main result).
     rf.fit(X, y)
@@ -414,7 +414,7 @@ def run_paper():
 # Exported table
 # =========================================================================== #
 #
-# EXPLORATORY LHS SURROGATE IMPORTANCE -- NOT a formal Sobol/Saltelli analysis.
+# EXPLORATORY LHS SURROGATE IMPORTANCE.  NOT a formal Sobol/Saltelli analysis.
 # The design is a Latin hypercube, not a Saltelli sequence, so these numbers
 # rank parameters; they do not decompose variance.  results/tables/sobol_indices.csv
 # is the formal variance decomposition, and it covers the synthetic model only.
@@ -463,11 +463,11 @@ def build_importance_table(results: dict) -> pd.DataFrame:
     # Stable row order, so a regenerated table lines up with the committed one
     # and can be diffed.
     #
-    # Reproducible, but NOT byte-identical -- an earlier comment here claimed it
-    # was, and that is wrong.  Verified by running unchanged code three times:
+    # Reproducible, but NOT byte-identical.  An earlier comment here claimed
+    # it was, which is wrong.  Verified by running unchanged code three times:
     #
     #   * predictor selection is declared (SWEPT_PREDICTORS) and every seed is
-    #     fixed -- the forest, the CV folds and the permutations all take SEED;
+    #     fixed: the forest, the CV folds and the permutations all take SEED;
     #   * values reproduce to within numerical tolerance, far tighter than any
     #     digit this table is read at;
     #   * the rankings are stable;
@@ -574,7 +574,7 @@ def run_slide():
         return f"{round(val)}%" if val >= 5 else f"<{max(1, round(val))}%"
 
     # Row y-centers (top-to-bottom). Normal row gap = 1.0; the gap at the section
-    # break (between Preferences rows 0–2 and Beliefs rows 3–4) is widened to
+    # break (between Preferences rows 0-2 and Beliefs rows 3-4) is widened to
     # make the split obvious.
     ROW_Y = [6.0, 5.0, 4.0, 2.2, 1.2]
     BAR_H = 0.28

@@ -9,8 +9,8 @@ changes with it.  Nothing about the dynamics lives in JavaScript.
 
 Usage
 -----
-    python demo/precompute.py                 # full grid -> demo/data/grid.json
-    python demo/precompute.py --smoke         # 8 cells  -> demo/data/smoke.json
+    python demo/precompute.py                 # full grid -> docs/demo/data/grid.json
+    python demo/precompute.py --smoke         # 8 cells  -> docs/demo/data/smoke.json
     python demo/precompute.py --workers 4     # limit parallelism
     python demo/precompute.py --force         # allow overwriting the output
 
@@ -46,7 +46,7 @@ page states which is which underneath the animation.
 
 Output
 ------
-demo/data/grid.json, about 1 MB.  Shares and signals are stored as per-mille
+docs/demo/data/grid.json, about 1 MB.  Shares and signals are stored as per-mille
 integers: 0.123 is written 123.  That is exactly three decimal places, the
 precision the demo displays, at roughly 60% of the bytes of "0.123".
 """
@@ -207,7 +207,11 @@ def main():
     # A smoke run writes to its own file by default, so it can never quietly
     # replace the real grid.
     default_name = "smoke.json" if args.smoke else "grid.json"
-    out = args.out or (REPO / "demo" / "data" / default_name)
+    # Published under docs/, which is what GitHub Pages serves for this
+    # repository (branch main, path /docs).  The page and its data sit together
+    # so the demo is deployed by the existing Pages build, with no workflow and
+    # no change to the Pages source setting that already publishes the guide.
+    out = args.out or (REPO / "docs" / "demo" / "data" / default_name)
     if out.exists() and not args.force:
         sys.exit(f"{out} exists; pass --force to overwrite it.")
     out.parent.mkdir(parents=True, exist_ok=True)

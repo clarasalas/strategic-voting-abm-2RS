@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strategic voting: a two-round runoff, one slider at a time</title>
+<style>
+:root {
+  --bg: #fbfaf8; --panel: #ffffff; --ink: #1a1a1a; --muted: #666;
+  --line: #e0ddd8; --accent: #2f5d8a; --sincere: #b8b2a8; --shift: #2f5d8a;
+  --warn: #8a5a2f;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181a; --panel: #1e2124; --ink: #e8e6e3; --muted: #9a9691;
+    --line: #32363a; --accent: #7fb2e0; --sincere: #565049; --shift: #7fb2e0;
+    --warn: #d09a5e;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+.wrap { max-width: 940px; margin: 0 auto; padding: 24px 18px 56px; }
+h1 { font-size: 21px; line-height: 1.3; margin: 0 0 6px; font-weight: 620; }
+.sub { color: var(--muted); margin: 0 0 22px; font-size: 14px; max-width: 62ch; }
+.panel {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 18px; margin-bottom: 18px;
+}
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .07em;
+     color: var(--muted); margin: 0 0 14px; font-weight: 600; }
+
+/* ---- sliders ---- */
+.ctl { margin-bottom: 18px; }
+.ctl:last-child { margin-bottom: 0; }
+.ctl label { display: block; font-size: 14px; margin-bottom: 2px; }
+.ctl .sym { color: var(--muted); font-size: 13px; }
+.ctl .val { float: right; font-variant-numeric: tabular-nums; color: var(--accent);
+            font-weight: 600; }
+input[type=range] { width: 100%; margin: 6px 0 0; accent-color: var(--accent); }
+.ticks { display: flex; justify-content: space-between; color: var(--muted);
+         font-size: 11px; margin-top: 1px; }
+
+/* ---- charts ---- */
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 620px) { .charts { grid-template-columns: 1fr; } }
+.chart h3 { font-size: 13px; margin: 0 0 8px; font-weight: 600; }
+.chart h3 span { color: var(--muted); font-weight: 400; }
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+.readout { font-size: 15px; line-height: 1.6; margin: 0; }
+.readout b { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+.note {
+  font-size: 13px; color: var(--muted); margin: 10px 0 0;
+  border-left: 2px solid var(--line); padding-left: 10px;
+}
+.playrow { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+button {
+  font: inherit; font-size: 13px; padding: 6px 13px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+button[aria-pressed=true] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.iter { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+footer { color: var(--muted); font-size: 13px; margin-top: 26px; line-height: 1.6; }
+footer a { color: var(--accent); }
+code { font-size: 12px; background: rgba(127,127,127,.12); padding: 1px 5px; border-radius: 3px; }
+.loading { color: var(--muted); padding: 40px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>What makes voters abandon their favourite candidate?</h1>
+  <p class="sub">
+    In a two-round election, a voter who sees that nobody they can tolerate is
+    on course to reach the runoff may switch to someone they like less. Move the
+    sliders and watch the poll and the votes pull on each other.
+  </p>
+
+  <div id="app" class="loading">Loading…</div>
+
+  <template id="tpl">
+  <div class="panel">
+    <h2>Set the electorate</h2>
+    <div class="ctl">
+      <label for="s-c"><span class="val" id="v-c"></span>
+        How spread out voter opinions are <span class="sym">(c)</span></label>
+      <input type="range" id="s-c" min="0" step="1">
+      <div class="ticks"><span>tightly clustered</span><span>widely spread</span></div>
+    </div>
+    <div class="ctl">
+      <label for="s-t"><span class="val" id="v-t"></span>
+        How many candidates a voter can put up with <span class="sym">(τ̂)</span></label>
+      <input type="range" id="s-t" min="0" step="1">
+      <div class="ticks"><span>only the closest</span><span>a wide range</span></div>
+    </div>
+    <div class="ctl">
+      <label for="s-m"><span class="val" id="v-m"></span>
+        How costly it feels to abandon your favourite <span class="sym">(μ)</span></label>
+      <input type="range" id="s-m" min="0" step="1">
+      <div class="ticks"><span>no qualms</span><span>very reluctant</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Where the votes end up</h2>
+    <div class="charts">
+      <div class="chart">
+        <h3>If everyone voted sincerely <span>— first preferences</span></h3>
+        <svg id="c-sincere" viewBox="0 0 320 150" role="img"
+             aria-label="Vote shares if every voter chose their first preference"></svg>
+      </div>
+      <div class="chart">
+        <h3>After voters react to the polls <span>— final shares</span></h3>
+        <svg id="c-final" viewBox="0 0 320 150" role="img"
+             aria-label="Vote shares after strategic switching"></svg>
+      </div>
+    </div>
+    <p class="readout" id="readout"></p>
+  </div>
+
+  <div class="panel">
+    <h2>The feedback loop, round by round</h2>
+    <div class="playrow">
+      <button id="play" aria-pressed="false">Replay</button>
+      <span class="iter" id="iter"></span>
+    </div>
+    <div class="charts">
+      <div class="chart">
+        <h3>The published poll <span>— what voters see</span></h3>
+        <svg id="c-signal" viewBox="0 0 320 130" role="img"
+             aria-label="The poll signal at the current round"></svg>
+      </div>
+      <div class="chart">
+        <h3>How people intend to vote <span>— this round</span></h3>
+        <svg id="c-live" viewBox="0 0 320 130" role="img"
+             aria-label="Vote intentions at the current round"></svg>
+      </div>
+    </div>
+    <p class="note" id="animnote"></p>
+  </div>
+
+  <div class="panel">
+    <h2>A real election</h2>
+    <div class="playrow">
+      <button id="preset">Replay the 2022 French first round</button>
+      <button id="back" hidden>Back to the sliders</button>
+    </div>
+    <p class="note" id="presetnote"></p>
+  </div>
+  </template>
+
+  <footer>
+    <p>
+      This is a deliberately simplified view of a model built for a master's
+      thesis (ENS-PSL / Centre Borelli). It replays results computed by the real
+      Python model, but it shows one slice of it and is not the analysis. The
+      mechanism is under revision and nothing here should be read as a finding.
+      The article is in progress and will be linked here when it exists.
+    </p>
+    <p id="prov"></p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var D = null, G = null, mode = "grid", timer = null, frame = 0;
+  var idx = { c: 0, t: 0, m: 0 };
+  var app = document.getElementById("app");
+
+  // Left-to-right ideological ramp. Party 0 is leftmost.
+  function ramp(i, n) {
+    var t = n > 1 ? i / (n - 1) : 0.5;
+    var stops = [[158, 60, 52], [196, 122, 62], [176, 168, 110],
+                 [110, 150, 140], [62, 108, 158], [92, 76, 140]];
+    var x = t * (stops.length - 1), lo = Math.floor(x), hi = Math.min(lo + 1, stops.length - 1);
+    var f = x - lo, a = stops[lo], b = stops[hi];
+    return "rgb(" + Math.round(a[0] + (b[0] - a[0]) * f) + "," +
+                    Math.round(a[1] + (b[1] - a[1]) * f) + "," +
+                    Math.round(a[2] + (b[2] - a[2]) * f) + ")";
+  }
+
+  function bars(svg, vals, labels, maxOverride) {
+    var n = vals.length, W = 320, H = +svg.getAttribute("viewBox").split(" ")[3];
+    var pad = 20, bw = (W - pad) / n, max = maxOverride ||
+        Math.max(0.28, Math.max.apply(null, vals) * 1.12);
+    var out = "";
+    for (var i = 0; i < n; i++) {
+      var h = Math.max(1, (vals[i] / max) * (H - 30));
+      var x = pad / 2 + i * bw;
+      out += '<rect x="' + (x + bw * 0.13).toFixed(1) + '" y="' + (H - 18 - h).toFixed(1) +
+             '" width="' + (bw * 0.74).toFixed(1) + '" height="' + h.toFixed(1) +
+             '" fill="' + ramp(i, n) + '" rx="1.5"/>';
+      if (vals[i] >= 0.06) {
+        out += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 22 - h).toFixed(1) +
+               '" text-anchor="middle" font-size="9" fill="currentColor" opacity=".72">' +
+               Math.round(vals[i] * 100) + '%</text>';
+      }
+      out += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 5) +
+             '" text-anchor="middle" font-size="9" fill="currentColor" opacity=".5">' +
+             labels[i] + '</text>';
+    }
+    svg.innerHTML = out;
+  }
+
+  function pm(a) { return a.map(function (v) { return v / 1000; }); }
+
+  function currentCell() {
+    return D.cells[idx.c + "_" + idx.t + "_" + idx.m];
+  }
+
+  // Phrases chosen to fit the frame "... of the electorate".
+  function words(pct) {
+    if (pct < 0.02) return "a negligible fraction";
+    if (pct < 0.06) return "a small minority";
+    if (pct < 0.15) return "a noticeable minority";
+    if (pct < 0.30) return "a substantial share";
+    return "a large share";
+  }
+
+  function labelsFor(n) {
+    var out = [];
+    for (var i = 0; i < n; i++) out.push(String(i + 1));
+    return out;
+  }
+
+  function render() {
+    var g = D.meta.grid;
+    document.getElementById("v-c").textContent = g.c[idx.c].toFixed(2);
+    document.getElementById("v-t").textContent = g.tau_hat[idx.t].toFixed(2);
+    document.getElementById("v-m").textContent = g.mu[idx.m].toFixed(2);
+
+    var src = (mode === "preset") ? D.preset_2022 : currentCell();
+    var n = src.sinc.length, labs = (mode === "preset") ? D.preset_2022.parties : labelsFor(n);
+    var maxv = Math.max(0.28,
+        Math.max.apply(null, pm(src.sinc).concat(pm(src.fin))) * 1.12);
+    bars(document.getElementById("c-sincere"), pm(src.sinc), labs, maxv);
+    bars(document.getElementById("c-final"), pm(src.fin), labs, maxv);
+
+    var swPct = src.sw / 1000, gain = src.gain / 1000;
+    document.getElementById("readout").innerHTML =
+      "Out of every hundred voters, <b>" + Math.round(swPct * 100) + "</b> ended up " +
+      "backing someone other than their first choice — " + words(swPct) +
+      " of the electorate. " +
+      (gain < 0.05
+        ? "The field barely narrowed at all."
+        : "The race effectively narrowed by <b>" + gain.toFixed(2) +
+          "</b> candidates' worth of support.");
+
+    document.getElementById("animnote").textContent =
+      "One run animated, " + D.meta.seeds.length +
+      " averaged for the bars and readouts. The poll is a noisy draw, so a " +
+      "seed-averaged poll would show a path no single election ever takes.";
+
+    var p = D.preset_2022.params;
+    document.getElementById("presetnote").textContent =
+      "The real 2022 candidates, electorate and weekly poll timeline, run with one " +
+      "illustrative behavioural setting (τ̂ " + p.tau_hat + ", μ " + p.mu +
+      ", α " + p.alpha + "). Nothing is fitted, and the actual election result is " +
+      "not shown alongside it: this illustrates the mechanism, not how well it does.";
+
+    drawFrame();
+  }
+
+  function drawFrame() {
+    var src = (mode === "preset") ? D.preset_2022 : currentCell();
+    var n = src.sinc.length, labs = (mode === "preset") ? D.preset_2022.parties : labelsFor(n);
+    var f = Math.min(frame, src.sh.length - 1);
+    var sIdx = Math.min(f, src.sg.length - 1);
+    bars(document.getElementById("c-live"), pm(src.sh[f]), labs);
+    bars(document.getElementById("c-signal"), pm(src.sg[sIdx]), labs);
+    document.getElementById("iter").textContent =
+      f === 0 ? "before any poll" : "round " + f + " of " + (src.sh.length - 1);
+  }
+
+  function play() {
+    stop();
+    frame = 0;
+    var src = (mode === "preset") ? D.preset_2022 : currentCell();
+    var btn = document.getElementById("play");
+    btn.setAttribute("aria-pressed", "true");
+    btn.textContent = "Playing…";
+    timer = setInterval(function () {
+      frame++;
+      if (frame >= src.sh.length) {
+        stop();
+        frame = src.sh.length - 1;
+        btn.textContent = "Replay";
+        btn.setAttribute("aria-pressed", "false");
+      }
+      drawFrame();
+    }, 260);
+    drawFrame();
+  }
+  function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+  function bind() {
+    var g = D.meta.grid;
+    var map = { "s-c": ["c", g.c], "s-t": ["t", g.tau_hat], "s-m": ["m", g.mu] };
+    // Opening position, fixed by rule rather than chosen for effect: c and the
+    // tolerance at their grid midpoints, and the expressive cost at its minimum.
+    // mu = 0 is the decision rule without its dampening term, so it is the
+    // plainest form of the mechanism rather than the most flattering cell.  Two
+    // thirds of this grid sits below 2% switching, and a visitor who touches
+    // nothing should still see the loop do something.
+    var opening = { c: null, t: null, m: 0 };
+    Object.keys(map).forEach(function (id) {
+      var el = document.getElementById(id), key = map[id][0], vals = map[id][1];
+      el.max = vals.length - 1;              // integer indices: the slider can
+      el.value = opening[key] === null       // only land on computed grid points
+        ? Math.floor(vals.length / 2) : opening[key];
+      idx[key] = +el.value;
+      el.addEventListener("input", function () {
+        idx[key] = +el.value;
+        if (mode === "preset") { mode = "grid"; document.getElementById("back").hidden = true; }
+        render(); play();
+      });
+    });
+    document.getElementById("play").addEventListener("click", play);
+    document.getElementById("preset").addEventListener("click", function () {
+      mode = "preset"; document.getElementById("back").hidden = false; render(); play();
+    });
+    document.getElementById("back").addEventListener("click", function () {
+      mode = "grid"; this.hidden = true; render(); play();
+    });
+  }
+
+  // ?data=smoke.json previews an alternative dataset without editing the page.
+  var file = new URLSearchParams(location.search).get("data") || "grid.json";
+  fetch("data/" + encodeURIComponent(file))
+    .then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    })
+    .then(function (json) {
+      D = json;
+      app.classList.remove("loading");
+      app.innerHTML = "";
+      app.appendChild(document.getElementById("tpl").content.cloneNode(true));
+      bind();
+      var git = D.meta.git;
+      document.getElementById("prov").innerHTML =
+        'Every trajectory here was computed by the model itself, by ' +
+        '<code>demo/precompute.py</code> at commit <code>' + git.short + '</code>' +
+        (git.dirty ? ' (with uncommitted changes)' : '') + ', on ' +
+        D.meta.generated_utc.slice(0, 10) + '. ' + D.meta.runs.toLocaleString() +
+        ' simulation runs. ' +
+        '<a href="https://github.com/clarasalas/strategic-voting-abm-2RS">Source and full documentation</a>.';
+      render();
+      play();                                 // autoplay for visitors who never touch anything
+    })
+    .catch(function (e) {
+      app.textContent = "Could not load the precomputed data (" + e.message + ").";
+    });
+})();
+</script>
+</body>
+</html>

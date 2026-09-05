@@ -7,6 +7,11 @@ against the French presidential first rounds of 2002 and 2022.
 [![python](https://img.shields.io/badge/python-3.10%2B-blue)](docs/reproducibility.md)
 [![license](https://img.shields.io/badge/data-Ipsos%20%C2%B7%20Min.%20Int%C3%A9rieur-lightgrey)](docs/experiments.md#data-sources)
 
+> **[Try the interactive demo](https://clarasalas.github.io/strategic-voting-abm-2RS/demo/)**
+> — move three sliders and watch the poll and the votes pull on each other. It
+> replays trajectories computed by the model itself, and it is a simplified view
+> of one slice, not the analysis.
+
 > **[Model & Validation Guide](docs/index.md)** is the canonical technical
 > documentation. It covers how the model works, how it is verified, and how to
 > reproduce every number quoted here.

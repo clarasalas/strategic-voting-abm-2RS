@@ -171,3 +171,72 @@ def test_every_grid_position_has_a_cell(data):
     assert not missing, f"{len(missing)} grid positions have no cell"
     assert len(data["cells"]) == (
         len(g["c"]) * len(g["tau_hat"]) * len(g["mu"]))
+
+
+# --------------------------------------------------------------------------- #
+#  The page's claims about the data                                            #
+# --------------------------------------------------------------------------- #
+# The two above check that the stored numbers are the model's.  These check that
+# the sentences wrapped around them are still true.  Both guard the same failure:
+# the mechanism is revised, the grid is regenerated, every test still passes, and
+# the page goes on asserting something about a distribution that has moved.
+
+PAGE = REPO / "docs" / "demo" / "index.html"
+
+# The note beside the sliders reads: "two thirds of the combinations move under
+# 2% of voters".  Bounds on what "two thirds" can honestly describe.
+QUIET_THRESHOLD = 0.02
+QUIET_FRACTION_RANGE = (0.60, 0.72)
+
+# The opening slider position, set by the rule stated in the page: c and the
+# tolerance at their grid midpoints, expressive cost at its minimum.
+OPENING_MIN_SWITCHING = 0.05
+
+
+def _switching(data):
+    return [c["sw"] / 1000 for c in data["cells"].values()]
+
+
+def test_quiet_cell_claim_still_holds(data):
+    """
+    The page tells the visitor most settings coordinate little.  That is a claim
+    about this grid, and a revised mechanism could move it without breaking
+    anything visible.
+    """
+    sw = _switching(data)
+    frac = sum(1 for v in sw if v < QUIET_THRESHOLD) / len(sw)
+    lo, hi = QUIET_FRACTION_RANGE
+    assert lo <= frac <= hi, (
+        f"{PAGE.relative_to(REPO)} says two thirds of settings move under "
+        f"{QUIET_THRESHOLD:.0%} of voters; it is now {frac:.1%}. "
+        f"Update the sentence beside the sliders.")
+
+
+def test_page_still_makes_the_claim_this_test_checks(data):
+    """
+    Guards the other direction: if the sentence is reworded, the numbers above
+    stop describing anything and this test would pass while checking nothing.
+    """
+    text = PAGE.read_text()
+    assert "two thirds" in text, (
+        "the quiet-cell sentence was reworded; revisit QUIET_FRACTION_RANGE")
+    assert "2%" in text, (
+        "the quiet-cell threshold was reworded; revisit QUIET_THRESHOLD")
+
+
+def test_opening_position_shows_the_mechanism(data):
+    """
+    Two thirds of the grid is quiet, so the cell the page opens on is load
+    bearing: land on a dull one and a visitor who touches nothing concludes the
+    model does nothing.  The rule is fixed, but what it selects depends on the
+    mechanism.
+    """
+    g = data["meta"]["grid"]
+    ic, it, im = len(g["c"]) // 2, len(g["tau_hat"]) // 2, 0
+    cell = data["cells"]["%d_%d_%d" % (ic, it, im)]
+    sw = cell["sw"] / 1000
+    assert sw >= OPENING_MIN_SWITCHING, (
+        f"the demo opens at c={g['c'][ic]}, tau_hat={g['tau_hat'][it]}, "
+        f"mu={g['mu'][im]}, where only {sw:.1%} of voters switch. The page "
+        f"would autoplay a run in which nothing happens; choose a different "
+        f"opening rule in docs/demo/index.html and update it here.")

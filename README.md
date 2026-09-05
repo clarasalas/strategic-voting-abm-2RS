@@ -15,6 +15,16 @@ against the French presidential first rounds of 2002 and 2022.
 > recorded with their date and commit in the
 > [verification snapshot](docs/validation.md#verification-snapshot).
 
+Voters hold a sincere preference on a left-right axis, read a public poll
+signal, and form beliefs about which two candidates will reach the runoff. A
+voter abandons their preferred candidate only when no candidate they can
+tolerate is projected to qualify, and only when the gain outweighs a cost of
+abandoning their favourite. Vote shares feed the next poll, so the signal and
+the votes co-evolve over the iterations.
+
+The analysis is in progress toward an article. The mechanism is under revision,
+and this repository makes no claims here about what the model shows.
+
 ---
 
 ## What is this?
@@ -69,7 +79,7 @@ the real candidates, electorate and poll timeline fixed, and asks whether the
 
 | | |
 |---|---|
-| **Layered testing** | 570 tests across 17 contract families: analytic fixtures, decision-rule tests, dynamic invariants, metamorphic properties, golden regressions, pipeline contracts. |
+| **Layered testing** | 577 tests across 17 contract families: analytic fixtures, decision-rule tests, dynamic invariants, metamorphic properties, golden regressions, pipeline contracts. |
 | **Metamorphic testing** | Relabelling and left-right reflection invariance were derived from the equations before anything asserted them. |
 | **Golden-value regressions** | Full output vectors pinned to 1e-12, so a refactor that moves every code path equally still fails. |
 | **Reproducibility as a contract** | Fixed seeds throughout. Derived tables regenerate byte-identically, verified by a test that compares serialized bytes rather than parsed floats. |
@@ -84,12 +94,11 @@ the real candidates, electorate and poll timeline fixed, and asks whether the
 ```bash
 git clone https://github.com/clarasalas/strategic-voting-abm-2RS.git
 cd strategic-voting-abm-2RS
-pip install -r requirements.txt
+pip install -e .
 
 python -c "
-import sys; sys.path.insert(0, 'core_model')
-from model import run_simulation
-from metrics import tau_absolute, enp
+from core_model.model import run_simulation
+from core_model.metrics import tau_absolute, enp
 K = 8
 r = run_simulation(K=K, n_modes=1, width_factor=1.5, theta=1.0, rho=100.0,
                    rho_pi=100.0, n_electors=500, tau=tau_absolute(1.75, K),
@@ -108,11 +117,23 @@ winner party 4, 19/500 switched
 Those exact numbers are pinned by a golden regression test.
 
 ```bash
-pip install pytest scikit-learn
-python -m pytest -ra          # 570 passed, 0 skipped, 0 warnings
+pip install pytest && pip install -e ".[analysis]"
+python -m pytest -ra          # 577 passed, 0 skipped, 0 warnings
 ```
 
 → [Installation and full commands](docs/reproducibility.md)
+
+## Testing
+
+577 tests across 21 files, run in CI on every push and pull request, with
+numerical warnings treated as failures: an overflow, an invalid value or a
+divide-by-zero inside the model fails the build rather than printing a note.
+They cover unit conversions, rejection of invalid parameters, the core decision
+rule, and fixed-seed reproducibility of full output vectors.
+
+The suite exists because an earlier round of empirical results was invalidated
+by a unit-conversion error that every figure had looked plausible under. Surface
+plausibility is no longer the only check.
 
 ## Repository map
 
@@ -122,7 +143,7 @@ python -m pytest -ra          # 570 passed, 0 skipped, 0 warnings
 | [`analysis/synthetic/`](analysis/synthetic) | Sobol sensitivity, protocol validation, robustness panels. |
 | [`analysis/empirical/`](analysis/empirical) | 2002/2022 replay, behavioural sweeps, diagnostics. |
 | [`analysis/README.md`](analysis/README.md) | Which script needs which, and what each one writes. |
-| [`tests/`](tests) | 20 files, 570 tests, no skips. |
+| [`tests/`](tests) | 21 files, 577 tests, no skips. |
 | [`results/tables/`](results/README.md) | 22 compact CSVs, the citable numbers. |
 | [`docs/`](docs/index.md) | The Model & Validation Guide. |
 | [`tools/`](tools) | Pipeline driver, output validator, evidence archiver. |

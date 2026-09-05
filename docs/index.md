@@ -25,7 +25,7 @@ repository is correct.
 | # | Page | What it answers |
 |---|---|---|
 | 1 | **[Model](model.md)** | What the model is, what its entities are, and exactly what happens in one iteration. |
-| 2 | **[Validation](validation.md)** | How we know the implementation is coherent: 17 families of checks, 570 tests. |
+| 2 | **[Validation](validation.md)** | How we know the implementation is coherent: 17 families of checks, 577 tests. |
 | 3 | **[Experiments](experiments.md)** | The synthetic and empirical protocols, with parameter spaces, seeds and simulation counts. |
 | 4 | **[Reproducibility](reproducibility.md)** | Install, run, and regenerate every committed artefact. |
 | 5 | **[Code map](code_map.md)** | Repository architecture and which definition is canonical. |
@@ -48,7 +48,7 @@ front-runner missed the runoff. 2022 is the coordination case.
 
 | | |
 |---|---|
-| Test suite | **570 passed, 0 skipped, 0 warnings**, verified locally and in [CI](https://github.com/clarasalas/strategic-voting-abm-2RS/actions) |
+| Test suite | **577 passed, 0 skipped, 0 warnings**, verified locally and in [CI](https://github.com/clarasalas/strategic-voting-abm-2RS/actions) |
 | Last empirical rerun | 2026-08-21, commit `0bba146`, **14 000 simulations**, 30/30 stages OK |
 | Compact result tables | 22 under [`results/tables/`](../results/README.md); 7 generated and included in this branch |
 | Raw simulation output | git-ignored on purpose; regenerate from the scripts |

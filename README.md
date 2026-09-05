@@ -5,7 +5,7 @@ against the French presidential first rounds of 2002 and 2022.
 
 [![tests](https://github.com/clarasalas/strategic-voting-abm-2RS/actions/workflows/tests.yml/badge.svg)](https://github.com/clarasalas/strategic-voting-abm-2RS/actions/workflows/tests.yml)
 [![python](https://img.shields.io/badge/python-3.10%2B-blue)](docs/reproducibility.md)
-[![license](https://img.shields.io/badge/data-Ipsos%20%C2%B7%20Min.%20Int%C3%A9rieur-lightgrey)](docs/experiments.md#data-sources)
+[![data](https://img.shields.io/badge/data-Ipsos%20%C2%B7%20Min.%20Int%C3%A9rieur-lightgrey)](docs/experiments.md#data-sources)
 
 > **[Try the interactive demo](https://clarasalas.github.io/strategic-voting-abm-2RS/demo/)**
 > — move three sliders and watch the poll and the votes pull on each other. It

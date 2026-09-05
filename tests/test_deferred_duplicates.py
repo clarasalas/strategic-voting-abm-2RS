@@ -31,11 +31,11 @@ import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "analysis" / "empirical"))
 
-import functions
-from metrics import enp, cenp
+from core_model import functions
+from core_model.metrics import enp, cenp
 
 TOL = 1e-12
 
@@ -205,7 +205,7 @@ def test_the_two_delta_cenp_baselines_are_documented_as_different():
     do not distinguish them and the next reader has only the docstring.
     """
     import behavioral_sweep as sweep
-    import metrics
+    from core_model import metrics
 
     assert "s⁰" in sweep.__doc__ or "s0" in sweep.__doc__ or \
         "exogenous" in sweep.run_one.__doc__

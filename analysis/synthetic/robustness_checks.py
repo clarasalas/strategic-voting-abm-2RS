@@ -64,10 +64,10 @@ _ROOT = Path(__file__).parent
 _REPO = _ROOT.parent.parent
 sys.path.insert(0, str(_REPO / "core_model"))
 
-import functions
-from metrics import tau_absolute
-from model import run_simulation
-from signals import transform_signal
+from core_model import functions
+from core_model.metrics import tau_absolute
+from core_model.model import run_simulation
+from core_model.signals import transform_signal
 
 # =========================================================================== #
 #  OUTPUT DIRECTORY                                                            #

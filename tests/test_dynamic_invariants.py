@@ -22,10 +22,10 @@ import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 
-from model import run_simulation
-from metrics import tau_absolute
+from core_model.model import run_simulation
+from core_model.metrics import tau_absolute
 
 N_ELECTORS = 120
 

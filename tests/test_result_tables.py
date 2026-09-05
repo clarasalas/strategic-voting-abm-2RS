@@ -26,7 +26,7 @@ import pandas as pd
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "analysis" / "synthetic"))
 sys.path.insert(0, str(REPO / "analysis" / "empirical"))
 
@@ -280,7 +280,7 @@ def test_panel_E_is_deterministic_and_matches_the_plotted_transform():
     draws.
     """
     import robustness_checks as rc
-    from signals import transform_signal
+    from core_model.signals import transform_signal
 
     a = rc.table_panel_E()
     b = rc.table_panel_E()

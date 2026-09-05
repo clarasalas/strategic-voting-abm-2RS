@@ -27,9 +27,9 @@ import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 
-from signals import generate_signal, rank_signal, transform_signal
+from core_model.signals import generate_signal, rank_signal, transform_signal
 
 # A non-uniform distribution with a distinct leader and a distinct tail, so
 # "largest" and "smallest" are unambiguous.

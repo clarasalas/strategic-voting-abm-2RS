@@ -72,10 +72,10 @@ import warnings
 
 import numpy as np
 
-from agents import Elector, Party
-from environment import build_equal_zones, build_voter_distribution
-from signals import generate_signal, rank_signal, transform_signal
-import functions
+from .agents import Elector, Party
+from .environment import build_equal_zones, build_voter_distribution
+from .signals import generate_signal, rank_signal, transform_signal
+from . import functions
 
 
 def run_simulation(

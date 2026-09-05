@@ -97,11 +97,11 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(ROOT))
 
-from metrics import tau_absolute
-from model import run_simulation
+from core_model.metrics import tau_absolute
+from core_model.model import run_simulation
 from parameter_space import (
     C_STRATA, K_VALUES, N_MODES, PROBLEM, XI, M_RUNOFF,
     c_stratum, signal_epsilon_in_force, within_bounds,

@@ -136,7 +136,7 @@ def signal_epsilon_in_force() -> float:
     """
     import inspect
 
-    import signals as _signals
+    from core_model import signals as _signals
 
     return float(inspect.signature(_signals.generate_signal)
                  .parameters["eps"].default)
@@ -150,7 +150,7 @@ def signal_epsilon_is_settable() -> bool:
     """
     import inspect
 
-    from model import run_simulation
+    from core_model.model import run_simulation
 
     params = inspect.signature(run_simulation).parameters
     return any(p in params for p in ("eps", "eps_signal", "signal_epsilon"))

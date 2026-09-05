@@ -16,8 +16,8 @@ place.
 
 import numpy as np
 
-import functions
-from agents import Elector, Party
+from . import functions
+from .agents import Elector, Party
 
 
 def _topk_set(shares: np.ndarray, k: int) -> set:

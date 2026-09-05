@@ -34,7 +34,7 @@ import matplotlib.colors as mcolors
 
 ROOT = Path(__file__).parent
 REPO = ROOT.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 
 
 # ============================================================================ #
@@ -306,7 +306,7 @@ if __name__ == "__main__":
 
     sys.path.insert(0, str(Path(__file__).parent))
 
-    from model import run_simulation
+    from core_model.model import run_simulation
 
     _result = run_simulation(
         K=7, n_electors=1000,

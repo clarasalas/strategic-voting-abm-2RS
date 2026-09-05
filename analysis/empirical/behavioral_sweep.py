@@ -119,12 +119,12 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(ROOT))
 
-from model import run_simulation                       # import & call; do not reimplement
-from empirical_data import load_year, sample_voters
-from metrics import cenp, tau_absolute   # shared metrics + unit conversion
+from core_model.model import run_simulation                       # import & call; do not reimplement
+from core_model.empirical_data import load_year, sample_voters
+from core_model.metrics import cenp, tau_absolute   # shared metrics + unit conversion
 
 YEARS = (2002, 2022)
 

@@ -29,10 +29,10 @@ import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 
-import functions
-from metrics import cenp, delta_cenp, enp
+from core_model import functions
+from core_model.metrics import cenp, delta_cenp, enp
 
 # Uniform over 4 parties: the ENP = K, CENP = 0 corner.
 UNIFORM_4 = [0.25, 0.25, 0.25, 0.25]

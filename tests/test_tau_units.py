@@ -22,11 +22,11 @@ import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "analysis" / "empirical"))
 
-import empirical_data as ed
-from metrics import tau_absolute, zone_length
+from core_model import empirical_data as ed
+from core_model.metrics import tau_absolute, zone_length
 
 # The swept range, mirrored from both empirical runners.
 TAU_HAT_RANGE = (0.5, 3.0)

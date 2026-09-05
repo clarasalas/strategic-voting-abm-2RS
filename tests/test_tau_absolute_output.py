@@ -27,11 +27,11 @@ import pandas as pd
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "analysis" / "empirical"))
 
-import empirical_data as ed
-from metrics import tau_absolute
+from core_model import empirical_data as ed
+from core_model.metrics import tau_absolute
 
 # The two real candidate sets.  These are the K values every empirical result
 # depends on, so they are asserted rather than merely read.

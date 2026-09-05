@@ -29,7 +29,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "analysis" / "empirical"))
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 
 import behavioral_sweep as bs  # noqa: E402
 

@@ -30,10 +30,10 @@ import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 
-from agents import Party, Elector
-from metrics import tau_absolute
+from core_model.agents import Party, Elector
+from core_model.metrics import tau_absolute
 
 POSITIONS = [-1.0, -0.5, 0.0, 0.5, 1.0]
 K = len(POSITIONS)

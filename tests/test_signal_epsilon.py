@@ -25,12 +25,12 @@ import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "analysis" / "synthetic"))
 
-import model
-from model import run_simulation
-from signals import generate_signal, transform_signal
+from core_model import model
+from core_model.model import run_simulation
+from core_model.signals import generate_signal, transform_signal
 
 # Small synthetic run: enough iterations that the iterative signal call fires.
 BASE_KWARGS = dict(
@@ -163,7 +163,7 @@ def test_exogenous_signal_mode_does_not_generate_signals(spy):
     With exogenous_signals the polls are supplied, so generate_signal must not
     be called at all and eps_s cannot matter.
     """
-    import empirical_data as ed
+    from core_model import empirical_data as ed
 
     bundle = ed.load_year(2022)
     voters = ed.sample_voters(2022, 100, np.random.default_rng(0))
@@ -181,7 +181,7 @@ def test_exogenous_signal_mode_does_not_generate_signals(spy):
 
 
 def test_epsilon_does_not_affect_an_empirical_run():
-    import empirical_data as ed
+    from core_model import empirical_data as ed
 
     bundle = ed.load_year(2022)
     voters = ed.sample_voters(2022, 100, np.random.default_rng(0))
@@ -257,7 +257,7 @@ def test_golden_synthetic_output_unchanged_under_the_default():
     The pinned synthetic golden run, recomputed here explicitly at the default
     eps_s.  Plumbing the parameter must not have moved any committed number.
     """
-    from metrics import tau_absolute
+    from core_model.metrics import tau_absolute
 
     res = run_simulation(
         K=8, n_modes=1, width_factor=1.5, theta=1.0,

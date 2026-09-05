@@ -78,15 +78,15 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 
-from model import run_simulation
-from empirical_data import (
+from core_model.model import run_simulation
+from core_model.empirical_data import (
     load_year, sample_voters, perturb_positions,
     weekly_signal_timeline, individual_signal_timeline,
 )
-from empirical_outcomes import compute_run_outcomes, initialization_benchmarks
-from metrics import tau_absolute
+from core_model.empirical_outcomes import compute_run_outcomes, initialization_benchmarks
+from core_model.metrics import tau_absolute
 
 DATA_DIR = REPO / "data"
 

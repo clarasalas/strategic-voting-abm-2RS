@@ -27,12 +27,12 @@ import pandas as pd
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "analysis" / "synthetic"))
 
 import parameter_space as ps
 import protocol_validation as pv
-from model import run_simulation
+from core_model.model import run_simulation
 
 
 # --------------------------------------------------------------------------- #

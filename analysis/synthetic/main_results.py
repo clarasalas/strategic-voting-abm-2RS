@@ -63,10 +63,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent
 REPO = ROOT.parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 
-import functions
-from model import run_simulation
+from core_model import functions
+from core_model.model import run_simulation
 
 # =========================================================================== #
 #  GLOBAL STYLE                                                                #
@@ -115,7 +115,7 @@ N_REPS  = 100
 
 # enp / cenp / delta_cenp and the tau_hat -> tau conversion live in
 # core_model/metrics.py so both the empirical and synthetic analyses share them.
-from metrics import (enp, cenp, delta_cenp,          # noqa: E402,F401
+from core_model.metrics import (enp, cenp, delta_cenp,          # noqa: E402,F401
                      zone_length, tau_absolute)      # noqa: E402,F401
 
 tau_abs = tau_absolute        # local alias kept for readability at call sites

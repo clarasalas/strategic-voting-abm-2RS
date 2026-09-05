@@ -1,0 +1,34 @@
+# Packaging exists for one reason: so that `pip install -e .` makes
+#
+#     from core_model.model import run_simulation
+#
+# work from any directory, instead of requiring the caller to put core_model/
+# on sys.path first.  It does not change how the model runs.
+#
+# Only core_model/ is packaged.  analysis/ and tools/ are scripts, run from the
+# repository with the paths their docstrings give; they are not importable
+# library code and are deliberately not installed.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "core-model"
+version = "0.1.0"
+description = "Agent-based model of strategic voting under a two-round runoff."
+readme = "README.md"
+requires-python = ">=3.10"
+
+# Mirrors requirements.txt, which stays the file the analysis scripts are run
+# from.  Pillow is optional there and is not a dependency here either.
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
+    "pandas>=2.0",
+    "SALib>=1.4",
+]
+
+[tool.setuptools]
+packages = ["core_model"]

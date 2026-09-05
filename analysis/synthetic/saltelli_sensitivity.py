@@ -101,11 +101,11 @@ from SALib.sample import saltelli
 
 ROOT = Path(__file__).parent
 REPO = ROOT.parent.parent
-sys.path.insert(0, str(REPO / "core_model"))
+sys.path.insert(0, str(REPO))
 
-import functions
-from metrics import tau_absolute
-from model import run_simulation
+from core_model import functions
+from core_model.metrics import tau_absolute
+from core_model.model import run_simulation
 
 # =========================================================================== #
 #  CONFIGURATION                                                               #

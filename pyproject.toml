@@ -20,14 +20,34 @@ description = "Agent-based model of strategic voting under a two-round runoff."
 readme = "README.md"
 requires-python = ">=3.10"
 
-# Mirrors requirements.txt, which stays the file the analysis scripts are run
-# from.  Pillow is optional there and is not a dependency here either.
+# What core_model itself imports, and nothing more.  SALib is deliberately NOT
+# here: nothing under core_model/ imports it, only
+# analysis/synthetic/saltelli_sensitivity.py does.  Listing it made
+# `pip install -e .` upgrade numpy from 1.26.4 to 2.x, because the installed
+# SALib declares numpy>=2.0 -- which broke a scikit-learn built against numpy
+# 1.x and, with it, three tests that have nothing to do with either package.
+# A dependency of the analysis scripts does not belong in the model's own
+# dependency list.
 dependencies = [
     "numpy>=1.24",
     "scipy>=1.10",
     "matplotlib>=3.7",
     "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+# The analysis scripts, not the model.  tools/check_analysis_imports.py imports
+# every module under analysis/, so it needs both of these:
+#   SALib         analysis/synthetic/saltelli_sensitivity.py
+#   scikit-learn  analysis/empirical/lhs_importance.py
+# Install with `pip install -e ".[analysis]"`.
+#
+# Version floors only.  The exact versions that produced the committed tables
+# are pinned in requirements-lock.txt, which is what to install from when the
+# question is reproducing a number rather than running the code.
+analysis = [
     "SALib>=1.4",
+    "scikit-learn>=1.2",
 ]
 
 [tool.setuptools]

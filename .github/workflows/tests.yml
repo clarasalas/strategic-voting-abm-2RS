@@ -23,27 +23,25 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.txt
 
-      # requirements.txt lists the packages the MODEL needs.  Two more are
-      # needed to run the test suite and are installed explicitly rather than
-      # added to requirements.txt, which is the model's dependency file:
+      # requirements.txt lists what the model needs.  The analysis scripts need
+      # two more -- SALib for the Saltelli sensitivity script, scikit-learn for
+      # the LHS importance script -- and those are now the [analysis] extra in
+      # pyproject.toml rather than an ad-hoc pip line here.  That question used
+      # to be deferred; the extra answers it, and keeps a dependency of the
+      # analysis scripts out of the model's own dependency list.
       #
-      #   pytest        the test runner itself
-      #   scikit-learn  imported by analysis/empirical/lhs_importance.py, which
-      #                 tests/test_result_tables.py imports to check the
-      #                 importance-table exporter
-      #
-      # See the PR description: whether scikit-learn belongs in requirements.txt
-      # is a real question about the model's declared dependencies, deliberately
-      # left for a separate decision rather than settled by CI convenience.
+      # This installs floors, not the pins in requirements-lock.txt.  That is
+      # deliberate: CI checks the code still works as its dependencies move.
+      # Reproducing a committed number is the lock file's job, not CI's.
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest scikit-learn
+          pip install pytest
           # Editable, so the checkout stays the code under test.  This is what
           # makes `import core_model.model` resolve the same way it does for
           # someone who followed the README.
-          pip install -e .
+          pip install -e ".[analysis]"
 
       # The analysis scripts are only reached by the test suite through a few
       # functions, so a broken import at the top of one can go unnoticed.  This

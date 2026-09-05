@@ -1,8 +1,9 @@
 name: tests
 
+# Every push, not only pushes to main: a feature branch that breaks the suite
+# should say so before the pull request is opened.
 on:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -39,6 +40,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest scikit-learn
+          # Editable, so the checkout stays the code under test.  This is what
+          # makes `import core_model.model` resolve the same way it does for
+          # someone who followed the README.
+          pip install -e .
+
+      # The analysis scripts are only reached by the test suite through a few
+      # functions, so a broken import at the top of one can go unnoticed.  This
+      # imports all of them.  It runs BEFORE pytest: an import that fails here
+      # names the module and the traceback directly, rather than surfacing as a
+      # collection error somewhere in the suite.
+      - name: Check analysis imports
+        run: python tools/check_analysis_imports.py
 
       # -ra reports the reason for every skip, so a test that silently stops
       # running is visible in the log rather than hiding inside a pass count.

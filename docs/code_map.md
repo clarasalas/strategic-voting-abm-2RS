@@ -1,6 +1,6 @@
 # Code map
 
-[← Reproducibility](reproducibility.md) · **Code map** · [Index →](index.md)
+[← Reproducibility](reproducibility.md) · **Code map** · [Docs index →](README.md)
 
 ---
 
@@ -171,4 +171,4 @@ safely regenerated. Full reasoning in [`analysis_map.md`](analysis_map.md).
 
 ---
 
-[← Reproducibility](reproducibility.md) · **Code map** · [Index →](index.md)
+[← Reproducibility](reproducibility.md) · **Code map** · [Docs index →](README.md)

@@ -1,6 +1,6 @@
 # Model
 
-[← Index](index.md) · **Model** · [Validation →](validation.md)
+[← Docs index](README.md) · **Model** · [Validation →](validation.md)
 
 - [Overview](#overview)
 - [Entities and state](#entities-and-state)
@@ -405,4 +405,4 @@ A sharp cliff means a clear viability boundary; a flat profile means none.
 
 ---
 
-[← Index](index.md) · **Model** · [Validation →](validation.md)
+[← Docs index](README.md) · **Model** · [Validation →](validation.md)

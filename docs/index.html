@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strategic voting in two-round elections</title>
+<meta name="description" content="An agent-based model of strategic voting under a two-round runoff: move the sliders, watch polls and votes pull on each other, and read how the model works and how it is checked.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --bg: #ffffff; --soft: #f5f5f2; --ink: #1a1a1a; --muted: #5f6368; --faint: #8a8f94;
+  --rule: #e6e6e3; --rule-firm: #cfcfca; --accent: #2f5d8a; --accent-wash: #eaf1f8;
+  --ok: #2c6a4f; --warn: #8a5a2f; --on-ink: #ffffff;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 32px -20px rgba(0,0,0,.28);
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131517; --soft: #1c1f22; --ink: #e8e6e3; --muted: #a3a6aa; --faint: #7d8186;
+    --rule: #2c3034; --rule-firm: #41464b; --accent: #82b4e2; --accent-wash: #1b2733;
+    --ok: #7cc4a1; --warn: #d6a36e; --on-ink: #131517;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -20px rgba(0,0,0,.8);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131517; --soft: #1c1f22; --ink: #e8e6e3; --muted: #a3a6aa; --faint: #7d8186;
+  --rule: #2c3034; --rule-firm: #41464b; --accent: #82b4e2; --accent-wash: #1b2733;
+  --ok: #7cc4a1; --warn: #d6a36e; --on-ink: #131517;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -20px rgba(0,0,0,.8);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); }
+body { -webkit-font-smoothing: antialiased; line-height: 1.5; -webkit-text-size-adjust: 100%; }
+a { color: var(--accent); }
+.page { max-width: 1120px; margin: 0 auto; padding: 40px 24px 56px; }
+@media (max-width: 620px) { .page { padding: 28px 16px 44px; } }
+
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); margin: 0; }
+h1 { font-size: clamp(27px, 3.6vw, 40px); line-height: 1.12; letter-spacing: -0.02em; margin: 8px 0 12px; max-width: 22ch; }
+.subtitle { font-size: 18px; color: var(--muted); margin: 0 0 10px; max-width: 64ch; }
+.disclaimer { font-size: 14px; color: var(--faint); margin: 0; max-width: 72ch; }
+
+nav.jump { display: flex; flex-wrap: wrap; gap: 6px; margin: 20px 0 0; }
+nav.jump a, .chip {
+  font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--rule);
+  background: var(--bg); color: var(--ink); cursor: pointer; text-decoration: none;
+  transition: background .15s, border-color .15s, color .15s;
+}
+nav.jump a:hover, .chip:hover { border-color: var(--rule-firm); }
+.chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+section { scroll-margin-top: 16px; }
+.section-head { margin: 52px 0 18px; padding-top: 22px; border-top: 1px solid var(--rule); }
+.section-head h2 { font-size: 24px; letter-spacing: -0.01em; margin: 6px 0 4px; }
+.section-head p { color: var(--muted); margin: 0; max-width: 70ch; }
+
+/* ---------- explorer ---------- */
+.explorer { display: grid; grid-template-columns: minmax(270px, 1fr) minmax(0, 2.1fr); gap: 36px;
+            margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--rule); }
+@media (max-width: 860px) { .explorer { grid-template-columns: 1fr; gap: 24px; } }
+.controls { min-width: 0; }
+.block { padding: 0 0 20px; margin-bottom: 20px; border-bottom: 1px solid var(--rule); }
+.block:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.block h3 { margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.ctl { margin-top: 18px; }
+.ctl label { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; font-weight: 500; }
+.ctl .sym { color: var(--faint); font-weight: 400; }
+.ctl .val { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
+.ctl .hint { font-size: 13px; color: var(--muted); margin: 2px 0 0; }
+input[type=range] { width: 100%; margin: 8px 0 0; accent-color: var(--accent); }
+.ticks { display: flex; justify-content: space-between; color: var(--faint); font-size: 11px; }
+.controls.locked .ctl { display: none; }
+.prompt { margin: 20px 0 0; padding: 12px 14px; background: var(--soft); border-radius: 6px; font-size: 13px; color: var(--muted); }
+
+.stage { min-width: 0; }
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+.caption { font-size: 12px; color: var(--faint); margin: 6px 0 0; }
+.axis-svg { touch-action: none; }
+.axis-svg .voter { cursor: grab; }
+.axis-svg .voter:active { cursor: grabbing; }
+
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 560px) { .charts { grid-template-columns: 1fr; } }
+.chart h4 { font-size: 13px; margin: 0 0 6px; font-weight: 600; }
+.chart h4 span { color: var(--faint); font-weight: 400; }
+
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.stat .label { font-size: 12px; color: var(--muted); }
+.stat .value { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.2; }
+.stat .value small { font-size: 14px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.readout { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+
+.loop { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--rule); }
+.playrow { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.playrow input[type=range] { flex: 1; margin: 0; }
+.btn {
+  font: inherit; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px;
+  border: 1px solid var(--ink); background: var(--ink); color: var(--on-ink); cursor: pointer; white-space: nowrap;
+}
+.btn:hover { opacity: .88; }
+.iter { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 10.5em; text-align: right; }
+.note { font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+
+/* ---------- steps ---------- */
+.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; counter-reset: step; }
+@media (max-width: 860px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .steps { grid-template-columns: 1fr; } }
+.step { background: var(--soft); border-radius: 10px; padding: 16px; position: relative; }
+.step::before { counter-increment: step; content: counter(step); display: inline-grid; place-items: center;
+  width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: var(--on-ink); font-size: 12px; font-weight: 600; }
+.step h3 { font-size: 15px; margin: 10px 0 4px; }
+.step p { font-size: 14px; color: var(--muted); margin: 0; }
+.loopback { font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+
+/* ---------- cards + dialogs ---------- */
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 860px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .cards { grid-template-columns: 1fr; } }
+.card {
+  font: inherit; text-align: left; color: var(--ink); background: var(--bg); cursor: pointer;
+  border: 1px solid var(--rule); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 6px;
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.card:hover { border-color: var(--rule-firm); box-shadow: var(--shadow); transform: translateY(-1px); }
+.card .kicker { font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); }
+.card strong { font-size: 17px; letter-spacing: -0.01em; }
+.card span.desc { font-size: 14px; color: var(--muted); }
+.card span.more { font-size: 13px; color: var(--accent); margin-top: auto; padding-top: 6px; }
+
+dialog {
+  width: min(760px, calc(100vw - 24px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--rule);
+  border-radius: 12px; background: var(--bg); color: var(--ink); box-shadow: var(--shadow);
+}
+dialog::backdrop { background: rgba(10,12,14,.45); }
+.dlg-head { position: sticky; top: 0; background: var(--bg); display: flex; justify-content: space-between; align-items: flex-start;
+            gap: 12px; padding: 20px 24px 12px; border-bottom: 1px solid var(--rule); }
+.dlg-head h2 { font-size: 22px; margin: 4px 0 0; letter-spacing: -0.01em; }
+.close { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 1px solid var(--rule);
+         border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.dlg-body { padding: 8px 24px 24px; font-size: 15px; }
+.dlg-body h3 { font-size: 15px; margin: 22px 0 6px; }
+.dlg-body p, .dlg-body li { color: var(--ink); }
+.dlg-body ul { padding-left: 20px; margin: 6px 0; }
+.dlg-body li { margin: 4px 0; }
+.eq { font-family: var(--mono); font-size: 13.5px; background: var(--soft); border-radius: 6px; padding: 10px 12px; margin: 8px 0; overflow-x: auto; white-space: nowrap; }
+table.mini { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0; }
+table.mini th, table.mini td { text-align: left; padding: 7px 8px 7px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+table.mini thead th { font-size: 12px; font-weight: 500; color: var(--muted); }
+table.mini td:first-child { white-space: nowrap; font-weight: 500; }
+.callout { background: var(--accent-wash); border-radius: 8px; padding: 12px 14px; margin: 14px 0; font-size: 14px; }
+.dlg-foot { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: 14px; }
+pre { font-family: var(--mono); font-size: 13px; background: var(--soft); border-radius: 6px; padding: 12px 14px; overflow-x: auto; }
+code { font-family: var(--mono); font-size: .9em; background: var(--soft); padding: 1px 5px; border-radius: 4px; }
+pre code { background: none; padding: 0; }
+
+footer { margin-top: 52px; padding-top: 20px; border-top: 1px solid var(--rule); color: var(--faint); font-size: 13px; }
+footer p { margin: 0 0 8px; max-width: 90ch; }
+.loading { color: var(--faint); padding: 60px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <p class="eyebrow">An agent-based model of two-round elections</p>
+    <h1>What makes voters abandon their favourite candidate?</h1>
+    <p class="subtitle">
+      In a two-round election, a voter who sees that nobody they can tolerate is on course to
+      reach the runoff may switch to someone they like less. This model follows that choice for
+      thousands of voters at once, while the polls and the votes pull on each other.
+    </p>
+    <p class="disclaimer">
+      A research prototype built for a master's thesis (ENS-PSL / Centre Borelli). The mechanism
+      is under revision, so nothing on this page should be read as a finding.
+    </p>
+    <nav class="jump" aria-label="On this page">
+      <a href="#explore">Explore</a>
+      <a href="#how">How it works</a>
+      <a href="#under-the-hood">The model, validation and data</a>
+      <a href="https://github.com/clarasalas/strategic-voting-abm-2RS">Code on GitHub ↗</a>
+    </nav>
+  </header>
+
+  <!-- ================================================================== -->
+  <section id="explore">
+    <div id="app" class="loading">Loading the simulations…</div>
+  </section>
+
+  <template id="tpl">
+  <div class="explorer">
+    <div class="controls" id="controls">
+      <div class="block">
+        <h3>Electorate</h3>
+        <div class="chips" role="radiogroup" aria-label="Which electorate">
+          <button class="chip" role="radio" aria-checked="true" data-mode="grid">Imagined electorate</button>
+          <button class="chip" role="radio" aria-checked="false" data-mode="preset">France 2022</button>
+        </div>
+
+        <div class="ctl">
+          <label for="s-c"><span>How spread out opinions are <span class="sym">c</span></span><span class="val" id="v-c"></span></label>
+          <input type="range" id="s-c" min="0" step="1">
+          <div class="ticks"><span>tightly clustered</span><span>widely spread</span></div>
+        </div>
+        <div class="ctl">
+          <label for="s-t"><span>How many candidates a voter tolerates <span class="sym">τ̂</span></span><span class="val" id="v-t"></span></label>
+          <input type="range" id="s-t" min="0" step="1">
+          <div class="ticks"><span>only the closest</span><span>a wide range</span></div>
+        </div>
+        <div class="ctl">
+          <label for="s-m"><span>How costly it feels to abandon a favourite <span class="sym">μ</span></span><span class="val" id="v-m"></span></label>
+          <input type="range" id="s-m" min="0" step="1">
+          <div class="ticks"><span>no qualms</span><span>very reluctant</span></div>
+        </div>
+
+        <p class="prompt" id="sidenote">
+          Most settings produce little coordination. Across this grid, two thirds of the
+          combinations move under 2% of voters, and that is the model's answer, not a stalled
+          page: the switching rule only fires when a voter can tolerate nobody who is projected
+          to qualify.
+        </p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="block">
+        <h3>One voter on the left-right axis</h3>
+        <svg class="axis-svg" id="c-axis" viewBox="0 0 640 150" role="img"
+             aria-label="Candidates on a left-right axis, one voter and the candidates within their tolerance"></svg>
+        <p class="caption" id="axiscap"></p>
+      </div>
+
+      <div class="block">
+        <h3>Where the votes end up</h3>
+        <div class="charts">
+          <div class="chart">
+            <h4>If everyone voted sincerely <span>· first preferences</span></h4>
+            <svg id="c-sincere" viewBox="0 0 320 150" role="img" aria-label="Vote shares if every voter chose their first preference"></svg>
+          </div>
+          <div class="chart">
+            <h4>After voters react to the polls <span>· final shares</span></h4>
+            <svg id="c-final" viewBox="0 0 320 150" role="img" aria-label="Vote shares after strategic switching"></svg>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="label">Voters who switched away from their favourite</div>
+            <div class="value" id="st-sw"></div></div>
+          <div class="stat"><div class="label">Fall in the effective number of candidates</div>
+            <div class="value" id="st-gain"></div></div>
+        </div>
+        <p class="readout" id="readout"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="loop">
+    <h3 class="eyebrow" style="margin-bottom:12px">The feedback loop, round by round</h3>
+    <div class="playrow">
+      <button class="btn" id="play">Pause</button>
+      <input type="range" id="scrub" min="0" value="0" step="1" aria-label="Round">
+      <span class="iter" id="iter"></span>
+    </div>
+    <div class="charts">
+      <div class="chart">
+        <h4>The published poll <span>· what voters see</span></h4>
+        <svg id="c-signal" viewBox="0 0 480 150" role="img" aria-label="The poll signal at the current round"></svg>
+      </div>
+      <div class="chart">
+        <h4>How people intend to vote <span>· this round</span></h4>
+        <svg id="c-live" viewBox="0 0 480 150" role="img" aria-label="Vote intentions at the current round"></svg>
+      </div>
+    </div>
+    <p class="note" id="animnote"></p>
+  </div>
+  </template>
+
+  <!-- ================================================================== -->
+  <section id="how">
+    <div class="section-head">
+      <p class="eyebrow">How it works</p>
+      <h2>One round, for every voter</h2>
+      <p>The model covers the first round only. The runoff is never simulated: it exists as the
+         voters' guess about who will qualify for it.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><h3>Read the poll</h3>
+        <p>Everyone sees the same public poll and mixes it with their own prior belief about who is ahead.</p></div>
+      <div class="step"><h3>List who is tolerable</h3>
+        <p>Each voter can put up with the candidates within a distance τ of their own position, their favourite included.</p></div>
+      <div class="step"><h3>Guess the runoff</h3>
+        <p>Each voter takes the two candidates they believe are strongest as the likely finalists.</p></div>
+      <div class="step"><h3>Stay or switch</h3>
+        <p>If a tolerable candidate is among them, the voter stays sincere. If none is, they may switch, but only if the gain outweighs the cost μ of leaving their favourite.</p></div>
+    </div>
+    <p class="loopback">↻ The new vote intentions feed the next poll, and the loop starts again.</p>
+  </section>
+
+  <!-- ================================================================== -->
+  <section id="under-the-hood">
+    <div class="section-head">
+      <p class="eyebrow">Under the hood</p>
+      <h2>The model, how it is checked, and where the data come from</h2>
+      <p>Short versions here. Each card links to the full Markdown document in the repository.</p>
+    </div>
+    <div class="cards">
+      <button class="card" data-open="dlg-model"><span class="kicker">Model</span>
+        <strong>The decision rule</strong>
+        <span class="desc">Beliefs, tolerance, the trigger, and the cost of abandoning a favourite, written as equations.</span>
+        <span class="more">Open →</span></button>
+      <button class="card" data-open="dlg-modes"><span class="kicker">Two modes</span>
+        <strong>Imagined electorates and France</strong>
+        <span class="desc">The same core model, run on generated electorates and on the 2002 and 2022 first rounds.</span>
+        <span class="more">Open →</span></button>
+      <button class="card" data-open="dlg-measures"><span class="kicker">Outcomes</span>
+        <strong>How coordination is measured</strong>
+        <span class="desc">The effective number of candidates, its rescaled version CENP, and switching rates.</span>
+        <span class="more">Open →</span></button>
+      <button class="card" data-open="dlg-validation"><span class="kicker">Validation</span>
+        <strong>How the code is checked</strong>
+        <span class="desc">17 families of checks, from hand-computed values to golden regressions and symmetry tests.</span>
+        <span class="more">Open →</span></button>
+      <button class="card" data-open="dlg-reproduce"><span class="kicker">Reproduce</span>
+        <strong>Run it yourself</strong>
+        <span class="desc">Install, run one simulation in a few lines, and run the test suite.</span>
+        <span class="more">Open →</span></button>
+      <button class="card" data-open="dlg-status"><span class="kicker">Status</span>
+        <strong>Data, limits and what is next</strong>
+        <span class="desc">Where the data come from, what the model leaves out, and where the analysis stands.</span>
+        <span class="more">Open →</span></button>
+    </div>
+  </section>
+
+  <!-- ============================ dialogs ============================= -->
+  <dialog id="dlg-model" aria-labelledby="h-model">
+    <div class="dlg-head"><div><p class="eyebrow">Model</p><h2 id="h-model">The decision rule</h2></div>
+      <button class="close" data-close>Close</button></div>
+    <div class="dlg-body">
+      <p>Voters and candidates sit on a left-right axis from −1 to 1. Candidates do not act. Each voter
+         <i>a</i> has a position <i>x<sub>a</sub></i>, a favourite <i>j*</i> (the candidate they vote
+         for sincerely), and a belief about how strong each candidate is.</p>
+
+      <h3>1 · Belief update</h3>
+      <p>At each round the voter mixes a fixed prior π<sub>a</sub> with the public poll
+         <i>s<sup>t</sup></i>. The weight α sets how much they trust their own prior over the poll.</p>
+      <div class="eq">m<sub>a</sub><sup>t</sup> = α · π<sub>a</sub> + (1 − α) · s<sup>t</sup></div>
+
+      <h3>2 · Who is tolerable</h3>
+      <p>The contender set holds every candidate within distance τ. It always includes the favourite.</p>
+      <div class="eq">C<sub>a</sub> = { j : |x<sub>a</sub> − x<sub>j</sub>| ≤ τ }</div>
+      <p>The sliders use τ̂, the tolerance measured in "candidate spacings": with <i>K</i>
+         candidates, τ = τ̂ × 2/<i>K</i>. That keeps the value comparable between elections with
+         different numbers of candidates. The conversion happens in exactly one place in the code.</p>
+
+      <h3>3 · The trigger</h3>
+      <p>The voter projects the two candidates with the highest belief as the finalists
+         <i>T<sub>R</sub></i>. They have a strategic incentive only when none of their tolerable
+         candidates is among them:</p>
+      <div class="eq">G<sub>a</sub> = 1  ⇔  C<sub>a</sub> ∩ T<sub>R</sub> = ∅</div>
+
+      <h3>4 · Switch or stay</h3>
+      <p>A triggered voter picks, among tolerable candidates, the one with the best score: how
+         viable it is locally, times its projected runoff share, minus a cost for leaving the
+         favourite.</p>
+      <div class="eq">φ<sub>a</sub>(j) = LV<sub>a,j</sub> · NV<sub>a,j,k*</sub> − μ · λ̂<sub>a</sub>(j)</div>
+      <table class="mini">
+        <tbody>
+          <tr><td>LV<sub>a,j</sub></td><td>local viability: the belief in <i>j</i>, renormalised over the tolerable set</td></tr>
+          <tr><td>NV<sub>a,j,k*</sub></td><td>projected runoff share of <i>j</i> against the strongest opponent <i>k*</i></td></tr>
+          <tr><td>λ̂<sub>a</sub>(j)</td><td>expressive cost: how much less the voter likes <i>j</i> than their favourite (zero for the favourite)</td></tr>
+          <tr><td>μ</td><td>loyalty weight. At μ = 0 the choice is purely instrumental; a large μ pins the voter to their favourite</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">The new vote intentions become the next poll (in the imagined
+        electorate) and the loop repeats, 25 rounds here. In the France mode the polls are the real
+        weekly ones instead.</div>
+      <p class="dlg-foot">Full description, with initialisation rules and every parameter:
+        <a href="https://github.com/clarasalas/strategic-voting-abm-2RS/blob/main/docs/model.md">docs/model.md</a></p>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-modes" aria-labelledby="h-modes">
+    <div class="dlg-head"><div><p class="eyebrow">Two modes</p><h2 id="h-modes">Imagined electorates and France</h2></div>
+      <button class="close" data-close>Close</button></div>
+    <div class="dlg-body">
+      <p>Both modes share the same core model and differ only in where the candidates, the voters and the poll come from.</p>
+      <table class="mini">
+        <thead><tr><th></th><th>Synthetic</th><th>Empirical</th></tr></thead>
+        <tbody>
+          <tr><td>Candidates</td><td>generated, evenly spaced</td><td>the real candidates, placed on [−1, 1]</td></tr>
+          <tr><td>Voters</td><td>drawn from a bell curve of width <i>c</i> plus a thin uniform floor</td><td>sampled from real ideology survey data</td></tr>
+          <tr><td>Poll</td><td>generated each round from current support</td><td>the real weekly poll timeline</td></tr>
+          <tr><td>Question</td><td>which parameters drive coordination?</td><td>does the rule produce the contrast between 2002 and 2022?</td></tr>
+        </tbody>
+      </table>
+      <h3>Why 2002 and 2022</h3>
+      <p>2002 is the textbook coordination failure: the French left split its vote across several
+         candidates and its front-runner missed the runoff. 2022 is the contrasting case, with visible
+         consolidation around a few candidates.</p>
+      <p>One behavioural setting is applied to both years and only the environment changes. Nothing is
+         fitted to either election; where the model differs from the real result, the difference is
+         recorded as it is.</p>
+      <h3>What the sliders on this page cover</h3>
+      <p>The explorer shows a synthetic electorate with 8 candidates, 2 000 voters and 25 rounds, the
+         same baseline as the synthetic analysis. Every trajectory was computed ahead of time by the
+         Python model (660 settings × 8 random seeds); the page replays them and computes nothing itself.
+         The "France 2022" button replays the real 2022 candidates, electorate and polls under one
+         illustrative setting.</p>
+      <p class="dlg-foot">Parameter spaces, seeds and simulation counts:
+        <a href="https://github.com/clarasalas/strategic-voting-abm-2RS/blob/main/docs/experiments.md">docs/experiments.md</a></p>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-measures" aria-labelledby="h-measures">
+    <div class="dlg-head"><div><p class="eyebrow">Outcomes</p><h2 id="h-measures">How coordination is measured</h2></div>
+      <button class="close" data-close>Close</button></div>
+    <div class="dlg-body">
+      <h3>Effective number of candidates</h3>
+      <div class="eq">ENP(δ) = 1 / Σ<sub>j</sub> δ<sub>j</sub>²</div>
+      <p>A vote split evenly across 4 candidates gives ENP = 4; a vote concentrated on one gives 1. When
+         voters coordinate, ENP falls. The "fall in the effective number of candidates" above is ENP of
+         the sincere vote minus ENP of the final vote.</p>
+      <h3>CENP, the version comparable across elections</h3>
+      <div class="eq">CENP = (K − ENP) / (K − 1)</div>
+      <p>It runs from 0 (maximal fragmentation) to 1 (full coordination), so elections with different
+         numbers of candidates <i>K</i> can be put side by side.</p>
+      <h3>Switching</h3>
+      <table class="mini"><tbody>
+        <tr><td>Trigger rate</td><td>share of voters for whom no tolerable candidate is projected to qualify</td></tr>
+        <tr><td>Switching rate</td><td>share of all voters who end up away from their favourite</td></tr>
+        <tr><td>Conditional switching</td><td>share of triggered voters who actually switch</td></tr>
+      </tbody></table>
+      <p>A high trigger rate with low conditional switching means the incentive exists, but the cost of
+         leaving a favourite holds people back.</p>
+      <p class="dlg-foot">All outcome measures, including the two ΔCENP baselines:
+        <a href="https://github.com/clarasalas/strategic-voting-abm-2RS/blob/main/docs/model.md#outcome-measures">docs/model.md#outcome-measures</a></p>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-validation" aria-labelledby="h-validation">
+    <div class="dlg-head"><div><p class="eyebrow">Validation</p><h2 id="h-validation">How the code is checked</h2></div>
+      <button class="close" data-close>Close</button></div>
+    <div class="dlg-body">
+      <p>The test suite runs on every push and pull request, and numerical warnings count as
+         failures: an overflow or a divide-by-zero inside the model fails the build. It exists because
+         an earlier round of empirical results was invalidated by a unit-conversion error that every
+         figure had looked plausible under.</p>
+      <h3>Is the code doing what the equations say?</h3>
+      <ul>
+        <li><b>Hand-computed values.</b> Metrics match closed-form results on tiny inputs, to 1e-12.</li>
+        <li><b>The decision rule.</b> Hand-built voters check that the trigger fires exactly when no tolerable candidate is projected to qualify, and that the choice flips at the analytically derived value of μ.</li>
+        <li><b>Invariants at every round.</b> Every voter is counted once, shares sum to 1, the projected finalists are two distinct valid candidates.</li>
+        <li><b>Symmetry.</b> Relabelling the candidates, or mirroring the axis left to right, must not change any decision. These were derived from the equations before being tested; all 120 relabellings hold.</li>
+        <li><b>Golden regressions.</b> Full output vectors for two fixed runs are pinned to 1e-12, so a change that silently moves every number fails.</li>
+        <li><b>Data integrity.</b> Candidate positions, polls and results stay aligned across files, since everything is indexed by position.</li>
+      </ul>
+      <h3>Is the simulation protocol sound?</h3>
+      <ul>
+        <li><b>Population size.</b> 2 000 voters is where the coordination measure stops moving across seeds.</li>
+        <li><b>Number of rounds.</b> Averages are robust to the 25-round ceiling, even though single runs with very spread-out electorates keep oscillating.</li>
+        <li><b>Robustness panels A–G</b> and a <b>global sensitivity analysis</b> (Sobol indices, 30 720 runs) on 8 parameters.</li>
+        <li><b>Seed noise.</b> How much variation is randomness rather than parameters, with multiple-testing correction.</li>
+      </ul>
+      <h3>Is it reproducible?</h3>
+      <ul>
+        <li>Every run is bit-identical for a fixed seed.</li>
+        <li>Derived tables regenerate byte-for-byte, checked by comparing file bytes, not parsed numbers.</li>
+        <li>Runs refuse to overwrite existing output without a flag, and interrupted sweeps resume to identical results.</li>
+        <li>This page's data are re-checked against the model by a test, so the page cannot drift from the code.</li>
+      </ul>
+      <p class="dlg-foot">All 17 check families, their tests and their status:
+        <a href="https://github.com/clarasalas/strategic-voting-abm-2RS/blob/main/docs/validation.md">docs/validation.md</a></p>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-reproduce" aria-labelledby="h-reproduce">
+    <div class="dlg-head"><div><p class="eyebrow">Reproduce</p><h2 id="h-reproduce">Run it yourself</h2></div>
+      <button class="close" data-close>Close</button></div>
+    <div class="dlg-body">
+      <h3>Install</h3>
+<pre><code>git clone https://github.com/clarasalas/strategic-voting-abm-2RS.git
+cd strategic-voting-abm-2RS
+pip install -e .</code></pre>
+      <h3>One simulation</h3>
+<pre><code>from core_model.model import run_simulation
+from core_model.metrics import tau_absolute, enp
+
+K = 8
+r = run_simulation(K=K, n_modes=1, width_factor=1.5, theta=1.0, rho=100.0,
+                   rho_pi=100.0, n_electors=500, tau=tau_absolute(1.75, K),
+                   mu=0.1, alpha_prior=0.0, K_runoff=2, max_iterations=15,
+                   seed=42, verbose=False, collect_diagnostics=True)
+print(enp(r["sincere_shares"]), "->", enp(r["final_shares"]))</code></pre>
+      <p>This prints <code>5.441 → 5.208</code> (19 of 500 voters switch). Those exact numbers are pinned by a test.</p>
+      <h3>Tests</h3>
+<pre><code>pip install pytest && pip install -e ".[analysis]"
+python -m pytest -ra</code></pre>
+      <h3>This page's data</h3>
+<pre><code>python demo/precompute.py --force   # about 40 minutes, writes docs/data/grid.json</code></pre>
+      <p class="dlg-foot">Full commands for every table and figure:
+        <a href="https://github.com/clarasalas/strategic-voting-abm-2RS/blob/main/docs/reproducibility.md">docs/reproducibility.md</a></p>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-status" aria-labelledby="h-status">
+    <div class="dlg-head"><div><p class="eyebrow">Status</p><h2 id="h-status">Data, limits and what is next</h2></div>
+      <button class="close" data-close>Close</button></div>
+    <div class="dlg-body">
+      <h3>Data</h3>
+      <ul>
+        <li><b>Polls and voter ideology:</b> Ipsos pre- and post-election surveys, 2002 and 2022.</li>
+        <li><b>Results:</b> Ministère de l'Intérieur.</li>
+      </ul>
+      <h3>What the model leaves out</h3>
+      <p>Only the first round is simulated. There is no campaign, no turnout decision or abstention,
+         and no candidate entering or leaving the race. Every voter sees the same poll; there is no
+         private information.</p>
+      <h3>Where it stands</h3>
+      <p>The empirical replay was re-run in full (14 000 simulations) on 2026-08-21, after a
+         tolerance-unit defect was found and corrected. The analysis is in progress toward an
+         article and the mechanism is under revision, so the repository makes no claims about what
+         the model shows.</p>
+      <p class="dlg-foot">Data provenance:
+        <a href="https://github.com/clarasalas/strategic-voting-abm-2RS/blob/main/docs/experiments.md#data-sources">docs/experiments.md#data-sources</a></p>
+    </div>
+  </dialog>
+
+  <footer>
+    <p>This page replays results computed by the Python model; it shows one slice of the model and is not
+       the analysis. The article is in progress and will be linked here when it exists.</p>
+    <p id="prov"></p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var D = null, mode = "grid", timer = null, frame = 0, voterX = -0.55;
+  var idx = { c: 0, t: 0, m: 0 };
+  var app = document.getElementById("app");
+  var FRAME_MS = 420;
+
+  // Left-to-right ideological ramp. Candidate 0 is leftmost.
+  function ramp(i, n) {
+    var t = n > 1 ? i / (n - 1) : 0.5;
+    var stops = [[176, 62, 58], [206, 128, 60], [184, 170, 96],
+                 [96, 150, 128], [58, 110, 166], [104, 80, 150]];
+    var x = t * (stops.length - 1), lo = Math.floor(x), hi = Math.min(lo + 1, stops.length - 1);
+    var f = x - lo, a = stops[lo], b = stops[hi];
+    return "rgb(" + Math.round(a[0] + (b[0] - a[0]) * f) + "," +
+                    Math.round(a[1] + (b[1] - a[1]) * f) + "," +
+                    Math.round(a[2] + (b[2] - a[2]) * f) + ")";
+  }
+
+  function $(id) { return document.getElementById(id); }
+  function pm(a) { return a.map(function (v) { return v / 1000; }); }
+  function src() { return mode === "preset" ? D.preset_2022 : D.cells[idx.c + "_" + idx.t + "_" + idx.m]; }
+  function nCand() { return src().sinc.length; }
+  function labels() {
+    if (mode === "preset") return D.preset_2022.parties;
+    var out = []; for (var i = 0; i < nCand(); i++) out.push(String(i + 1)); return out;
+  }
+  // Synthetic candidates sit at the midpoints of K equal zones on [-1, 1]
+  // (core_model/environment.py, build_equal_zones).
+  function positions() {
+    if (mode === "preset") return D.preset_2022.positions;
+    var K = D.meta.baseline.K, out = [];
+    for (var i = 0; i < K; i++) out.push(-1 + (i + 0.5) * 2 / K);
+    return out;
+  }
+  function tauHat() { return mode === "preset" ? D.preset_2022.params.tau_hat : D.meta.grid.tau_hat[idx.t]; }
+
+  function bars(svg, vals, labs, maxv, empty) {
+    var vb = svg.getAttribute("viewBox").split(" "), n = vals.length, W = +vb[2], H = +vb[3];
+    var pad = 8, bw = (W - 2 * pad) / n, out = "";
+    out += '<line x1="' + pad + '" x2="' + (W - pad) + '" y1="' + (H - 18) + '" y2="' + (H - 18) +
+           '" stroke="currentColor" opacity=".18"/>';
+    for (var i = 0; i < n; i++) {
+      var x = pad + i * bw;
+      if (!empty) {
+        var h = Math.max(vals[i] > 0 ? 1.5 : 0, (vals[i] / maxv) * (H - 34));
+        out += '<rect x="' + (x + bw * 0.14).toFixed(1) + '" y="' + (H - 18 - h).toFixed(1) +
+               '" width="' + (bw * 0.72).toFixed(1) + '" height="' + h.toFixed(1) +
+               '" fill="' + ramp(i, n) + '" rx="2"/>';
+        if (vals[i] >= 0.05) {
+          out += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 22 - h).toFixed(1) +
+                 '" text-anchor="middle" font-size="9.5" font-weight="500" fill="currentColor" opacity=".75">' +
+                 Math.round(vals[i] * 100) + '%</text>';
+        }
+      }
+      out += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 5) +
+             '" text-anchor="middle" font-size="' + (n > 10 ? 8 : 9.5) + '" fill="currentColor" opacity=".55">' +
+             labs[i] + '</text>';
+    }
+    if (empty) {
+      out += '<text x="' + W / 2 + '" y="' + (H / 2 - 6) + '" text-anchor="middle" font-size="11" ' +
+             'fill="currentColor" opacity=".5">' + empty + '</text>';
+    }
+    svg.innerHTML = out;
+  }
+
+  // ---- the axis: electorate shape, candidates, one draggable voter ----------
+  var AX = { W: 640, L: 24, R: 616, base: 104 };
+  function xToPx(x) { return AX.L + (x + 1) / 2 * (AX.R - AX.L); }
+  function pxToX(px) { return Math.max(-1, Math.min(1, (px - AX.L) / (AX.R - AX.L) * 2 - 1)); }
+
+  function drawAxis() {
+    var svg = $("c-axis"), pos = positions(), n = pos.length, labs = labels();
+    var K = n, tau = tauHat() * 2 / K, out = "";
+
+    // The distribution voters are drawn from in the synthetic mode:
+    // (1 - floor) * Normal(0, c * 2/K) + floor * Uniform[-1, 1], clipped to [-1, 1].
+    if (mode === "grid") {
+      var b = D.meta.baseline, sd = D.meta.grid.c[idx.c] * 2 / b.K, fw = b.floor_weight;
+      var pts = [], ys = [], i, x;
+      for (i = 0; i <= 160; i++) {
+        x = -1 + i / 80;
+        ys.push((1 - fw) * Math.exp(-0.5 * x * x / (sd * sd)) / (sd * Math.sqrt(2 * Math.PI)) + fw / 2);
+      }
+      var ymax = Math.max(1.7, Math.max.apply(null, ys));
+      for (i = 0; i <= 160; i++) pts.push(xToPx(-1 + i / 80).toFixed(1) + "," + (AX.base - ys[i] / ymax * 62).toFixed(1));
+      out += '<polygon points="' + xToPx(-1) + ',' + AX.base + ' ' + pts.join(" ") + ' ' + xToPx(1) + ',' + AX.base +
+             '" fill="currentColor" opacity=".07"/>';
+      out += '<polyline points="' + pts.join(" ") + '" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-width="1.2"/>';
+    }
+
+    // tolerance band around the voter
+    var lo = Math.max(-1, voterX - tau), hi = Math.min(1, voterX + tau);
+    out += '<rect x="' + xToPx(lo).toFixed(1) + '" y="30" width="' + (xToPx(hi) - xToPx(lo)).toFixed(1) +
+           '" height="' + (AX.base - 30) + '" fill="var(--accent)" opacity=".11" rx="4"/>';
+
+    out += '<line x1="' + AX.L + '" x2="' + AX.R + '" y1="' + AX.base + '" y2="' + AX.base +
+           '" stroke="currentColor" opacity=".35"/>';
+    out += '<text x="' + AX.L + '" y="12" font-size="11" fill="currentColor" opacity=".5">← left</text>';
+    out += '<text x="' + AX.R + '" y="12" font-size="11" text-anchor="end" fill="currentColor" opacity=".5">right →</text>';
+
+    var tolerable = [];
+    for (var j = 0; j < n; j++) {
+      var inside = Math.abs(voterX - pos[j]) <= tau;
+      if (inside) tolerable.push(labs[j]);
+      var cx = xToPx(pos[j]).toFixed(1);
+      out += '<circle cx="' + cx + '" cy="' + AX.base + '" r="' + (inside ? 7 : 5.5) + '" fill="' + ramp(j, n) +
+             '" stroke="var(--bg)" stroke-width="2" opacity="' + (inside ? 1 : 0.55) + '"/>';
+      var dy = (mode === "preset" && j % 2) ? 136 : 124;
+      out += '<text x="' + cx + '" y="' + dy + '" text-anchor="middle" font-size="' + (mode === "preset" ? 9 : 10.5) +
+             '" font-weight="' + (inside ? 600 : 400) + '" fill="currentColor" opacity="' + (inside ? 0.9 : 0.5) + '">' + labs[j] + '</text>';
+    }
+
+    // the voter
+    var vx = xToPx(voterX).toFixed(1);
+    out += '<g class="voter" id="voter"><rect x="' + (vx - 16) + '" y="4" width="32" height="' + (AX.base - 2) + '" fill="transparent"/>' +
+           '<line x1="' + vx + '" x2="' + vx + '" y1="22" y2="' + AX.base + '" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="3 3"/>' +
+           '<circle cx="' + vx + '" cy="16" r="8" fill="var(--ink)"/>' +
+           '<text x="' + vx + '" y="19.5" text-anchor="middle" font-size="9" font-weight="700" fill="var(--bg)">↔</text></g>';
+    svg.innerHTML = out;
+
+    $("axiscap").textContent =
+      "Drag the voter. The shaded band is their tolerance (τ̂ " + tauHat().toFixed(2) + ", so τ = " + tau.toFixed(2) +
+      "): they can put up with " + (tolerable.length === 1 ? "candidate " : "candidates ") + tolerable.join(", ") + ". " +
+      "They switch only if none of these is projected to reach the runoff." +
+      (mode === "grid" ? " The grey curve is the distribution voters are drawn from; anyone it places beyond the ends sits at the ends." : "");
+  }
+
+  function bindDrag() {
+    var svg = $("c-axis"), dragging = false;
+    function move(ev) {
+      var r = svg.getBoundingClientRect();
+      voterX = pxToX((ev.clientX - r.left) / r.width * AX.W);
+      drawAxis();
+    }
+    svg.addEventListener("pointerdown", function (ev) { dragging = true; svg.setPointerCapture(ev.pointerId); move(ev); });
+    svg.addEventListener("pointermove", function (ev) { if (dragging) move(ev); });
+    svg.addEventListener("pointerup", function () { dragging = false; });
+    svg.addEventListener("pointercancel", function () { dragging = false; });
+  }
+
+  // ---- charts and readouts --------------------------------------------------
+  function words(pct) {
+    if (pct < 0.02) return "a negligible fraction";
+    if (pct < 0.06) return "a small minority";
+    if (pct < 0.15) return "a noticeable minority";
+    if (pct < 0.30) return "a substantial share";
+    return "a large share";
+  }
+
+  function render() {
+    var g = D.meta.grid, s = src(), labs = labels();
+    $("v-c").textContent = g.c[idx.c].toFixed(2);
+    $("v-t").textContent = g.tau_hat[idx.t].toFixed(2);
+    $("v-m").textContent = g.mu[idx.m].toFixed(2);
+    $("controls").classList.toggle("locked", mode === "preset");
+    ["s-c", "s-t", "s-m"].forEach(function (id) { $(id).disabled = mode === "preset"; });
+    document.querySelectorAll(".chip[data-mode]").forEach(function (b) {
+      b.setAttribute("aria-checked", String(b.dataset.mode === mode));
+    });
+
+    var maxv = Math.max(0.28, Math.max.apply(null, pm(s.sinc).concat(pm(s.fin))) * 1.15);
+    bars($("c-sincere"), pm(s.sinc), labs, maxv);
+    bars($("c-final"), pm(s.fin), labs, maxv);
+
+    var sw = s.sw / 1000, gain = s.gain / 1000;
+    $("st-sw").innerHTML = (sw * 100).toFixed(1) + '<small> %</small>';
+    $("st-gain").innerHTML = (gain >= 0 ? "" : "−") + Math.abs(gain).toFixed(2) + '<small> candidates</small>';
+    $("readout").textContent =
+      "That is " + words(sw) + " of the electorate. " +
+      (gain < 0.05 ? "The field barely narrowed." : "The race narrowed by " + gain.toFixed(2) + " candidates' worth of support.") +
+      (mode === "grid" ? " Bars and figures are averages over " + D.meta.seeds.length + " runs." : " One run.");
+
+    if (mode === "preset") {
+      var p = D.preset_2022.params;
+      $("sidenote").textContent =
+        "The real 2022 candidates, electorate and weekly poll timeline, run with one illustrative " +
+        "behavioural setting (τ̂ " + p.tau_hat + ", μ " + p.mu + ", α " + p.alpha + "). Nothing is fitted, " +
+        "and the actual result is not shown next to it: this illustrates the mechanism, not how well it does.";
+    } else {
+      $("sidenote").textContent =
+        "Most settings produce little coordination. Across this grid, two thirds of the combinations move " +
+        "under 2% of voters, and that is the model's answer, not a stalled page: the switching rule only fires " +
+        "when a voter can tolerate nobody who is projected to qualify.";
+    }
+    $("animnote").textContent = mode === "preset"
+      ? "One run on the real 2022 poll timeline, one round per weekly poll."
+      : "One run is animated (seed " + D.meta.canonical_seed + "); the bars above average " + D.meta.seeds.length +
+        ". The poll is a noisy draw, so an averaged poll would show a path no single election ever takes.";
+
+    $("scrub").max = s.sh.length - 1;
+    drawAxis();
+    drawFrame();
+  }
+
+  // Round f pairs the poll voters read in that round (signal f-1) with the
+  // intentions it produced (history f).  Round 0 is the sincere start.
+  function drawFrame() {
+    var s = src(), labs = labels(), last = s.sh.length - 1;
+    var f = Math.min(frame, last);
+    var maxv = Math.max(0.28, Math.max.apply(null, pm(s.sh[f]).concat(f ? pm(s.sg[f - 1]) : [])) * 1.15);
+    bars($("c-live"), pm(s.sh[f]), labs, maxv);
+    if (f === 0) bars($("c-signal"), labs.map(function () { return 0; }), labs, maxv, "no poll yet");
+    else bars($("c-signal"), pm(s.sg[f - 1]), labs, maxv);
+    $("scrub").value = f;
+    $("iter").textContent = f === 0 ? "sincere start" : "round " + f + " of " + last;
+  }
+
+  function play() {
+    stop();
+    var s = src();
+    if (frame >= s.sh.length - 1) frame = 0;
+    $("play").textContent = "Pause";
+    timer = setInterval(function () {
+      frame++;
+      if (frame >= s.sh.length - 1) { frame = s.sh.length - 1; stop(); }
+      drawFrame();
+    }, FRAME_MS);
+    drawFrame();
+  }
+  function stop() {
+    if (timer) { clearInterval(timer); timer = null; }
+    $("play").textContent = frame >= src().sh.length - 1 ? "Replay" : "Play";
+  }
+  function restart() { frame = 0; render(); play(); }
+
+  function bind() {
+    var g = D.meta.grid;
+    var map = { "s-c": ["c", g.c], "s-t": ["t", g.tau_hat], "s-m": ["m", g.mu] };
+    // Opening position, fixed by rule rather than chosen for effect: c and the
+    // tolerance at their grid midpoints, and the expressive cost at its minimum.
+    // mu = 0 is the decision rule without its dampening term, so it is the
+    // plainest form of the mechanism rather than the most flattering cell.  Two
+    // thirds of this grid sits below 2% switching, and a visitor who touches
+    // nothing should still see the loop do something.
+    var opening = { c: null, t: null, m: 0 };
+    Object.keys(map).forEach(function (id) {
+      var el = $(id), key = map[id][0], vals = map[id][1];
+      el.max = vals.length - 1;              // integer indices: the slider can
+      el.value = opening[key] === null       // only land on computed grid points
+        ? Math.floor(vals.length / 2) : opening[key];
+      idx[key] = +el.value;
+      el.addEventListener("input", function () { idx[key] = +el.value; restart(); });
+    });
+    document.querySelectorAll(".chip[data-mode]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        if (mode === b.dataset.mode) return;
+        mode = b.dataset.mode;
+        voterX = mode === "preset" ? -0.45 : -0.55;
+        restart();
+      });
+    });
+    $("play").addEventListener("click", function () { timer ? stop() : play(); });
+    $("scrub").addEventListener("input", function () { frame = +this.value; stop(); drawFrame(); });
+    bindDrag();
+  }
+
+  // ---- dialogs ----------------------------------------------------------------
+  function openDialog(id) {
+    var d = $(id); if (!d || d.open) return;
+    if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+    if (location.hash !== "#" + id.replace("dlg-", "")) history.replaceState(null, "", "#" + id.replace("dlg-", ""));
+  }
+  document.querySelectorAll("[data-open]").forEach(function (b) {
+    b.addEventListener("click", function () { openDialog(b.dataset.open); });
+  });
+  document.querySelectorAll("dialog").forEach(function (d) {
+    d.addEventListener("click", function (ev) { if (ev.target === d) d.close(); });   // backdrop
+    d.querySelector("[data-close]").addEventListener("click", function () { d.close(); });
+    d.addEventListener("close", function () { history.replaceState(null, "", location.pathname + location.search); });
+  });
+  if (location.hash && $("dlg-" + location.hash.slice(1))) openDialog("dlg-" + location.hash.slice(1));
+
+  // ---- data -------------------------------------------------------------------
+  // ?data=smoke.json previews an alternative dataset without editing the page.
+  var file = new URLSearchParams(location.search).get("data") || "grid.json";
+  fetch("data/" + encodeURIComponent(file))
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function (json) {
+      D = json;
+      app.classList.remove("loading");
+      app.innerHTML = "";
+      app.appendChild($("tpl").content.cloneNode(true));
+      bind();
+      var git = D.meta.git;
+      $("prov").innerHTML =
+        "Every trajectory here was computed by the model itself, by <code>demo/precompute.py</code> at commit " +
+        "<code>" + git.short + "</code>" + (git.dirty ? " (with uncommitted changes)" : "") + ", on " +
+        D.meta.generated_utc.slice(0, 10) + ": " + D.meta.runs.toLocaleString("en") + " simulation runs. " +
+        '<a href="https://github.com/clarasalas/strategic-voting-abm-2RS">Source and full documentation</a>.';
+      render();
+      play();                                 // autoplay for visitors who never touch anything
+    })
+    .catch(function (e) {
+      app.textContent = "Could not load the precomputed data (" + e.message + "). " +
+        "If you opened this file directly, serve the docs/ folder instead: python -m http.server -d docs";
+    });
+})();
+</script>
+</body>
+</html>

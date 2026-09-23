@@ -3,7 +3,7 @@ test_demo_data_matches_model.py
 -------------------------------
 The demo's JSON must be what the model actually produces.
 
-docs/demo/ claims that every trajectory it animates was computed by
+docs/index.html claims that every trajectory it animates was computed by
 core_model.model.run_simulation rather than reimplemented in JavaScript.  That
 claim is the whole reason the demo is allowed to exist alongside the paper: if
 it can drift from the model, it is a second model with a nicer interface.
@@ -42,7 +42,7 @@ from core_model.model import run_simulation                      # noqa: E402
 from core_model.metrics import tau_absolute, enp                 # noqa: E402
 import precompute                                                # noqa: E402
 
-GRID = REPO / "docs" / "demo" / "data" / "grid.json"
+GRID = REPO / "docs" / "data" / "grid.json"
 
 # Corners and middle: a quiet cell, a heavily-switching cell, and one between.
 # Indices, not parameter values, so they stay valid under the stored grid.
@@ -181,7 +181,7 @@ def test_every_grid_position_has_a_cell(data):
 # the mechanism is revised, the grid is regenerated, every test still passes, and
 # the page goes on asserting something about a distribution that has moved.
 
-PAGE = REPO / "docs" / "demo" / "index.html"
+PAGE = REPO / "docs" / "index.html"
 
 # The note beside the sliders reads: "two thirds of the combinations move under
 # 2% of voters".  Bounds on what "two thirds" can honestly describe.
@@ -239,4 +239,4 @@ def test_opening_position_shows_the_mechanism(data):
         f"the demo opens at c={g['c'][ic]}, tau_hat={g['tau_hat'][it]}, "
         f"mu={g['mu'][im]}, where only {sw:.1%} of voters switch. The page "
         f"would autoplay a run in which nothing happens; choose a different "
-        f"opening rule in docs/demo/index.html and update it here.")
+        f"opening rule in docs/index.html and update it here.")

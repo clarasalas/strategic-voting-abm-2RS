@@ -1,187 +1,173 @@
-# Strategic Voting in Two-Round Elections
+<h1 align="center">Strategic voting in two-round elections</h1>
 
-An agent-based model of strategic voting under a two-round runoff, replayed
-against the French presidential first rounds of 2002 and 2022.
+<p align="center">
+An agent-based model of voters who abandon their favourite candidate when nobody they can tolerate
+looks likely to reach the runoff, replayed against the French presidential first rounds of 2002 and 2022.
+</p>
 
-[![tests](https://github.com/clarasalas/strategic-voting-abm-2RS/actions/workflows/tests.yml/badge.svg)](https://github.com/clarasalas/strategic-voting-abm-2RS/actions/workflows/tests.yml)
-[![python](https://img.shields.io/badge/python-3.10%2B-blue)](docs/reproducibility.md)
-[![data](https://img.shields.io/badge/data-Ipsos%20%C2%B7%20Min.%20Int%C3%A9rieur-lightgrey)](docs/experiments.md#data-sources)
+<p align="center">
+  <a href="https://clarasalas.github.io/strategic-voting-abm-2RS/">
+    <img src="https://img.shields.io/badge/Open%20the%20interactive%20page-1a1a1a?style=for-the-badge" alt="Open the interactive page">
+  </a>
+</p>
 
-> **[Try the interactive demo](https://clarasalas.github.io/strategic-voting-abm-2RS/demo/)**
-> — move three sliders and watch the poll and the votes pull on each other. It
-> replays trajectories computed by the model itself, and it is a simplified view
-> of one slice, not the analysis.
+<p align="center">
+  <a href="https://clarasalas.github.io/strategic-voting-abm-2RS/">
+    <img src="docs/preview.png" width="760"
+         alt="The interactive page: sliders for the electorate, one voter's tolerance on the left-right axis, vote shares before and after strategic switching, and the poll and votes round by round">
+  </a>
+</p>
 
-> **[Model & Validation Guide](docs/index.md)** is the canonical technical
-> documentation. It covers how the model works, how it is verified, and how to
-> reproduce every number quoted here.
+<p align="center"><sub>
+Move three sliders and watch the poll and the votes pull on each other, then open the cards below it for the model,
+how it is checked, and how to reproduce it. Every trajectory on the page was computed by the Python model.
+</sub></p>
 
-> The test suite runs in CI on every push and pull request. Local runs are
-> recorded with their date and commit in the
-> [verification snapshot](docs/validation.md#verification-snapshot).
+<p align="center">
+  <a href="https://github.com/clarasalas/strategic-voting-abm-2RS/actions/workflows/tests.yml"><img src="https://github.com/clarasalas/strategic-voting-abm-2RS/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
+  <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="python 3.10+">
+</p>
 
-Voters hold a sincere preference on a left-right axis, read a public poll
-signal, and form beliefs about which two candidates will reach the runoff. A
-voter abandons their preferred candidate only when no candidate they can
-tolerate is projected to qualify, and only when the gain outweighs a cost of
-abandoning their favourite. Vote shares feed the next poll, so the signal and
-the votes co-evolve over the iterations.
+## About
 
-The analysis is in progress toward an article. The mechanism is under revision,
-and this repository makes no claims here about what the model shows.
+In a two-round election, a voter whose favourite cannot reach the runoff can vote sincerely and risk having
+nobody they like in round two, or switch to a compromise candidate who can qualify. This model follows that choice
+for thousands of voters at once.
 
----
+Voters sit on a left-right axis. Each one reads a public poll, works out which candidates they can tolerate, and
+guesses which two will reach the runoff. They switch only when none of their tolerable candidates is among those
+two, and only when the gain outweighs the cost of leaving their favourite. The new vote intentions feed the next
+poll, so the polls and the votes evolve together.
 
-## What is this?
+The model runs in two modes. The synthetic mode generates the electorate and the polls, and asks which parameters
+drive coordination. The empirical mode uses the real candidates, voters and poll timeline of 2002 and 2022. 2002 is
+the textbook coordination failure, when the left split and its front-runner missed the runoff; 2022 is the
+contrasting case. One behavioural setting is applied to both years, and nothing is fitted to either election.
 
-Voters sit on a left-right axis. Each has a sincere preference, watches a public
-poll signal, and forms beliefs about who will reach the two-candidate runoff. A
-voter abandons their preferred candidate only when no candidate they can
-tolerate is projected to qualify. Otherwise they vote sincerely.
+The analysis is in progress toward an article and the mechanism is under revision, so the repository makes no
+claims here about what the model shows.
 
-The model asks what aggregate coordination that rule produces, and whether it
-matches two real elections with opposite outcomes.
-
-## Why was it built?
-
-2002 is the textbook coordination failure: the French left split its vote across
-several candidates and its front-runner missed the runoff entirely. 2022 is the
-contrasting case, with visible consolidation.
-
-One behavioural draw is applied to both years and only the environment changes;
-nothing is fitted to either election. It is a research prototype, built to
-demonstrate a coherent scientific and engineering process.
-
-## How does it work?
-
-```mermaid
-flowchart LR
-    A["Public signal<br/>s^t"] --> B["Belief update<br/>m_a = α·π_a + (1−α)·s^t"]
-    B --> C["Contender set<br/>C_a = { j : |x_a − x_j| ≤ τ }"]
-    C --> D["Project the runoff<br/>T_R = top 2 by belief"]
-    D --> E{"Trigger?<br/>C_a ∩ T_R = ∅"}
-    E -- no --> F["Vote sincerely"]
-    E -- yes --> G["Weigh viability<br/>against expressive cost μ"]
-    F --> H["New vote shares"]
-    G --> H
-    H --> I["ENP · CENP · ΔCENP<br/>trigger &amp; switching rates"]
-    H -.->|next iteration| A
-```
-
-In each iteration voters see a poll, update beliefs, work out who they can
-tolerate, and project who will qualify. They switch only if no tolerable
-candidate can make it, and only if the gain outweighs the cost of abandoning
-their favourite.
-
-Two modes share the same core. Synthetic mode generates the electorate and the
-poll signal, and asks which parameters drive coordination. Empirical mode holds
-the real candidates, electorate and poll timeline fixed, and asks whether the
-2002/2022 contrast comes out.
-
-→ [Full model description](docs/model.md)
-
-## What practices does it demonstrate?
-
-| | |
-|---|---|
-| **Layered testing** | 577 tests across 17 contract families: analytic fixtures, decision-rule tests, dynamic invariants, metamorphic properties, golden regressions, pipeline contracts. |
-| **Metamorphic testing** | Relabelling and left-right reflection invariance were derived from the equations before anything asserted them. |
-| **Golden-value regressions** | Full output vectors pinned to 1e-12, so a refactor that moves every code path equally still fails. |
-| **Reproducibility as a contract** | Fixed seeds throughout. Derived tables regenerate byte-identically, verified by a test that compares serialized bytes rather than parsed floats. |
-| **Destructive-operation safety** | Runs refuse to overwrite output without an explicit flag, smoke runs live in a separate directory, and sweeps resume to byte-identical results. |
-| **Honest units** | The τ̂ to τ conversion happens in exactly one place, and every output row records both values plus *K*, so the relation is checkable from the CSV alone. |
-| **Documented failure** | A tolerance-unit defect was found, corrected, and the full 14 000-simulation pipeline re-run under a validated protocol. |
-
-→ [Validation record](docs/validation.md)
-
-## Run a smoke example
+## Quick start
 
 ```bash
 git clone https://github.com/clarasalas/strategic-voting-abm-2RS.git
 cd strategic-voting-abm-2RS
 pip install -e .
+```
 
-python -c "
+```python
 from core_model.model import run_simulation
 from core_model.metrics import tau_absolute, enp
+
 K = 8
 r = run_simulation(K=K, n_modes=1, width_factor=1.5, theta=1.0, rho=100.0,
                    rho_pi=100.0, n_electors=500, tau=tau_absolute(1.75, K),
                    mu=0.1, alpha_prior=0.0, K_runoff=2, max_iterations=15,
                    seed=42, verbose=False, collect_diagnostics=True)
-print(f\"ENP {enp(r['sincere_shares']):.3f} -> {enp(r['final_shares']):.3f}\")
-print(f\"winner party {r['winner_id']}, {r['switching']['strategic']}/500 switched\")
-"
+print(f"ENP {enp(r['sincere_shares']):.3f} -> {enp(r['final_shares']):.3f}")   # ENP 5.441 -> 5.208
 ```
 
-```
-ENP 5.441 -> 5.208
-winner party 4, 19/500 switched
-```
-
-Those exact numbers are pinned by a golden regression test.
+Those exact numbers are pinned by a regression test. To run the full test suite:
 
 ```bash
 pip install pytest && pip install -e ".[analysis]"
-python -m pytest -ra          # 577 passed, 0 skipped, 0 warnings
+python -m pytest -ra
 ```
 
-→ [Installation and full commands](docs/reproducibility.md)
+<details>
+<summary><strong>How it is checked</strong></summary>
 
-## Testing
+<br>
 
-577 tests across 21 files, run in CI on every push and pull request, with
-numerical warnings treated as failures: an overflow, an invalid value or a
-divide-by-zero inside the model fails the build rather than printing a note.
-They cover unit conversions, rejection of invalid parameters, the core decision
-rule, and fixed-seed reproducibility of full output vectors.
+The test suite runs in CI on every push and pull request, and numerical warnings count as failures. It exists
+because an earlier round of empirical results was invalidated by a unit-conversion error that every figure had
+looked plausible under. The checks fall into 17 families, among them:
 
-The suite exists because an earlier round of empirical results was invalidated
-by a unit-conversion error that every figure had looked plausible under. Surface
-plausibility is no longer the only check.
+* **Hand-computed values**: metrics match closed-form results to 1e-12.
+* **The decision rule**: hand-built voters check that the trigger fires exactly when it should, and that the
+  choice flips at the analytically derived cost.
+* **Symmetry**: relabelling the candidates or mirroring the axis must not change any decision.
+* **Golden regressions**: full output vectors are pinned, so a change that moves every number fails.
+* **Reproducibility**: fixed seeds throughout; derived tables regenerate byte-for-byte; runs refuse to overwrite
+  output without a flag; interrupted sweeps resume to identical results.
+* **The interactive page**: its data are re-checked against the model, so the page cannot drift from the code.
 
-## Repository map
+Full record: [docs/validation.md](docs/validation.md).
 
-| Path | Contents |
-|---|---|
-| [`core_model/`](core_model) | The model: agents, iteration loop, metrics, signals. No analysis. |
-| [`analysis/synthetic/`](analysis/synthetic) | Sobol sensitivity, protocol validation, robustness panels. |
-| [`analysis/empirical/`](analysis/empirical) | 2002/2022 replay, behavioural sweeps, diagnostics. |
-| [`analysis/README.md`](analysis/README.md) | Which script needs which, and what each one writes. |
-| [`tests/`](tests) | 21 files, 577 tests, no skips. |
-| [`results/tables/`](results/README.md) | 22 compact CSVs, the citable numbers. |
-| [`docs/`](docs/index.md) | The Model & Validation Guide. |
-| [`tools/`](tools) | Pipeline driver, output validator, evidence archiver. |
+</details>
 
-Raw simulation output and figures are git-ignored on purpose: they are bulky and
-regenerate from a seed. Only the derived tables are committed.
+<details>
+<summary><strong>Repository layout</strong></summary>
 
-→ [Architecture and canonical definitions](docs/code_map.md)
+```
+core_model/              the model: agents, iteration loop, signals, metrics (pip install -e .)
+analysis/
+  synthetic/             Sobol sensitivity, protocol validation, robustness panels
+  empirical/             2002/2022 replay, behavioural sweeps, diagnostics
+data/                    candidates, polls, results and voter ideology for 2002 and 2022
+results/tables/          22 compact CSVs: the citable numbers
+tests/                   the test suite
+tools/                   pipeline driver, output validator, evidence archiver
+demo/precompute.py       runs the model over the page's grid -> docs/data/grid.json
+docs/
+  index.html             the interactive page (GitHub Pages)
+  *.md                   the detailed documentation
+```
 
-## Documentation
+Raw simulation output and figures are git-ignored on purpose: they are bulky and regenerate from a seed. Only the
+derived tables are committed. See [analysis/README.md](analysis/README.md) for which script needs which.
 
-The Markdown documentation in this repository is the canonical version.
-Everything needed to understand, verify or reproduce this project lives under
-[`docs/`](docs/index.md) and reads directly on GitHub.
+</details>
 
-A [navigable single-page rendering](https://clarasalas.github.io/strategic-voting-abm-2RS/guide.html) of the same material is published
-through GitHub Pages as a convenience mirror. Treat it as optional. It is
-generated from the Markdown, it carries no authority, and nothing here depends
-on access to it. Where the two differ, the repository is correct.
+<details>
+<summary><strong>Documentation</strong></summary>
 
-## Learn more
+<br>
 
 | | |
 |---|---|
-| **[Model](docs/model.md)** | Entities, one full iteration, initialization, tolerance units, the decision rule, outcome measures. |
-| **[Validation](docs/validation.md)** | 17 check families, what each guarantees, current status. |
+| **[Model](docs/model.md)** | Entities, one full iteration, initialisation, tolerance units, the decision rule, outcome measures. |
+| **[Validation](docs/validation.md)** | The 17 check families, what each guarantees, current status. |
 | **[Experiments](docs/experiments.md)** | Parameter spaces, seeds, simulation counts, data provenance. |
 | **[Reproducibility](docs/reproducibility.md)** | Install, run, regenerate, verify. |
 | **[Code map](docs/code_map.md)** | Repository architecture, and which definitions are canonical. |
-| **[Result tables](results/README.md)** | Registry of all 22 tables: contents, generating script, inputs, regeneration command. |
+| **[Result tables](results/README.md)** | All 22 tables: contents, generating script, inputs, regeneration command. |
+
+</details>
+
+<details>
+<summary><strong>The interactive page</strong></summary>
+
+<br>
+
+[`docs/index.html`](docs/index.html) is a static page published with GitHub Pages from the `docs/` folder of `main`.
+It computes nothing itself: it replays trajectories that
+[`demo/precompute.py`](demo/precompute.py) computed with the real model over 660 settings × 8 seeds (about 40
+minutes), stored in `docs/data/grid.json`.
+
+```bash
+python demo/precompute.py --force       # regenerate the data after a model change
+python -m http.server -d docs           # preview at http://localhost:8000
+```
+
+`tests/test_demo_data_matches_model.py` re-runs the model on a few cells and fails if the stored data no longer
+match it.
+
+</details>
+
+<details>
+<summary><strong>Data sources</strong></summary>
+
+<br>
+
+* **Polls and voter ideology**: Ipsos pre- and post-election surveys, 2002 and 2022.
+* **Election results**: Ministère de l'Intérieur.
+
+Provenance and processing: [docs/experiments.md → Data sources](docs/experiments.md#data-sources).
+
+</details>
 
 ---
 
-Data: Ipsos pre- and post-election surveys; results from the Ministère de
-l'Intérieur. Provenance in
-[Experiments → Data sources](docs/experiments.md#data-sources).
+<sub>Master's thesis project, ENS-PSL / Centre Borelli. Companion project on the geography of coordination:
+[strategic-voting-geo-2RS](https://github.com/clarasalas/strategic-voting-geo-2RS).</sub>

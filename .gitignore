@@ -246,4 +246,4 @@ analysis/synthetic/saltelli_sobol_*.csv
 
 # Rerun logs: per-run, bulky, regenerable.
 logs/
-docs/demo/data/smoke.json
+docs/data/smoke.json

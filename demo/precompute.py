@@ -9,8 +9,8 @@ changes with it.  Nothing about the dynamics lives in JavaScript.
 
 Usage
 -----
-    python demo/precompute.py                 # full grid -> docs/demo/data/grid.json
-    python demo/precompute.py --smoke         # 8 cells  -> docs/demo/data/smoke.json
+    python demo/precompute.py                 # full grid -> docs/data/grid.json
+    python demo/precompute.py --smoke         # 8 cells  -> docs/data/smoke.json
     python demo/precompute.py --workers 4     # limit parallelism
     python demo/precompute.py --force         # allow overwriting the output
 
@@ -46,7 +46,7 @@ page states which is which underneath the animation.
 
 Output
 ------
-docs/demo/data/grid.json, about 1 MB.  Shares and signals are stored as per-mille
+docs/data/grid.json, about 1 MB.  Shares and signals are stored as per-mille
 integers: 0.123 is written 123.  That is exactly three decimal places, the
 precision the demo displays, at roughly 60% of the bytes of "0.123".
 """
@@ -208,10 +208,9 @@ def main():
     # replace the real grid.
     default_name = "smoke.json" if args.smoke else "grid.json"
     # Published under docs/, which is what GitHub Pages serves for this
-    # repository (branch main, path /docs).  The page and its data sit together
-    # so the demo is deployed by the existing Pages build, with no workflow and
-    # no change to the Pages source setting that already publishes the guide.
-    out = args.out or (REPO / "docs" / "demo" / "data" / default_name)
+    # repository (branch main, path /docs).  docs/index.html is the page that
+    # reads it, so the demo deploys with the existing Pages build and no workflow.
+    out = args.out or (REPO / "docs" / "data" / default_name)
     if out.exists() and not args.force:
         sys.exit(f"{out} exists; pass --force to overwrite it.")
     out.parent.mkdir(parents=True, exist_ok=True)

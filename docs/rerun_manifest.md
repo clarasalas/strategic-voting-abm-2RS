@@ -349,8 +349,9 @@ completed synthetic validation, and the final test and CI status.
 
 > **What actually happened.** The standalone fiche was replaced rather than
 > edited: the canonical documentation now lives in this repository under
-> `docs/`, with a generated single-page mirror at
-> <https://clarasalas.github.io/strategic-voting-abm-2RS/guide.html>. A snapshot of the pre-rerun fiche is preserved at
+> `docs/`. (A generated single-page mirror, `docs/guide.html`, was published
+> for a while and later removed in favour of the interactive page at
+> <https://clarasalas.github.io/strategic-voting-abm-2RS/>.) A snapshot of the pre-rerun fiche is preserved at
 > `data/archive/pre_rerun_2026-08-21/fiche/fiche_technique_pre_rerun_2026-08-21.html`.
 
 ---

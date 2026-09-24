@@ -1,4 +1,10 @@
-# Inputs of the 2026-08-21 run
+<h1 align="center">previous_inputs</h1>
+
+<p align="center">
+The inputs the model used until September 2026, kept so the August run stays reproducible, and the reasons they were replaced.
+</p>
+
+<p align="center"><sub><a href="../README.md">← Back to data</a></sub></p>
 
 The party positions and electorates the empirical model used up to the 2026-08-21 rerun, kept as
 files because the survey-based inputs replaced them in `data/` (see

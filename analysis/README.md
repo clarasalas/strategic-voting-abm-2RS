@@ -1,12 +1,38 @@
-# analysis/
+<h1 align="center">analysis</h1>
 
-Two independent lanes over one shared model. Neither imports the other; both
-import `core_model/` and nothing else from this repository.
+<p align="center">
+The experiments. One lane asks which parameters drive coordination in imagined electorates; the other replays
+France in 2002 and 2022.
+</p>
 
-| Lane | Question | Environment |
-|---|---|---|
-| [`synthetic/`](synthetic) | Which parameters drive coordination at all? | generated candidates, electorate and poll |
-| [`empirical/`](empirical) | Does the rule reproduce the 2002 vs 2022 contrast? | real candidates, electorate and poll timeline |
+<p align="center"><sub><a href="../README.md">← Back to the project</a></sub></p>
+
+## Two lanes
+
+| Lane | Question | What it works on | Main output |
+|---|---|---|---|
+| [`synthetic/`](synthetic) | Which parameters drive coordination at all? | generated candidates, electorates and polls | [`sobol_indices.csv`](../results/tables/sobol_indices.csv) |
+| [`empirical/`](empirical) | Does the rule reproduce the 2002 vs 2022 contrast? | real candidates, electorates and poll timelines | the `empirical_*` [tables](../results/README.md) |
+
+The lanes never import each other. Both import [`core_model/`](../core_model/README.md) and nothing else from the
+repository, and both write their citable numbers to [`results/tables/`](../results/README.md).
+
+## Running them
+
+Every script runs from the repository root, as `python analysis/<lane>/<script>.py`. The whole empirical lane runs
+in one command, which also checks each stage before the next one starts:
+
+```bash
+RUN_NAME=<name> RERUN_ARCHIVE=<archive> tools/run_empirical_rerun.sh     # about 2.5 hours
+```
+
+See [`tools/`](../tools/README.md) for the archive it expects, and
+[Experiments → Pipeline order](../docs/experiments.md#pipeline-order) for the same order in prose.
+
+<details>
+<summary><strong>Why the scripts are not numbered</strong></summary>
+
+<br>
 
 **These files are not numbered on purpose.** The scripts form a graph, not a
 sequence: each lane has several roots that do not depend on each other, and one
@@ -18,9 +44,12 @@ The authoritative, executable version of the empirical order is
 validates each stage before running the stages that consume it. The same order
 in prose is [Experiments → Pipeline order](../docs/experiments.md#pipeline-order).
 
----
+</details>
 
-## empirical/
+<details>
+<summary><strong>The empirical lane, script by script</strong></summary>
+
+<br>
 
 ```
                         ┌─→ empirical_diagnostics.py
@@ -43,9 +72,10 @@ behavioral_targets.py ───────────────────�
 | `behavioral_sweep.py` | real data only | `data/behavioral_sweep_{year}.csv` + `_design.csv` + `_meta.json` |
 | `behavioral_targets.py` | real data only | `data/behavioral_targets.csv` |
 
-`behavioral_targets.py` runs no simulation and takes seconds; its output is
-committed, so it rarely needs re-running. The other two are the expensive
-stages: the sweep is roughly 3.5 hours per year, and resumes with `--resume`.
+`behavioral_targets.py` runs no simulation and takes seconds; the rerun driver
+runs it every time, so later stages never read a stale copy. The other two are
+the expensive stages: the sweep takes about an hour per year, and resumes with
+`--resume`.
 
 ### Consumers: read the CSVs above, run no simulation
 
@@ -57,15 +87,18 @@ stages: the sweep is roughly 3.5 hours per year, and resumes with `--resume`.
 | `behavioral_compare.py` | `behavioral_sweep` + `behavioral_targets` | `data/behavioral_compare_2002_2022.csv` |
 | `behavioral_sweep_figure.py` | `behavioral_sweep` + `behavioral_targets` | `figures/behavioral_sweep.*` |
 | `lhs_importance.py` | `behavioral_sweep` | `results/tables/lhs_parameter_importance.csv`, `figures/` |
-| `make_empirical_tables.py` | everything above | the 6 committed `results/tables/empirical_*` + `behavioral_sweep_quantiles.csv` |
+| `make_empirical_tables.py` | everything above | the 6 committed `results/tables/empirical_*` + `behavioral_sweep_quantiles.csv`, 7 tables in all |
 
 `make_empirical_tables.py` is the terminal stage: it derives every committed
 empirical table from raw `data/` output. `tools/check_tables_reproduce.py`
 re-runs it and fails if any committed table changes.
 
----
+</details>
 
-## synthetic/
+<details>
+<summary><strong>The synthetic lane, script by script</strong></summary>
+
+<br>
 
 ```
 parameter_space.py   (library, imported, never run)
@@ -87,9 +120,12 @@ robustness_checks.py   (simulates; standalone, needs no input CSV)
 | `protocol_posthoc.py` | `protocol_validation` (`horizon_raw.csv`) | `results/tables/protocol_horizon_drift_summary.csv`, `protocol_seed_noise_decomposition.csv`. Launches no simulations. |
 | `main_results.py` | `saltelli_sensitivity` (optional, omits the model band if absent) | the four main figures + their raw CSVs |
 
----
+</details>
 
-## Conventions
+<details>
+<summary><strong>Conventions</strong></summary>
+
+<br>
 
 - Every script is run from the repository root: `python analysis/<lane>/<script>.py`.
 - Raw simulation output in `data/` is git-ignored; only derived tables under
@@ -99,3 +135,5 @@ robustness_checks.py   (simulates; standalone, needs no input CSV)
   writes to `data/smoke/` so a smoke run cannot clobber a full experiment.
 - Each script's module docstring carries its own `Reads` / `Writes` block; this
   file is the summary, the docstring is the detail.
+
+</details>

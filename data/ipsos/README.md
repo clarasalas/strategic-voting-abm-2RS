@@ -1,4 +1,10 @@
-# Ipsos–CEVIPOF candidate placements, 2022
+<h1 align="center">ipsos</h1>
+
+<p align="center">
+How French voters placed the twelve 2022 candidates on the left-right axis a week before the first round.
+</p>
+
+<p align="center"><sub><a href="../README.md">← Back to data</a></sub></p>
 
 `candidate_positions_2022_wave9.csv` is the main source of the 2022 candidate positions. It is
 transcribed by hand from a published report; nothing here is computed.

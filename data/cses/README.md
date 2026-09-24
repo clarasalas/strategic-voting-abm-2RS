@@ -1,4 +1,10 @@
-# Survey-based ideology inputs, France 2002 and 2022
+<h1 align="center">cses</h1>
+
+<p align="center">
+How the candidate positions and electorates are built from surveys, every alternative specification, and what they cannot tell you.
+</p>
+
+<p align="center"><sub><a href="../README.md">← Back to data</a></sub></p>
 
 The model's empirical inputs, built by [`tools/build_cses_inputs.py`](../../tools/build_cses_inputs.py)
 from the CSES and from the Ipsos–CEVIPOF 2022 table in [`data/ipsos/`](../ipsos/README.md). The

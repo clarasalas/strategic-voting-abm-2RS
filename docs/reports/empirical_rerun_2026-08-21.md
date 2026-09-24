@@ -5,6 +5,14 @@
 A dated record of the corrected empirical rerun: what was wrong, what was run,
 how it was validated, and what it produced.
 
+> **Erratum (2026-09-24).** This run's 2022 poll file had two pairs of candidates
+> swapped in every poll, LO/NPA and EELV/PS, so the model saw Hidalgo polling
+> ahead of Jadot. Every 2022 result below, and every 2002-versus-2022
+> comparison, is affected. The poll files have since been rebuilt from fixed
+> Wikipedia revisions, and the candidate positions and electorates replaced with
+> survey data; see [Experiments → Data sources](../experiments.md#data-sources).
+> This record is otherwise left as it was.
+
 > **Scope.** A process and validation record for a research prototype,
 > documenting a reproducible empirical stress test and reporting what the
 > corrected pipeline produced.

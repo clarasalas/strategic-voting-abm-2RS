@@ -224,3 +224,10 @@ def test_previous_inputs_are_the_august_run_values(year):
     assert pos.sum() == pytest.approx(want[0], abs=1e-6)
     assert num(vot["share"]).sum() == pytest.approx(want[1], abs=1e-9)
     assert set(vot["scale"]) == {want[2]}
+    # the August polls, swap in 2022 included: row count and the total of
+    # every cell, so an edit to any value fails
+    polls = read(PREVIOUS / f"polls_{year}.csv")
+    cells = polls.drop(columns=["source", "date"]).apply(num)
+    n, total = {2002: (41, 40.96), 2022: (81, 81.076)}[year]
+    assert len(polls) == n
+    assert cells.to_numpy().sum() == pytest.approx(total, abs=1e-9)

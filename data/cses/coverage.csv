@@ -1,0 +1,28 @@
+election_year,party,candidate,main_position_0_10,main_model_position,main_source,imputed,current_position_0_10,current_source,unscreened_means_0_10,party_items_0_10,cses_party_items_0_10
+2002,LO,Arlette Laguiller,"1,941482523","-0,6117034954",cses_candidate_placement,no,"0,5",llm_coded,"2,282648358","1,675134024",
+2002,LCR,Olivier Besancenot,"1,755719941","-0,6488560119",imputed_bridge_from_llm_coded,yes,"0,7",llm_coded,"2,195050665","1,632283096",
+2002,PCF,Robert Hue,"2,170039788","-0,5659920424",cses_candidate_placement,no,"1,62",CHES,"2,408565001","2,027191509",
+2002,PS,Lionel Jospin,"3,331125451","-0,3337749098",cses_candidate_placement,no,"3,85",CHES,"3,582117754","3,806816727",
+2002,PRG,Christiane Taubira,"4,002699744","-0,1994600511",imputed_bridge_from_CHES,yes,"3,62",CHES,"4,08574548","4,06726329",
+2002,LV,Noel Mamere,"3,458563046","-0,3082873909",cses_candidate_placement,no,"2,65",CHES,"3,594019222","3,673384238",
+2002,MDC,Jean-Pierre Chevenement,"4,547508141","-0,09049837186",cses_candidate_placement,no,"4,2",llm_coded,"4,537560804","4,755383581",
+2002,CAP21,Corinne Lepage,"5,064628556","0,01292571117",imputed_bridge_from_llm_coded,yes,5,llm_coded,"4,97929303","5,218041602",
+2002,CPNT,Jean Saint-Josse,"6,834509908","0,3669019816",imputed_bridge_from_llm_coded,yes,"7,3",llm_coded,"6,468538946","7,136005454",
+2002,UDF,Francois Bayrou,"5,912875684","0,1825751368",cses_candidate_placement,no,"5,85",CHES,"5,812702794","6,517702431",
+2002,DL,Alain Madelin,"6,399478114","0,2798956228",cses_candidate_placement,no,"7,07",CHES,"6,158502491","5,884326737",
+2002,RPR,Jacques Chirac,"7,391136688","0,4782273376",cses_candidate_placement,no,7,CHES,"7,290655199","6,985027795",
+2002,FRS,Christine Boutin,"6,988412634","0,3976825269",imputed_bridge_from_llm_coded,yes,"7,5",llm_coded,"6,598038591","7,302784919",
+2002,FN,Jean-Marie Le Pen,"8,628785671","0,7257571342",cses_candidate_placement,no,"9,92",CHES,"7,6317198","9,68608763",
+2002,MNR,Bruno Megret,"8,758293987","0,7516587973",imputed_bridge_from_llm_coded,yes,"9,8",llm_coded,"8,087284507","9,220748771",
+2022,NPA,Philippe Poutou,"1,4","-0,72",ipsos_candidate_placement,no,"0,3",llm_coded,,,"0,5702748726"
+2022,LO,Nathalie Arthaud,"1,2","-0,76",ipsos_candidate_placement,no,"0,4",llm_coded,,,"0,6688685827"
+2022,PCF,Fabien Roussel,"1,9","-0,62",ipsos_candidate_placement,no,"1,7272727",CHES,,,"1,977475981"
+2022,LFI,Jean-Luc Melenchon,"1,6","-0,68",ipsos_candidate_placement,no,"0,8181818",CHES,,,"1,12170088"
+2022,EELV,Yannick Jadot,"3,3","-0,34",ipsos_candidate_placement,no,"2,3",CHES,,,"3,16576087"
+2022,PS,Anne Hidalgo,"3,1","-0,38",ipsos_candidate_placement,no,"3,4545455",CHES,,,"2,912328767"
+2022,RE,Emmanuel Macron,"6,4","0,28",ipsos_candidate_placement,no,"6,2727275",CHES,,,"6,319364162"
+2022,LR,Valerie Pecresse,"7,4","0,48",ipsos_candidate_placement,no,"7,7272725",CHES,,,"7,747070312"
+2022,RES,Jean Lassalle,"4,9","-0,02",ipsos_candidate_placement,no,"5,8",llm_coded,,,"5,992928927"
+2022,DLF,Nicolas Dupont-Aignan,"7,8","0,56",ipsos_candidate_placement,no,"8,3",llm_coded,,,"8,457771679"
+2022,RN,Marine Le Pen,"8,8","0,76",ipsos_candidate_placement,no,"8,818182",CHES,,,"9,628555176"
+2022,REC,Eric Zemmour,"9,1","0,82",ipsos_candidate_placement,no,"9,727273",CHES,,,"9,594743276"

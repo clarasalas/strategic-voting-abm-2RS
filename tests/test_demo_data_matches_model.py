@@ -240,3 +240,13 @@ def test_opening_position_shows_the_mechanism(data):
         f"mu={g['mu'][im]}, where only {sw:.1%} of voters switch. The page "
         f"would autoplay a run in which nothing happens; choose a different "
         f"opening rule in docs/index.html and update it here.")
+
+
+def test_france_2022_preset_matches_the_current_inputs(data):
+    """
+    The preset replays the real 2022 inputs, so it goes stale when they
+    change even if the model does not.  Recomputed and compared in full.
+    If this fails:  python demo/precompute.py --preset-only --force
+    """
+    assert data["preset_2022"] == json.loads(json.dumps(precompute.preset_2022()))
+

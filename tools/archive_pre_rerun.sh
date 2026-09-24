@@ -2,17 +2,21 @@
 #
 # archive_pre_rerun.sh -- snapshot the current empirical evidence before a rerun.
 #
-# The corrected tau_hat -> tau_absolute conversion invalidates every empirical
-# output, so they are about to be regenerated.  This takes a checksummed,
-# read-only copy of what exists first.
+# A rerun overwrites every empirical output in data/.  This takes a
+# checksummed, read-only copy of what exists first.  (First written for the
+# 2026-08-21 rerun after the tau_hat -> tau_absolute fix; its archive is
+# data/archive/pre_rerun_2026-08-21/.)
 #
 # It is deliberately a copy rather than a git commit: data/ and figures/ are
 # git-ignored on purpose (bulky, regenerable), and the archive inherits that.
 #
-#   usage:  tools/archive_pre_rerun.sh [STAMP] [FICHE_HTML]
+#   usage:  tools/archive_pre_rerun.sh [STAMP] [FICHE_HTML] [NOTE_MD]
 #
 #           STAMP        archive name under data/archive/  (default: today)
 #           FICHE_HTML   exported copy of the fiche technique, if available
+#                        ("" to skip)
+#           NOTE_MD      markdown describing what the archived outputs are and
+#                        what they can support; copied into INVENTORY.md
 #
 # Nothing is deleted or modified: the script only reads the working tree and
 # writes under data/archive/<STAMP>/.
@@ -23,6 +27,11 @@ set -o pipefail
 
 STAMP="${1:-pre_rerun_$(date +%Y-%m-%d)}"
 FICHE_SRC="${2:-}"
+NOTE_SRC="${3:-}"
+if [ -n "$NOTE_SRC" ] && [ ! -f "$NOTE_SRC" ]; then
+    echo "Note file not found: $NOTE_SRC" >&2
+    exit 1
+fi
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST="$REPO/data/archive/$STAMP"
@@ -55,6 +64,13 @@ while IFS= read -r -d '' f; do
     cp -p "$f" "$DEST/logs/"
     copied_logs=$((copied_logs + 1))
 done < <(find "$REPO" -maxdepth 1 -name '*.log' -type f -print0)
+# per-run driver logs (logs/<run>/), kept under their run name
+if [ -d "$REPO/logs" ]; then
+    while IFS= read -r -d '' d; do
+        cp -Rp "$d" "$DEST/logs/"
+        copied_logs=$((copied_logs + $(find "$d" -type f | wc -l)))
+    done < <(find "$REPO/logs" -mindepth 1 -maxdepth 1 -type d -print0)
+fi
 echo "    logs/      $copied_logs log(s)"
 
 # --- 3. figures -------------------------------------------------------------
@@ -102,8 +118,8 @@ echo "==> SHA256SUMS: $n_files file(s)"
 {
     echo "# Pre-rerun evidence archive -- $STAMP"
     echo
-    echo "Snapshot of the empirical layer taken immediately before the corrected"
-    echo "empirical reruns.  Read-only; git-ignored; never committed."
+    echo "Snapshot of the empirical layer taken immediately before a rerun."
+    echo "Read-only; git-ignored; never committed."
     echo
     echo "Repository state at capture time:"
     echo
@@ -118,7 +134,7 @@ echo "==> SHA256SUMS: $n_files file(s)"
     echo "| Directory | Files | What it holds |"
     echo "|---|---:|---|"
     echo "| \`data/\` | $copied_data | Raw empirical, probabilistic-variant, diagnostics and behavioural-sweep CSVs |"
-    echo "| \`logs/\` | $copied_logs | Run logs, including the pre-fix \`tau >= 2.0\` warnings |"
+    echo "| \`logs/\` | $copied_logs | Root-level run logs and per-run driver logs (logs/<run>/) |"
     echo "| \`figures/\` | $copied_figs | Every empirical and behavioural figure (PNG + PDF) |"
     echo "| \`results/tables/\` | $copied_tables | Committed summary tables (also in git) |"
     echo "| \`fiche/\` | - | $fiche_note |"
@@ -131,30 +147,11 @@ echo "==> SHA256SUMS: $n_files file(s)"
     echo "cd data/archive/$STAMP && shasum -c SHA256SUMS"
     echo '```'
     echo
-    echo "## What this archive can and cannot support"
-    echo
-    echo "**It cannot support a raw before-versus-after comparison of the main"
-    echo "empirical replay.** The pre-fix full-run outputs no longer exist: on"
-    echo "2026-08-19 a 15-draw \`--quick\` run overwrote the 300-draw"
-    echo "\`empirical_runs_*.csv\`, \`empirical_candidate_shares_*\`,"
-    echo "\`empirical_candidate_draws_*\` and \`empirical_robustness_*\` files."
-    echo "\`data/\` is git-ignored and they were never committed, so the"
-    echo "\`empirical_*_{2002,2022}.csv\` files captured here are that smoke run,"
-    echo "not the experiment they replaced."
-    echo
-    echo "For the main replay, the surviving pre-fix evidence is indirect and"
-    echo "must be labelled as historical rather than comparable:"
-    echo
-    echo "- \`logs/empirical_run.log\` -- the pre-fix full run's console output"
-    echo "- \`figures/\` -- figures rendered from the pre-fix outputs"
-    echo "- \`fiche/\` -- the numbers as reported at the time"
-    echo
-    echo "A genuine raw comparison IS possible for the parts that were never"
-    echo "overwritten:"
-    echo
-    echo "- \`data/behavioral_sweep_{2002,2022}.csv\` (1000 draws, 7-8 June)"
-    echo "- \`data/empirical_runs_prob_*.csv\` (6 June)"
-    echo "- \`data/empirical_diagnostics_*.csv\` (6 June)"
+    if [ -n "$NOTE_SRC" ]; then
+        echo "## What this archive holds"
+        echo
+        cat "$NOTE_SRC"
+    fi
 } > INVENTORY.md
 
 # --- 8. verify --------------------------------------------------------------

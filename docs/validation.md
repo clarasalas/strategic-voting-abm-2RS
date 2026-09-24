@@ -453,10 +453,10 @@ pre-fix `tau >= 2.0` warning appears zero times in the simulation logs.
 
 | | |
 |---|---|
-| **Question** | Does the replay depend on three arbitrary setup choices? |
-| **Variants** | `individual_signals` (individual polls vs weekly means), `perturbed_positions` (±0.05 jitter), `resampled_voters` (different electorate draw) |
-| **Design** | 100 draws × 3 variants × 2 years = 600 runs |
-| **Status** | ✅ complete |
+| **Question** | Does the replay depend on arbitrary setup choices, or on the positions that were imputed rather than measured? |
+| **Variants** | `individual_signals` (individual polls vs weekly means), `perturbed_positions` (±0.05 jitter), `resampled_voters` (different electorate draw), `perturbed_imputed_positions` (±0.2 jitter of LLM-coded or bridged positions only) |
+| **Design** | 100 draws × 4 variants × 2 years = 800 runs |
+| **Status** | ✅ complete for the first three (2026-08-21 rerun); `perturbed_imputed_positions` added afterwards, runs at the next rerun |
 | **Evidence** | [`empirical_robustness_summary.csv`](../results/tables/empirical_robustness_summary.csv) |
 
 ### 17 · Stochastic-noise analysis

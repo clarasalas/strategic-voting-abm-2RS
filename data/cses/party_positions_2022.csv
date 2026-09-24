@@ -1,0 +1,13 @@
+election_year,party,left_right_position,position_source,block
+2022,NPA,"1,4",ipsos_candidate_placement,far_left
+2022,LO,"1,2",ipsos_candidate_placement,far_left
+2022,PCF,"1,9",ipsos_candidate_placement,left
+2022,LFI,"1,6",ipsos_candidate_placement,left
+2022,EELV,"3,3",ipsos_candidate_placement,left
+2022,PS,"3,1",ipsos_candidate_placement,left
+2022,RE,"6,4",ipsos_candidate_placement,center
+2022,LR,"7,4",ipsos_candidate_placement,right
+2022,RES,"4,9",ipsos_candidate_placement,right
+2022,DLF,"7,8",ipsos_candidate_placement,right
+2022,RN,"8,8",ipsos_candidate_placement,far_right
+2022,REC,"9,1",ipsos_candidate_placement,far_right

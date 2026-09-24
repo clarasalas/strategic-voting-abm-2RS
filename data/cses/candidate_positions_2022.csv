@@ -1,0 +1,13 @@
+election_year,party,candidate,party_item,party_n_unweighted,party_n_weighted,party_weighted_median_0_10,party_interpolated_median_0_10,party_weighted_mean_0_10,ipsos_mean_0_10
+2022,NPA,Philippe Poutou,,,,,,,"1,4"
+2022,LO,Nathalie Arthaud,,,,,,,"1,2"
+2022,PCF,Fabien Roussel,,,,,,,"1,9"
+2022,LFI,Jean-Luc Melenchon,F3020_C,1526,1526,1,"1,12170088","1,597640891","1,6"
+2022,EELV,Yannick Jadot,F3020_F,1534,1534,3,"3,16576087","3,194915254","3,3"
+2022,PS,Anne Hidalgo,F3020_G,1533,1533,3,"2,912328767","2,945857795","3,1"
+2022,RE,Emmanuel Macron,F3020_A,1527,1527,6,"6,319364162","6,371316306","6,4"
+2022,LR,Valerie Pecresse,F3020_E,1531,1531,8,"7,747070312","7,461136512","7,4"
+2022,RES,Jean Lassalle,,,,,,,"4,9"
+2022,DLF,Nicolas Dupont-Aignan,,,,,,,"7,8"
+2022,RN,Marine Le Pen,F3020_B,1532,1532,10,"9,628555176","8,686031332","8,8"
+2022,REC,Eric Zemmour,F3020_D,1481,1481,10,"9,594743276","8,008102633","9,1"

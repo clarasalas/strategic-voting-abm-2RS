@@ -22,7 +22,7 @@
 | n/a | Horizon / population validation | synthetic | `protocol_validation.py` | varies |
 | n/a | Stochastic-noise decomposition | synthetic | `protocol_posthoc.py` | post-hoc |
 | **D** | Empirical replay, 4 specifications | empirical | `empirical_2002_2022.py` | 6 000 |
-| **E** | Empirical robustness, 3 variants | empirical | `empirical_2002_2022.py` | 600 |
+| **E** | Empirical robustness, 4 variants | empirical | `empirical_2002_2022.py` | 800 |
 | **G** | Activation diagnostics | empirical | `empirical_diagnostics.py` | 0 (post-hoc) |
 | **H** | Behavioural ΔCENP sweep | empirical | `behavioral_sweep.py` | 8 000 |
 | **I** | 2002 vs 2022 significance test | empirical | `behavioral_compare.py` | 0 (post-hoc) |

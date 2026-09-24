@@ -1,0 +1,13 @@
+election_year,party,left_right_position,position_source,block
+2022,NPA,"0,5702748726",imputed_bridge_from_llm_coded,far_left
+2022,LO,"0,6688685827",imputed_bridge_from_llm_coded,far_left
+2022,PCF,"1,977475981",imputed_bridge_from_CHES,left
+2022,LFI,"1,12170088",cses_party_placement,left
+2022,EELV,"3,16576087",cses_party_placement,left
+2022,PS,"2,912328767",cses_party_placement,left
+2022,RE,"6,319364162",cses_party_placement,center
+2022,LR,"7,747070312",cses_party_placement,right
+2022,RES,"5,992928927",imputed_bridge_from_llm_coded,right
+2022,DLF,"8,457771679",imputed_bridge_from_llm_coded,right
+2022,RN,"9,628555176",cses_party_placement,far_right
+2022,REC,"9,594743276",cses_party_placement,far_right

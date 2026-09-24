@@ -27,6 +27,7 @@ from core_model.empirical_data import _to_float
 DATA = Path(__file__).resolve().parent.parent / "data"
 CSES = DATA / "cses"
 IPSOS = DATA / "ipsos" / "candidate_positions_2022_wave9.csv"
+PREVIOUS = DATA / "previous_inputs"      # inputs of the 2026-08-21 run
 YEARS = (2002, 2022)
 
 SPEC_FILES = {
@@ -76,7 +77,7 @@ def test_ipsos_rows_are_internally_consistent():
 
 
 def test_ipsos_covers_every_modelled_2022_candidate():
-    modelled = read(DATA / "party_positions_2022.csv")["party"]
+    modelled = read(PREVIOUS / "party_positions_2022.csv")["party"]
     assert sorted(read(IPSOS)["party"]) == sorted(modelled)
 
 
@@ -133,7 +134,7 @@ def test_scale_screen_drops_only_reversed_respondents():
 @pytest.mark.parametrize("year,name", [(y, n) for y in YEARS for n in SPEC_FILES[y]])
 def test_specification_covers_every_candidate(year, name):
     new = read(CSES / name)
-    cur = read(DATA / f"party_positions_{year}.csv")
+    cur = read(PREVIOUS / f"party_positions_{year}.csv")
     assert new.columns.tolist() == cur.columns.tolist()
     assert new["party"].tolist() == cur["party"].tolist()
     assert new["block"].tolist() == cur["block"].tolist()
@@ -159,7 +160,7 @@ def test_imputed_values_are_the_bridge_and_labelled_as_such(year, name):
     assert fit["imputed"].split() == list(imputed)
     a, b = _to_float(fit["intercept"]), _to_float(fit["slope"])
     assert b > 0
-    cur = read(DATA / f"party_positions_{year}.csv").set_index("party")
+    cur = read(PREVIOUS / f"party_positions_{year}.csv").set_index("party")
     for p in imputed:
         assert pos.loc[p, "position_source"] == \
             f"imputed_bridge_from_{cur.loc[p, 'position_source']}"
@@ -194,9 +195,32 @@ def test_model_loads_the_main_specification(year, tmp_path):
         shutil.copy(CSES / name, tmp_path / name)
 
     bundle = ed.load_year(year, data_dir=tmp_path)
-    assert bundle["K"] == ed.load_year(year)["K"]
+    assert bundle["K"] == len(read(PREVIOUS / f"party_positions_{year}.csv"))
     main = read(CSES / f"party_positions_{year}.csv").set_index("party")
     assert bundle["sources"] == [main.loc[p, "position_source"] for p in bundle["parties"]]
     pos, probs = ed.load_voter_histogram(year, data_dir=tmp_path)
     np.testing.assert_allclose(pos, np.arange(11) / 5 - 1)
     assert probs.sum() == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("year", YEARS)
+def test_data_holds_the_main_specification(year):
+    """The model's inputs in data/ are the main specification, byte for byte."""
+    for name in (f"party_positions_{year}.csv", f"voters_ideology_{year}.csv"):
+        assert (DATA / name).read_bytes() == (CSES / name).read_bytes(), name
+
+
+@pytest.mark.parametrize("year", YEARS)
+def test_previous_inputs_are_the_august_run_values(year):
+    """
+    data/previous_inputs/ is the input set of the 2026-08-21 run.  Only two
+    metadata edits separate it from the tag: hand_coded relabelled llm_coded,
+    and the voter files' declared scale column.  The values are pinned here by
+    their sums, so an edit to any number fails.
+    """
+    pos = num(read(PREVIOUS / f"party_positions_{year}.csv")["left_right_position"])
+    vot = read(PREVIOUS / f"voters_ideology_{year}.csv")
+    want = {2002: (76.58, 1.001, "1-10"), 2022: (55.645455, 1.0, "0-10")}[year]
+    assert pos.sum() == pytest.approx(want[0], abs=1e-6)
+    assert num(vot["share"]).sum() == pytest.approx(want[1], abs=1e-9)
+    assert set(vot["scale"]) == {want[2]}

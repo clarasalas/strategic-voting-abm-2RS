@@ -80,8 +80,8 @@ sampled, 1 000 draws × 4 repeats per year.
 
 | Held fixed in empirical mode | Value |
 |---|---|
-| Party positions | real, coded on [−1, 1] |
-| Electorate | *N* = 2000 sampled from the real ideology histogram |
+| Party positions | survey placements of the real candidates (0–10), mapped to [−1, 1] |
+| Electorate | *N* = 2000 sampled from the survey self-placement histogram |
 | Signal timeline | real weekly-mean polls (exogenous) |
 | *K*<sub>runoff</sub> | 2 |
 | *T*<sub>max</sub> | length of the poll sequence |
@@ -227,6 +227,22 @@ locally, and do not treat anything in `figures/` as authoritative.
 ---
 
 ## Data sources
+
+### Model inputs
+
+| File | 2002 | 2022 |
+|---|---|---|
+| `polls_{year}.csv` | [Wikipedia, liste de sondages 2002](https://fr.wikipedia.org/wiki/Liste_de_sondages_sur_l%27%C3%A9lection_pr%C3%A9sidentielle_fran%C3%A7aise_de_2002), 41 polls, 1 Mar–18 Apr | [Wikipedia, liste de sondages 2022](https://fr.wikipedia.org/wiki/Liste_de_sondages_sur_l%27%C3%A9lection_pr%C3%A9sidentielle_fran%C3%A7aise_de_2022), 81 polls, 8 Mar–8 Apr |
+| `voters_ideology_{year}.csv` | CSES Module 2 self-placement, weighted | CSES Module 6 self-placement |
+| `party_positions_{year}.csv` | CSES candidate placements, screened means; 6 imputed | Ipsos–CEVIPOF wave 9 means, all 12 |
+| `results_{year}.csv` | Ministère de l'Intérieur | Ministère de l'Intérieur |
+
+Positions and electorates: [`data/cses/README.md`](../data/cses/README.md) (construction,
+specifications, limitations), [`data/ipsos/README.md`](../data/ipsos/README.md), and, for the inputs
+they replaced, [`data/previous_inputs/README.md`](../data/previous_inputs/README.md).
+
+Still to document for the polls: the Wikipedia revision used (permalink and access date), and
+the rule for the start of each window.
 
 ### `FR-electoral_data.csv`
 

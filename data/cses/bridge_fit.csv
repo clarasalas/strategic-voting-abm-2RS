@@ -1,4 +1,4 @@
-election_year,spec,n_anchors,anchors,anchor_current_sources,imputed,intercept,slope,in_sample_r2,in_sample_rmse_0_10,in_sample_max_abs_residual_0_10
+election_year,spec,n_anchors,anchors,anchor_previous_sources,imputed,intercept,slope,in_sample_r2,in_sample_rmse_0_10,in_sample_max_abs_residual_0_10
 2002,main,9,LO PCF PS LV MDC UDF DL RPR FN,CHES llm_coded,LCR PRG CAP21 CPNT FRS MNR,"1,217060399","0,7695136314","0,9605370331","0,4404418841","0,848562429"
 2002,unscreened_means,9,LO PCF PS LV MDC UDF DL RPR FN,CHES llm_coded,LCR PRG CAP21 CPNT FRS MNR,"1,741801908","0,6474982244","0,9357209176","0,4792197761","1,01636572"
 2002,party_items,9,LO PCF PS LV MDC UDF DL RPR FN,CHES llm_coded,LCR PRG CAP21 CPNT FRS MNR,"1,048554967","0,8338973269","0,9574681043","0,4962977186","1,059882332"

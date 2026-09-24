@@ -383,7 +383,17 @@ def test_golden_synthetic_baseline():
     assert res["switching"]["strategic"] == 19
 
 
-def test_golden_empirical_probabilistic():
+def _previous_inputs_dir(tmp_path):
+    """data/ with the 2026-08-21 run's positions and electorates swapped back in."""
+    import shutil
+    for f in ed.DATA_DIR.glob("*.csv"):
+        shutil.copy(f, tmp_path / f.name)
+    for f in (ed.DATA_DIR / "previous_inputs").glob("*.csv"):
+        shutil.copy(f, tmp_path / f.name)
+    return tmp_path
+
+
+def test_golden_empirical_probabilistic(tmp_path):
     """
     Empirical 2022 replay under the main specification (probabilistic sincere
     initialization, salience = s^0), pinned.
@@ -401,8 +411,11 @@ def test_golden_empirical_probabilistic():
         r = run_simulation(... tau=tau_absolute(1.75, bundle["K"]) ...)
         print(r["sincere_shares"], r["final_shares"], r["switching"])
     """
-    bundle = ed.load_year(2022)
-    voters = ed.sample_voters(2022, 350, np.random.default_rng(8))
+    # Run on the frozen inputs of the 2026-08-21 run, not on data/: this pins
+    # the code, so it must not move when the empirical inputs are replaced.
+    frozen = _previous_inputs_dir(tmp_path)
+    bundle = ed.load_year(2022, data_dir=frozen)
+    voters = ed.sample_voters(2022, 350, np.random.default_rng(8), data_dir=frozen)
     res = run_simulation(
         K=bundle["K"], party_ids=bundle["parties"],
         party_positions_override=bundle["positions"],

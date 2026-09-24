@@ -1,63 +1,48 @@
 #!/usr/bin/env python3
 """
-Build survey-based ideology inputs for 2002 and 2022 from the CSES.
+Build survey-based ideology inputs for 2002 and 2022.
 
 Reads the CSES Module 2 (France 2002) and Module 6 (France 2022) files straight
 from the downloaded zips in ``data/raw/cses/`` (git-ignored; see
-``data/cses/README.md`` for where to get them) and writes to ``data/cses/``:
+``data/cses/README.md`` for where to get them), the transcribed Ipsos-CEVIPOF
+2022 table in ``data/ipsos/``, and the inputs of the 2026-08-21 run in
+``data/previous_inputs/``.  Writes to ``data/cses/``:
 
     voters_ideology_{year}.csv     weighted left-right self-placement histogram,
-                                   raw 0-10 bins, in the two-column format that
-                                   core_model.empirical_data.load_voter_histogram
-                                   reads
-    candidate_positions_{year}.csv perceived left-right position of every
-                                   candidate the survey measures (interpolated
-                                   median of the PARTY placement, both years),
-                                   with the other summaries as diagnostics
-    party_positions_{year}.csv     model-ready positions for EVERY modelled
-                                   candidate, in the schema of
-                                   data/party_positions_{year}.csv: measured
-                                   ones from the survey, the rest bridged
-    party_positions_2002_candidate_items.csv
-                                   the same for 2002 built from the LEADER
-                                   items instead: a robustness specification
-    bridge.csv                     per candidate: current position, survey
-                                   position, bridge prediction
-    bridge_fit.csv                 the bridge regression, one row per spec
-    coverage.csv                   every modelled candidate, the survey item
-                                   used for it or the bridge, final position
+                                   raw 0-10 bins, with a declared ``scale``
+    party_positions_{year}.csv     MAIN specification, model-ready, in the
+                                   schema of data/party_positions_{year}.csv
+    party_positions_{year}_{spec}.csv
+                                   comparison specifications, same schema
+    candidate_positions_{year}.csv every summary of every survey item
+    coverage.csv                   candidate by candidate: main position and
+                                   source, imputed or not, previous value,
+                                   value under every comparison specification
+    bridge.csv, bridge_fit.csv     the bridge, per candidate and per fit
+    scale_screen.csv               the 2002 scale-direction screen
     sample_sizes.csv               unweighted / weighted / effective n per item
 
-Two choices are made here, and both are deliberate:
+Main specification
+------------------
+* 2002: CSES candidate (leader) placements, weighted mean, after dropping
+  respondents who place Laguiller strictly to the right of Le Pen -- a
+  scale read backwards.
+* 2022: the published Ipsos-CEVIPOF wave 9 means, all 12 candidates.
+* Voters, both years: CSES self-placement.
 
-* **Position = interpolated (grouped-data) median.**  The plain median of a
-  0-10 item is almost always an integer, so distinct candidates tie (PS = LV,
-  LO = PCF in 2002) and every far-right candidate sits at the boundary.  In
-  the model two candidates at the same point are indistinguishable to every
-  voter.  The interpolated median separates them and, unlike the mean, is not
-  pulled toward the centre by supporters who place their own candidate there.
-* **Party items in both years.**  Module 6 (2022) has no leader left-right
-  item, so 2022 must use party placements.  2002 uses them too, so the
-  measurement does not change between the two years the model compares.  The
-  2002 leader items give the robustness specification.
+Means, because Ipsos publishes means only and both years should use the same
+statistic.  Comparison specifications: 2002 unscreened means and CSES party
+items; 2022 CSES party items (interpolated medians).
 
-Candidates the survey does not measure are placed by a **bridge**: an OLS fit,
-per year, of the survey position on the current position in
-``data/party_positions_{year}.csv`` over the candidates that have both, used to
-carry the current positions of the unmeasured candidates onto the survey's
-scale.  Their ``position_source`` records the bridge and what it was applied
-to, so the robustness run can perturb exactly those.
+Candidates no survey measures are placed by a **bridge**: an OLS fit, per year
+and specification, of the survey position on the previous position (CHES or
+LLM-coded, ``data/previous_inputs/``) over the candidates that have both,
+applied to the previous position of each unmeasured candidate.  The value is
+labelled ``imputed_bridge_from_<previous source>``, so the robustness run can
+perturb exactly those.  Its R^2 and RMSE are in-sample fit, not validation.
 
-Nothing here writes to ``data/``.  From ``data/party_positions_{year}.csv`` the
-script reads the party list, the blocks, and the current positions and their
-sources (for the bridge only).
-
-Every CSES code the script relies on (study identifier, release, the
-party/leader letter behind each column) is checked against the codebook text
-shipped in the same download before any number is computed, and any response
-value that is neither a valid 0-10 placement nor a documented missing code
-stops the run.  A mapping that the codebook does not confirm is an error, not
-a warning.
+This script never writes to ``data/`` outside ``data/cses/``.  Switching the
+model to its output is a copy (see data/cses/README.md).
 
 Usage
 -----
@@ -79,7 +64,11 @@ import pandas as pd
 REPO = Path(__file__).resolve().parent.parent
 RAW = REPO / "data" / "raw" / "cses"
 OUT = REPO / "data" / "cses"
-MODEL_DATA = REPO / "data"
+# The inputs of the 2026-08-21 run (CHES + LLM-coded positions): the party
+# list, the blocks, and the base the bridge carries onto the survey scale.
+# Read from a fixed copy, not from data/, so that data/ can hold this script's
+# own output without the bridge reading it back.
+PREVIOUS = REPO / "data" / "previous_inputs"
 IPSOS_2022 = REPO / "data" / "ipsos" / "candidate_positions_2022_wave9.csv"
 
 VALID = range(0, 11)            # CSES left-right scale, 0 = left, 10 = right
@@ -379,8 +368,8 @@ def assemble(name, values: pd.Series, source: str, current: pd.DataFrame, year: 
 
     ``values`` holds the measured ones.  Any other candidate is placed by the
     bridge -- an OLS fit, over the candidates that have both, of the measured
-    position on the current position in data/party_positions_{year}.csv --
-    and labelled ``imputed_bridge_from_<current source>``.  R^2 and RMSE are
+    position on the previous position in data/previous_inputs/ -- and
+    labelled ``imputed_bridge_from_<previous source>``.  R^2 and RMSE are
     in-sample fit on the anchors, not a validation of the imputed values.
 
     Returns (model-ready positions, per-candidate bridge rows, fit row or None).
@@ -398,7 +387,7 @@ def assemble(name, values: pd.Series, source: str, current: pd.DataFrame, year: 
             raise ValueError(f"{year} {name}: bridge slope {b:.3f} is not positive")
         fit = dict(election_year=year, spec=name, n_anchors=len(anchors),
                    anchors=" ".join(anchors),
-                   anchor_current_sources=" ".join(sorted(set(cur.loc[anchors, "position_source"]))),
+                   anchor_previous_sources=" ".join(sorted(set(cur.loc[anchors, "position_source"]))),
                    imputed=" ".join(missing),
                    intercept=a, slope=b,
                    in_sample_r2=1 - (resid ** 2).sum() / ((y - y.mean()) ** 2).sum(),
@@ -416,8 +405,8 @@ def assemble(name, values: pd.Series, source: str, current: pd.DataFrame, year: 
         out.append(dict(election_year=year, party=p, left_right_position=value,
                         position_source=src, block=cur.loc[p, "block"]))
         per.append(dict(election_year=year, spec=name, party=p,
-                        current_position_0_10=cur.loc[p, "raw"],
-                        current_source=cur.loc[p, "position_source"],
+                        previous_position_0_10=cur.loc[p, "raw"],
+                        previous_source=cur.loc[p, "position_source"],
                         measured_0_10=values.get(p, np.nan),
                         bridge_prediction_0_10=pred,
                         clipped="yes" if not np.isnan(pred) and
@@ -426,8 +415,8 @@ def assemble(name, values: pd.Series, source: str, current: pd.DataFrame, year: 
     return pd.DataFrame(out), pd.DataFrame(per), fit
 
 
-def read_current_positions(year: int) -> pd.DataFrame:
-    cur = pd.read_csv(MODEL_DATA / f"party_positions_{year}.csv", dtype=str)
+def read_previous_positions(year: int) -> pd.DataFrame:
+    cur = pd.read_csv(PREVIOUS / f"party_positions_{year}.csv", dtype=str)
     cur["raw"] = cur["left_right_position"].str.replace(",", ".").astype(float)
     return cur
 
@@ -442,7 +431,7 @@ def read_ipsos_2022(model_parties: list) -> pd.Series:
 
 def build(year: int):
     spec = STUDIES[year]
-    current = read_current_positions(year)
+    current = read_previous_positions(year)
     model_parties = current["party"].tolist()
     verify_mapping(spec, model_parties)
     df = load_study(spec)
@@ -509,8 +498,8 @@ def build(year: int):
         main_model_position=float(to_model_scale(main.loc[p, "left_right_position"])),
         main_source=main.loc[p, "position_source"],
         imputed="yes" if main.loc[p, "position_source"].startswith("imputed_") else "no",
-        current_position_0_10=current.set_index("party").loc[p, "raw"],
-        current_source=current.set_index("party").loc[p, "position_source"],
+        previous_position_0_10=current.set_index("party").loc[p, "raw"],
+        previous_source=current.set_index("party").loc[p, "position_source"],
         **{f"{n}_0_10": positions[n].set_index("party").loc[p, "left_right_position"]
            for n in positions if n != "main"},
     ) for p in model_parties])

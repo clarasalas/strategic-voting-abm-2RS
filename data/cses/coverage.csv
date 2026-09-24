@@ -1,4 +1,4 @@
-election_year,party,candidate,main_position_0_10,main_model_position,main_source,imputed,current_position_0_10,current_source,unscreened_means_0_10,party_items_0_10,cses_party_items_0_10
+election_year,party,candidate,main_position_0_10,main_model_position,main_source,imputed,previous_position_0_10,previous_source,unscreened_means_0_10,party_items_0_10,cses_party_items_0_10
 2002,LO,Arlette Laguiller,"1,941482523","-0,6117034954",cses_candidate_placement,no,"0,5",llm_coded,"2,282648358","1,675134024",
 2002,LCR,Olivier Besancenot,"1,755719941","-0,6488560119",imputed_bridge_from_llm_coded,yes,"0,7",llm_coded,"2,195050665","1,632283096",
 2002,PCF,Robert Hue,"2,170039788","-0,5659920424",cses_candidate_placement,no,"1,62",CHES,"2,408565001","2,027191509",

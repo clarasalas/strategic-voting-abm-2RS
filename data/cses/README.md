@@ -1,9 +1,9 @@
 # Survey-based ideology inputs, France 2002 and 2022
 
-Replacements for `data/voters_ideology_*.csv` and `data/party_positions_*.csv`, built by
-[`tools/build_cses_inputs.py`](../../tools/build_cses_inputs.py) from the CSES and from the
-Ipsos–CEVIPOF 2022 table in [`data/ipsos/`](../ipsos/README.md). For how and when the model
-switches to them, see [Switching the model to these inputs](#switching-the-model-to-these-inputs).
+The model's empirical inputs, built by [`tools/build_cses_inputs.py`](../../tools/build_cses_inputs.py)
+from the CSES and from the Ipsos–CEVIPOF 2022 table in [`data/ipsos/`](../ipsos/README.md). The
+main specification is what `data/party_positions_*.csv` and `data/voters_ideology_*.csv` hold; the
+inputs they replaced are in [`data/previous_inputs/`](../previous_inputs/README.md).
 
 The principle: positions are **perceived** positions. Voters in the model act on how they see the
 field, so candidates are placed by survey respondents, on the same 0–10 left-right question voters
@@ -38,8 +38,7 @@ survey, shows no such pattern: 2% or fewer place Le Pen, Zemmour or Pécresse at
 ## Every candidate
 
 The candidate-by-candidate record is `coverage.csv`: main position, its source, whether it is
-imputed, the current position and source in `data/`, and the value under every comparison
-specification.
+imputed, the previous position and source, and the value under every comparison specification.
 
 **2002.** CSES candidate items, then CSES party items for comparison.
 
@@ -60,10 +59,10 @@ the three main right-wing candidates: Chirac is placed 0.6 to the right of the R
 the left of the UDF, and Madelin 0.3 to the right of DL. The party items rank DL to the left of
 the UDF; the candidate items rank Madelin to the right of Bayrou.
 
-Imputed in 2002, from the current positions through the bridge below: LCR 1.76, PRG 4.00,
+Imputed in 2002, from the previous positions through the bridge below: LCR 1.76, PRG 4.00,
 CAP21 5.06, CPNT 6.83, FRS 6.99, MNR 8.76. One consequence to be aware of: the bridged MNR
 (Mégret, 8.76) lands slightly to the right of the measured FN (Le Pen, 8.63), because Le Pen's
-survey mean sits well below his current expert position (9.92).
+survey mean sits well below his previous expert position (9.92).
 
 **2022.** Ipsos means (main), CSES party items for comparison where they exist.
 
@@ -86,16 +85,16 @@ Two different surveys, weeks apart, one about candidates and one about parties, 
 0.15 for six of the seven candidates they share. The exception is Zemmour/REC (9.1 vs 8.0): the
 party was created in December 2021.
 
-The largest change from the current inputs is Lassalle: 5.8 (LLM-coded) to 4.9 (measured).
+The largest change from the previous inputs is Lassalle: 5.8 (LLM-coded) to 4.9 (measured).
 
 ## The bridge
 
 Used only where no survey measures a candidate: the six 2002 candidates above in the main
 specification, and in the comparison specifications as listed in `bridge_fit.csv`. Per year and
-specification, an OLS fit of the survey position on the candidate's current position in
-`data/party_positions_{year}.csv`, over the candidates that have both, applied to the current
-position of each unmeasured candidate and clipped to 0–10 (no clipping occurs). The value is
-labelled `imputed_bridge_from_<current source>`: `imputed_bridge_from_CHES` for PRG,
+specification, an OLS fit of the survey position on the candidate's previous position in
+`data/previous_inputs/`, over the candidates that have both, applied to the previous position of
+each unmeasured candidate and clipped to 0–10 (no clipping occurs). The value is labelled
+`imputed_bridge_from_<previous source>`: `imputed_bridge_from_CHES` for PRG,
 `imputed_bridge_from_llm_coded` for the other five.
 
 | Specification | anchors | slope | in-sample R² | in-sample RMSE (0–10) | largest in-sample residual |
@@ -107,9 +106,9 @@ labelled `imputed_bridge_from_<current source>`: `imputed_bridge_from_CHES` for 
 
 These describe how well the line fits the candidates it was fitted on. They are **not** a
 validation of the imputed values: no imputed candidate has a survey value to check against. Two of
-the 2002 anchors (LO, MDC) have LLM-coded current positions; the rest are CHES.
+the 2002 anchors (LO, MDC) have LLM-coded previous positions; the rest are CHES.
 
-The LLM-coded positions (`llm_coded` in `data/party_positions_*.csv`) were produced with a
+The LLM-coded positions (`llm_coded` in `data/previous_inputs/`) were produced with a
 language model and checked against the order of parties in reports and party websites. **Still to
 document:** the model, the prompt, the date, and the checks. They enter the main specification
 only through the bridge, for five 2002 candidates.
@@ -204,7 +203,7 @@ The script re-checks each one against that codebook text before computing anythi
 | `party_positions_{year}.csv` | **model-ready, main specification**: every modelled candidate, same schema as `data/party_positions_{year}.csv` |
 | `party_positions_{year}_{spec}.csv` | model-ready comparison specifications (table above) |
 | `candidate_positions_{year}.csv` | every summary of every survey item; 2022 also the Ipsos mean |
-| `coverage.csv` | candidate-by-candidate: main position and source, imputed or not, current value, comparison values |
+| `coverage.csv` | candidate-by-candidate: main position and source, imputed or not, previous value, comparison values |
 | `bridge.csv`, `bridge_fit.csv` | the bridge, per candidate and per fit |
 | `scale_screen.csv` | the 2002 screen: who was compared, how many were dropped |
 | `sample_sizes.csv` | n per item and the codes excluded from it |
@@ -225,16 +224,16 @@ The script re-checks each one against that codebook text before computing anythi
   Corsica.
 * **Module 6 is an advance release**; values may change in the full release.
 
-## Switching the model to these inputs
+## How the model reads them
 
-The model reads `data/party_positions_{year}.csv` and `data/voters_ideology_{year}.csv`. Copying
-the main-specification files over them is the whole switch, and `tests/test_cses_inputs.py`
-checks that the model loads the swapped files:
+The model reads `data/party_positions_{year}.csv` and `data/voters_ideology_{year}.csv`, which are
+byte-for-byte copies of this folder's main-specification files. `tests/test_cses_inputs.py` checks
+that they match. After rebuilding, copy them again:
 
 ```bash
+python tools/build_cses_inputs.py --force
 cp data/cses/party_positions_{2002,2022}.csv data/cses/voters_ideology_{2002,2022}.csv data/
 ```
 
-Do it as part of a rerun, so the committed result tables never describe inputs other than the ones
-in `data/`. The inputs of the August run stay in git history, at the tag
-`empirical-rerun-2026-08-21`.
+A comparison specification is run the same way, by copying its file over
+`data/party_positions_{year}.csv` in a separate run.

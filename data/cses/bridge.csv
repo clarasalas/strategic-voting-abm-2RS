@@ -1,4 +1,4 @@
-election_year,spec,party,current_position_0_10,current_source,measured_0_10,bridge_prediction_0_10,clipped,final_position_0_10,final_source
+election_year,spec,party,previous_position_0_10,previous_source,measured_0_10,bridge_prediction_0_10,clipped,final_position_0_10,final_source
 2002,main,LO,"0,5",llm_coded,"1,941482523",,no,"1,941482523",cses_candidate_placement
 2002,main,LCR,"0,7",llm_coded,,"1,755719941",no,"1,755719941",imputed_bridge_from_llm_coded
 2002,main,PCF,"1,62",CHES,"2,170039788",,no,"2,170039788",cses_candidate_placement

@@ -48,13 +48,14 @@ mkdir -p "$DEST"/{data,logs,figures,results/tables,fiche}
 # --- 1. raw empirical / behavioural / sweep CSVs ---------------------------
 # These are the outputs the rerun will replace.
 copied_data=0
-for pattern in 'empirical_*.csv' 'behavioral_*.csv' 'sweep_*.csv'; do
+# The sweeps' *_meta.json sidecars carry the design fingerprint --resume checks.
+for pattern in 'empirical_*.csv' 'behavioral_*.csv' 'sweep_*.csv' 'behavioral_*.json'; do
     while IFS= read -r -d '' f; do
         cp -p "$f" "$DEST/data/"
         copied_data=$((copied_data + 1))
     done < <(find "$REPO/data" -maxdepth 1 -name "$pattern" -type f -print0)
 done
-echo "    data/      $copied_data CSV(s)"
+echo "    data/      $copied_data file(s)"
 
 # --- 2. run logs ------------------------------------------------------------
 # The pre-fix logs are the only surviving direct evidence of the bug: they

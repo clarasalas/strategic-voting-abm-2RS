@@ -29,6 +29,7 @@ SPEC = {
     "behavioral_sweep_quantiles.csv": (["year"], 2),
     "empirical_year_contrast.csv": (["specification", "metric"], 56),
     "empirical_candidate_fit.csv": (["specification", "year", "party"], 108),
+    "empirical_delta_cenp_decomposition.csv": (["specification", "year"], 8),
 }
 
 SPECIFICATIONS = {"nearest", "prob_signal", "prob_prior", "prob_signal_mu0"}
@@ -301,3 +302,16 @@ def test_generator_guard_rails_reject_a_non_finite_input(tmp_path):
 # inputs, exact through a CSV round trip, and refuses corrupt input, is
 # covered above by tests that build their own fixtures and therefore run
 # everywhere.
+
+
+def test_delta_cenp_parts_add_up():
+    """start_gap + strategic = total, and the observed value is the target's."""
+    df = _load("empirical_delta_cenp_decomposition.csv")
+    np.testing.assert_allclose(df["start_gap"] + df["strategic"], df["total_vs_s0"],
+                               atol=1e-12)
+    rs = _load("empirical_replay_summary.csv")
+    for _, r in df.iterrows():
+        m = rs[(rs.specification == r.specification) & (rs.year == r.year)
+               & (rs.metric == "delta_cenp")]
+        assert m["mean"].iloc[0] == pytest.approx(r["strategic"], abs=1e-12)
+

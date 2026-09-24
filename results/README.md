@@ -1,20 +1,45 @@
-# Result tables: registry
+<h1 align="center">results</h1>
 
-Compact, reproducible tables carrying the numbers behind the analysis. This file
-is a registry. For each table it records what it contains, what generates it,
-what it consumes, how to rebuild it, and any qualification on reproducing it.
+<p align="center">
+23 small tables holding every number the analysis cites. Each one is rebuilt by a script, and the tests check it.
+</p>
 
-Model explanation lives in [`docs/model.md`](../docs/model.md); the verification
-record in [`docs/validation.md`](../docs/validation.md); experiment protocols in
-[`docs/experiments.md`](../docs/experiments.md). None of that is repeated here.
+<p align="center"><sub><a href="../README.md">← Back to the project</a></sub></p>
 
-Raw simulation output (`data/empirical_*`, `data/behavioral_*`,
-`analysis/**/outputs/`) and all figures stay uncommitted on purpose, because
-they are bulky and regenerate from a seed. Only `results/tables/` is tracked.
+## Start here
 
----
+| If you want | Read |
+|---|---|
+| which parameters drive coordination | [`sobol_indices.csv`](tables/sobol_indices.csv) |
+| what switching does in France, 2002 and 2022 | [`empirical_delta_cenp_decomposition.csv`](tables/empirical_delta_cenp_decomposition.csv) |
+| how often voters are tempted, and how often they switch | [`empirical_activation_summary.csv`](tables/empirical_activation_summary.csv) |
+| how each candidate's simulated share compares with the result | [`empirical_candidate_fit.csv`](tables/empirical_candidate_fit.csv) |
 
-## Formal versus exploratory
+The main [README](../README.md#preliminary-results) summarises the first two in plain words.
+
+## All the tables
+
+| Group | Tables | Made by |
+|---|---|---|
+| **Synthetic: sensitivity** | `sobol_indices.csv` | `analysis/synthetic/saltelli_sensitivity.py` |
+| **Synthetic: protocol checks** | `robustness_panel_A` … `G`, seven `protocol_*` tables | `analysis/synthetic/robustness_checks.py`, `protocol_validation.py`, `protocol_posthoc.py` |
+| **Empirical: France** | `empirical_replay_summary`, `empirical_robustness_summary`, `empirical_activation_summary`, `empirical_year_contrast`, `empirical_candidate_fit`, `empirical_delta_cenp_decomposition`, `behavioral_sweep_quantiles` | `analysis/empirical/make_empirical_tables.py` |
+| **Empirical: exploratory** | `lhs_parameter_importance.csv` | `analysis/empirical/lhs_importance.py` |
+
+Only these tables are committed. The raw simulation output they summarise (`data/empirical_*`,
+`data/behavioral_*`, `analysis/**/outputs/`) and every figure are git-ignored: they are bulky and regenerate from
+a seed. The model is explained in [`docs/model.md`](../docs/model.md), the checks in
+[`docs/validation.md`](../docs/validation.md), and the experiments in [`docs/experiments.md`](../docs/experiments.md).
+
+## The registry
+
+For each table: what it contains, what generates it, what it reads, how to rebuild it, and any qualification on
+reproducing it.
+
+<details>
+<summary><strong>Formal versus exploratory: what each kind of table lets you say</strong></summary>
+
+<br>
 
 One distinction is load-bearing and easy to lose:
 
@@ -27,13 +52,15 @@ One distinction is load-bearing and easy to lose:
 The LHS design is not a Saltelli sequence, so those importances rank parameters;
 they do not decompose variance.
 
----
+</details>
 
-## Empirical tables
+<details>
+<summary><strong>Empirical tables (France 2002 and 2022)</strong></summary>
 
-Derived from the empirical rerun of 2026-08-21 (commit `0bba146`, 14 000
-simulations; see the
-[rerun record](../docs/reports/empirical_rerun_2026-08-21.md)).
+<br>
+
+Derived from the empirical rerun of 2026-09-24 on the survey-based inputs (commit `173d20c`, 14 200
+simulations; see the [rerun record](../docs/reports/empirical_rerun_2026-09-24.md)).
 
 | | |
 |---|---|
@@ -46,11 +73,12 @@ simulations; see the
 | File | Rows × cols | Key | Contents |
 |---|---|---|---|
 | `empirical_replay_summary.csv` | 112 × 12 | `specification, year, metric` | mean / sd / p05 / p50 / p95 of 14 outcome metrics, per specification and year |
-| `empirical_robustness_summary.csv` | 84 × 12 | `variant, year, metric` | same statistics for the three perturbation variants |
+| `empirical_robustness_summary.csv` | 112 × 12 | `variant, year, metric` | same statistics for the four perturbation variants |
 | `empirical_activation_summary.csv` | 8 × 13 | `specification, year` | mean trigger / switching / conditional-switching rates, and the fraction of draws clearing 1 %, 5 % and 10 % thresholds |
 | `behavioral_sweep_quantiles.csv` | 2 × 19 | `year` | sweep ΔCENP distribution (7 quantiles, mean, sd) against the observed target |
 | `empirical_year_contrast.csv` | 56 × 10 | `specification, metric` | 2002 vs 2022 means, difference, pooled sd, Cohen's *d* |
 | `empirical_candidate_fit.csv` | 108 × 14 | `specification, year, party` | per-candidate simulated vs actual share, error, p05-p95 band, top-*k* probability |
+| `empirical_delta_cenp_decomposition.csv` | 8 × 12 | `specification, year` | ΔCENP against the opening poll, split into the starting gap and the strategic part, next to the observed value |
 
 The specifications are `nearest` (main replay, 300 draws/year) and the three
 probabilistic-initialization variants `prob_signal`, `prob_prior`,
@@ -62,16 +90,21 @@ probabilistic-initialization variants `prob_signal`, `prob_prior`,
 > `behavioral_sweep_quantiles.csv` measures it against the exogenous opening poll
 > s⁰, which is the baseline the observed target uses, so only that table is
 > comparable with the real election. It names its baseline in a `baseline`
-> column, and a test pins it.
+> column, and a test pins it. `empirical_delta_cenp_decomposition.csv` shows
+> how the two relate: the s⁰-baseline total is the starting gap plus the
+> replay's own ΔCENP, and a test checks that the parts add up.
 
 > `empirical_year_contrast.csv` carries an `effect_size_defined` flag. The top-*k*
 > set accuracies are identically zero in both years, so their pooled standard
 > deviation is zero and no effect size exists; those rows report `0.0` with the
 > flag `False` rather than NaN, keeping the table finite.
 
----
+</details>
 
-## `lhs_parameter_importance.csv`
+<details>
+<summary><strong><code>lhs_parameter_importance.csv</code></strong></summary>
+
+<br>
 
 | | |
 |---|---|
@@ -91,13 +124,16 @@ Values reproduce to within numerical tolerance and rankings exactly.
 Last-bit differences (~1e-16) appear between runs because the surrogate is fitted
 in parallel and the order of floating-point reduction is not fixed.
 
-> ⚠️ **The `pooled` scope has a cross-validated R² of −0.187**, worse than
-> predicting the mean. It should not be cited. The per-year scopes (R² 0.853 and
-> 0.991) are sound.
+> ⚠️ **The `pooled` scope has a cross-validated R² of −0.067**, worse than
+> predicting the mean. It should not be cited. The per-year scopes (R² 0.819 and
+> 0.956) are sound.
 
----
+</details>
 
-## `sobol_indices.csv`
+<details>
+<summary><strong><code>sobol_indices.csv</code></strong></summary>
+
+<br>
 
 | | |
 |---|---|
@@ -109,9 +145,12 @@ in parallel and the order of floating-point reduction is not fixed.
 
 Design: `calc_second_order=False`, so the Saltelli sample is *N*(*D*+2) per *K*.
 
----
+</details>
 
-## `robustness_panel_{A…G}.csv`
+<details>
+<summary><strong><code>robustness_panel_{{A…G}}.csv</code></strong></summary>
+
+<br>
 
 | | |
 |---|---|
@@ -147,9 +186,12 @@ point are computed once rather than twice.
 > ceiling, while individual trajectories are not. A flat claim that the model
 > converges by *T* = 25 is unsupported.
 
----
+</details>
 
-## `protocol_*.csv`
+<details>
+<summary><strong><code>protocol_*.csv</code></strong></summary>
+
+<br>
 
 | | |
 |---|---|
@@ -169,9 +211,12 @@ point are computed once rather than twice.
 | `protocol_population_stability_by_c.csv` | 12 × 14 | the same, aggregated by width stratum |
 | `protocol_seed_noise_decomposition.csv` | 8 × 18 | within/between variance components, bootstrap ICC |
 
----
+</details>
 
-## Regenerating without simulating
+<details>
+<summary><strong>Regenerating without simulating</strong></summary>
+
+<br>
 
 ```bash
 python analysis/synthetic/saltelli_sensitivity.py --analyze-existing
@@ -187,3 +232,5 @@ python analysis/empirical/lhs_importance.py
 
 Everything else requires its experiment to be run first; see
 [`docs/reproducibility.md`](../docs/reproducibility.md).
+
+</details>

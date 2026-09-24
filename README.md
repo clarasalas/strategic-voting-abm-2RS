@@ -44,8 +44,99 @@ drive coordination. The empirical mode uses the real candidates, voters and poll
 the textbook coordination failure, when the left split and its front-runner missed the runoff; 2022 is the
 contrasting case. One behavioural setting is applied to both years, and nothing is fitted to either election.
 
-The analysis is in progress toward an article and the mechanism is under revision, so the repository makes no
-claims here about what the model shows.
+The analysis is in progress toward an article. The results below are preliminary: the mechanism is under revision
+and the numbers will move.
+
+## Preliminary results
+
+### In imagined electorates
+
+Across 30,720 synthetic elections with 6, 8 and 9 candidates, what decides whether voters coordinate is mostly
+**how attached they are to their favourite**. The expressive cost μ, the price of leaving the candidate you prefer,
+matters most for both switching and coordination. Next comes **how many candidates a voter can tolerate** (τ̂),
+then **how spread out the electorate is** (*c*). How noisy the polls are, and how voters update their beliefs,
+matter less.
+
+No parameter acts alone. Taken one at a time, the eight parameters explain between 13% (6 candidates) and 64%
+(9 candidates) of the variation in coordination; the rest comes from parameters acting together.
+
+| Parameter | In plain words | Share of the variation in coordination it is involved in |
+|---|---|---|
+| μ | cost of leaving your favourite | 73% |
+| τ̂ | how many candidates you tolerate | 48% |
+| *c* | how spread out the electorate is | 42% |
+| the other five | poll noise, beliefs, electorate shape | 26–33% each |
+
+<sub>Total-order Sobol indices for ΔCENP, averaged over 6, 8 and 9 candidates. They overlap, because of the
+interactions, so they do not add up to 100%. Source: <a href="results/tables/sobol_indices.csv"><code>sobol_indices.csv</code></a>.</sub>
+
+### France, 2002 and 2022
+
+The replay measures coordination as ΔCENP: how much the vote concentrates on fewer candidates between the first
+poll and the election. Positive means it concentrates. In reality it fell in 2002 (−0.113), when the left split,
+and rose in 2022 (+0.059).
+
+The model's number has two parts: where its voters start, before anyone switches, and what switching then does.
+The second part is the mechanism, and **it concentrates the vote in 7 of 8 settings**:
+
+| How voters start | 2002: switching | 2002: total | 2022: switching | 2022: total |
+|---|---|---|---|---|
+| nearest candidate | −0.029 | −0.064 | +0.051 | −0.133 |
+| in proportion to the polls | +0.045 | −0.036 | +0.029 | −0.010 |
+| in proportion to their prior | +0.047 | −0.034 | +0.029 | −0.009 |
+| in proportion to the polls, no attachment cost | +0.066 | −0.016 | +0.091 | +0.053 |
+| **the real election** | | **−0.113** | | **+0.059** |
+
+<sub>Means over 300–800 behavioural draws per setting. Source:
+<a href="results/tables/empirical_delta_cenp_decomposition.csv"><code>empirical_delta_cenp_decomposition.csv</code></a>.</sub>
+
+**On track.** Switching consolidates the vote, as the mechanism intends. When voters start in proportion to the
+polls, 2002 ends more fragmented than 2022, the direction of the real contrast, and without an attachment cost 2022
+lands close to the real value (+0.053 against +0.059). One behavioural setting is used for both years, and
+nothing is fitted.
+
+**Not there yet.** Where voters start weighs more than what they do. Starting everyone at their nearest candidate
+spreads the vote across centrist minor candidates: Lassalle ends near 22% in 2022, against 3% in reality. So the
+totals mostly reflect the starting point, and no setting yet reproduces the real top two. The 2002 results also
+depend on six minor candidates whose positions had to be imputed.
+
+## Next steps
+
+<details>
+<summary><strong>1 · Electoral data for the setup</strong></summary>
+
+<br>
+
+The model's inputs now come from surveys, but three gaps remain, and each one touches the results:
+
+* **Six minor 2002 candidates have no measured position** (Besancenot, Taubira, Lepage, Saint-Josse, Boutin,
+  Mégret). They took 16% of the vote, and moving them by one point changes the 2002 switching rate by a quarter.
+  An expert or voter survey that places them would replace the current imputation.
+* **2002 placements come from a survey taken after the election**, when Le Pen's qualification may have shaped
+  how people saw the candidates. A pre-election source, such as the first wave of the 2002 French Electoral Panel,
+  would match the moment the model describes.
+* **In 2022, voters and candidates come from two different surveys.** A single survey with both self-placement
+  and candidate placement would put them on exactly the same scale.
+
+Details: [`data/cses/README.md`](data/cses/README.md).
+
+</details>
+
+<details>
+<summary><strong>2 · A smooth switching condition</strong></summary>
+
+<br>
+
+Today the trigger is all or nothing: a voter considers switching only when none of their tolerable candidates is
+among the two they expect in the runoff. One step inside that line and they may switch; one step outside and they
+never do. Small changes in polls or tolerance can therefore flip many voters at once.
+
+The next version replaces the line with a gradient: the pull to switch grows with how unlikely the voter's
+tolerable candidates are to qualify. Voters near the edge become partly tempted instead of all-in or all-out. The
+aim is a mechanism that responds in proportion to the polls, with the current rule kept as a special case to
+compare against.
+
+</details>
 
 ## Quick start
 
@@ -99,23 +190,24 @@ Full record: [docs/validation.md](docs/validation.md).
 <details>
 <summary><strong>Repository layout</strong></summary>
 
-```
-core_model/              the model: agents, iteration loop, signals, metrics (pip install -e .)
-analysis/
-  synthetic/             Sobol sensitivity, protocol validation, robustness panels
-  empirical/             2002/2022 replay, behavioural sweeps, diagnostics
-data/                    candidates, polls, results and voter ideology for 2002 and 2022
-results/tables/          22 compact CSVs: the citable numbers
-tests/                   the test suite
-tools/                   pipeline driver, output validator, evidence archiver
-demo/precompute.py       runs the model over the page's grid -> docs/data/grid.json
-docs/
-  index.html             the interactive page (GitHub Pages)
-  *.md                   the detailed documentation
-```
+<br>
+
+Every folder has a short guide.
+
+| Folder | What is in it |
+|---|---|
+| [`core_model/`](core_model/README.md) | The model: voters, candidates, polls, one iteration, the metrics. The only installed package. |
+| [`analysis/`](analysis/README.md) | The experiments: synthetic (which parameters matter) and empirical (France 2002 and 2022). |
+| [`data/`](data/README.md) | Inputs for 2002 and 2022: candidate positions, electorates, polls, results, and where each comes from. |
+| [`results/`](results/README.md) | 23 small tables holding every number the analysis cites. |
+| [`tests/`](tests/README.md) | The test suite, run on every push. |
+| [`tools/`](tools/README.md) | Building the inputs, running the full pipeline, checking and archiving its outputs. |
+| [`demo/`](demo/README.md) | Computes the data behind the interactive page. |
+| [`docs/`](docs/README.md) | The interactive page, and the detailed reference behind it. |
+| [`illustration_figures/`](illustration_figures/README.md) | Explanatory figures: electorates, polls, preferences, outcome measures. |
 
 Raw simulation output and figures are git-ignored on purpose: they are bulky and regenerate from a seed. Only the
-derived tables are committed. See [analysis/README.md](analysis/README.md) for which script needs which.
+derived tables are committed.
 
 </details>
 
@@ -131,7 +223,7 @@ derived tables are committed. See [analysis/README.md](analysis/README.md) for w
 | **[Experiments](docs/experiments.md)** | Parameter spaces, seeds, simulation counts, data provenance. |
 | **[Reproducibility](docs/reproducibility.md)** | Install, run, regenerate, verify. |
 | **[Code map](docs/code_map.md)** | Repository architecture, and which definitions are canonical. |
-| **[Result tables](results/README.md)** | All 22 tables: contents, generating script, inputs, regeneration command. |
+| **[Result tables](results/README.md)** | All 23 tables: contents, generating script, inputs, regeneration command. |
 
 </details>
 

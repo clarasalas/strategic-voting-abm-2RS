@@ -554,7 +554,7 @@ PY
 > variants and the diagnostics, which were never overwritten.
 
 **3 · Produce the proposed fiche updates.** Work from
-`docs/documentation_plan.md`, which marks every section ready / partial /
+`docs/notes/documentation_plan.md`, which marks every section ready / partial /
 blocked. Draft the changes and the change log **without publishing**. The
 current fiche is snapshotted at
 `data/archive/pre_rerun_2026-08-21/fiche/fiche_technique_pre_rerun_2026-08-21.html`.

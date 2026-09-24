@@ -137,7 +137,7 @@ Unattended driver: writes `run_metadata.json` (commit, host, PID, planned
 outputs), a master log, per-stage logs, a PID file, and a `COMPLETE` or `FAILED`
 marker. Uses `caffeinate` on macOS. Expect about 4 hours and 14 000 simulations.
 Full operating instructions for monitoring, recovery and verification are in
-[`local_rerun_runbook.md`](local_rerun_runbook.md), and the most recent
+[`local_rerun_runbook.md`](notes/local_rerun_runbook.md), and the most recent
 execution is recorded in the
 [empirical rerun record](reports/empirical_rerun_2026-08-21.md).
 
@@ -211,7 +211,7 @@ python -m pytest -ra | tail -3
 ```
 
 The full twelve-check verification block is in
-[`local_rerun_runbook.md`](local_rerun_runbook.md#4-verifying-successful-completion).
+[`local_rerun_runbook.md`](notes/local_rerun_runbook.md#4-verifying-successful-completion).
 
 ---
 

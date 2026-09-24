@@ -516,7 +516,10 @@ python -m pytest -ra</code></pre>
     <div class="dlg-body">
       <h3>Data</h3>
       <ul>
-        <li><b>Polls and voter ideology:</b> Ipsos pre- and post-election surveys, 2002 and 2022.</li>
+        <li><b>Polls:</b> the French Wikipedia lists of polls, at fixed revisions.</li>
+        <li><b>Voters:</b> left-right self-placement in the CSES surveys, 2002 and 2022.</li>
+        <li><b>Candidates:</b> where respondents placed them: CSES 2002, and the Ipsos–CEVIPOF
+            Enquête électorale 2022, wave 9. Six minor 2002 candidates are imputed.</li>
         <li><b>Results:</b> Ministère de l'Intérieur.</li>
       </ul>
       <h3>What the model leaves out</h3>
@@ -524,10 +527,10 @@ python -m pytest -ra</code></pre>
          and no candidate entering or leaving the race. Every voter sees the same poll; there is no
          private information.</p>
       <h3>Where it stands</h3>
-      <p>The empirical replay was re-run in full (14 000 simulations) on 2026-08-21, after a
-         tolerance-unit defect was found and corrected. The analysis is in progress toward an
-         article and the mechanism is under revision, so the repository makes no claims about what
-         the model shows.</p>
+      <p>The empirical replay was re-run in full (14 200 simulations) on 2026-09-24, on
+         survey-based candidate positions and electorates and on polls rebuilt from fixed sources.
+         The analysis is in progress toward an article and the mechanism is under revision; the
+         repository's README gives the preliminary results and the next steps.</p>
       <p class="dlg-foot">Data provenance:
         <a href="https://github.com/clarasalas/strategic-voting-abm-2RS/blob/main/docs/experiments.md#data-sources">docs/experiments.md#data-sources</a></p>
     </div>

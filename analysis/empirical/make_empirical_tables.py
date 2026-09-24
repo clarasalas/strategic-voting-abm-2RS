@@ -25,6 +25,7 @@ Writes (results/tables/, all committed)
     empirical_replay_summary.csv       empirical_year_contrast.csv
     empirical_robustness_summary.csv   empirical_candidate_fit.csv
     empirical_activation_summary.csv   behavioral_sweep_quantiles.csv
+    empirical_delta_cenp_decomposition.csv
 
 Verified by tools/check_tables_reproduce.py, which re-runs this script and
 fails if any committed table changes.
@@ -297,6 +298,52 @@ def candidate_fit() -> pd.DataFrame:
 
 
 # --------------------------------------------------------------------------- #
+# 7. ΔCENP against the opening poll, split into its two parts
+# --------------------------------------------------------------------------- #
+def delta_cenp_decomposition() -> pd.DataFrame:
+    """
+    CENP(final) − CENP(s⁰), the quantity compared with the observed election,
+    as the sum of two parts:
+
+        start_gap = CENP(sincere) − CENP(s⁰)   the model's own sincere vote
+                                               against the opening poll
+        strategic = CENP(final) − CENP(sincere) what switching does; this is
+                                               the replay's own delta_cenp
+
+    Means over draws, one row per specification and year, next to the observed
+    CENP(result) − CENP(s⁰).  A negative total can come from either part, and
+    only the second is the strategic mechanism.
+    """
+    targets = _read(DATA / "behavioral_targets.csv").set_index("year")
+    rows = []
+    for spec, infix in SPECS.items():
+        for year in YEARS:
+            df = _read(DATA / f"empirical_runs{infix}_{year}.csv")
+            K = K_BY_YEAR[year]
+            c_sincere = (K - df["enp_sincere"]) / (K - 1)
+            c_final = (K - df["enp_final"]) / (K - 1)
+            c_s0 = targets.loc[year, "cenp_s0"]
+            rows.append({
+                "specification": spec,
+                "year": year,
+                "K": K,
+                "n_draws": len(df),
+                "cenp_s0": c_s0,
+                "cenp_sincere_mean": c_sincere.mean(),
+                "cenp_final_mean": c_final.mean(),
+                "start_gap": (c_sincere - c_s0).mean(),
+                "strategic": df["delta_cenp"].mean(),
+                "total_vs_s0": (c_final - c_s0).mean(),
+                "observed_vs_s0": targets.loc[year, "delta_cenp_real"],
+                "switching_rate_mean": df["switching_rate"].mean(),
+            })
+    out = pd.DataFrame(rows)
+    # the parts must add up, and the strategic part must be the replay's own
+    assert np.allclose(out["start_gap"] + out["strategic"], out["total_vs_s0"], atol=1e-12)
+    return out.sort_values(["specification", "year"]).reset_index(drop=True)
+
+
+# --------------------------------------------------------------------------- #
 TABLES = {
     "empirical_replay_summary.csv": replay_summary,
     "empirical_robustness_summary.csv": robustness_summary,
@@ -304,6 +351,7 @@ TABLES = {
     "behavioral_sweep_quantiles.csv": sweep_quantiles,
     "empirical_year_contrast.csv": year_contrast,
     "empirical_candidate_fit.csv": candidate_fit,
+    "empirical_delta_cenp_decomposition.csv": delta_cenp_decomposition,
 }
 
 

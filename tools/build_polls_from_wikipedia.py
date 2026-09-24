@@ -46,6 +46,9 @@ Output columns: source, date (last fieldwork day, dd/mm/yyyy), fieldwork (as
 published), rolling, below_threshold, then one column per modelled party in
 the page's order.
 
+Rebuilding needs beautifulsoup4 and lxml, which the model does not:
+    pip install beautifulsoup4 lxml
+
 Usage
 -----
     python tools/build_polls_from_wikipedia.py            # refuses to overwrite
@@ -63,7 +66,6 @@ import urllib.request
 from pathlib import Path
 
 import pandas as pd
-from bs4 import BeautifulSoup
 
 REPO = Path(__file__).resolve().parent.parent
 DATA = REPO / "data"
@@ -154,6 +156,10 @@ def section_table(soup, heading_id: str):
 
 
 def build(year: int, offline: bool) -> pd.DataFrame:
+    # Imported here, not at the top: only rebuilding needs them, and the tests
+    # import this module for its parsing rules without them installed.
+    from bs4 import BeautifulSoup
+
     spec = SOURCES[year]
     soup = BeautifulSoup(fetch(year, offline), "lxml")
     modelled = pd.read_csv(DATA / f"party_positions_{year}.csv", dtype=str)["party"].tolist()

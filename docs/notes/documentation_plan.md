@@ -112,7 +112,7 @@ close rankings.
 
 ### 2.6 Reproducibility (ready)
   Python version, `requirements.txt`, seeds, the exact commands
-  (`docs/rerun_manifest.md`), CI status, and the archive's SHA-256 manifest.
+  (`docs/notes/rerun_manifest.md`), CI status, and the archive's SHA-256 manifest.
   Note honestly that the LHS importance table is reproducible to ~1e-16 but not
   byte-identical: joblib's parallel reduction order is not fixed, so the last
   bit of a double moves between runs while rankings do not.

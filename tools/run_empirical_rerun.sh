@@ -2,7 +2,7 @@
 #
 # run_empirical_rerun.sh -- the corrected empirical rerun, start to finish.
 #
-# Implements docs/rerun_manifest.md.  Runs unattended: every step is logged,
+# Implements docs/notes/rerun_manifest.md.  Runs unattended: every step is logged,
 # every stage is validated before the stages that depend on it, and any failure
 # stops the pipeline rather than letting downstream steps run on bad input.
 #
@@ -88,7 +88,7 @@ cat > "$LOGDIR/run_metadata.json" <<META
   "run_name":      "$RUN_NAME",
   "smoke":         $([ "$SMOKE" = "1" ] && echo true || echo false),
   "dirty_tree":    $([ -n "$(git status --porcelain --untracked-files=no)" ] && echo true || echo false),
-  "manifest":      "docs/rerun_manifest.md",
+  "manifest":      "docs/notes/rerun_manifest.md",
   "archive":       "$ARCHIVE",
   "inputs_sha256": "logs/$RUN_NAME/inputs.sha256",
   "seeds":         {"replay_master": 20020422, "sweep": 20020422, "lhs_importance": 42},

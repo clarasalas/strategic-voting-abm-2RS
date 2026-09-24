@@ -1,7 +1,7 @@
 """
 test_deferred_duplicates.py
 ---------------------------
-Pins for the duplicated definitions that docs/analysis_map.md defers until
+Pins for the duplicated definitions that docs/notes/analysis_map.md defers until
 after the corrected empirical reruns.
 
 The consolidations are deliberately NOT done here. The point of these tests is
@@ -15,7 +15,7 @@ iteration-0 sincere shares; metrics.delta_cenp measures it against whatever
 baseline it is handed, and the behavioural sweep hands it the exogenous opening
 poll s0. They are different scientific quantities that happen to share a name,
 and asserting they are equal would be asserting something false and destroying
-the comparison behavioral_targets depends on. See docs/analysis_map.md C1.
+the comparison behavioral_targets depends on. See docs/notes/analysis_map.md C1.
 
 (tests/test_metrics.py::test_delta_cenp_agrees_across_implementations is a
 different check and is fine: it hands the SAME pair to both and asserts the

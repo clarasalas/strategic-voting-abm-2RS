@@ -164,7 +164,7 @@ The per-run formula depends only on `(seed, draw, repeat)`, which is what makes
 
 | Path | Committed? | Contents |
 |---|---|---|
-| `results/tables/` | ✅ yes, 22 CSVs (7 new in this branch) | compact derived tables, the citable artefacts |
+| `results/tables/` | ✅ yes, 23 CSVs | compact derived tables, the citable artefacts |
 | `data/*.csv` (inputs) | ✅ yes | real election data, party positions, polls |
 | `data/saltelli_results_K*.csv` | ✅ yes | raw Sobol matrices, so indices regenerate |
 | `data/empirical_*`, `data/behavioral_*` | ❌ ignored | raw simulation output, bulky and regenerable |
@@ -322,7 +322,7 @@ largely inert. See [Tolerance](model.md#tolerance-the-two-units).
 The full record, covering protocol, validation status, generated outputs and
 known limitations, is in **[Empirical rerun record,
 2026-08-21](reports/empirical_rerun_2026-08-21.md)**. Operating instructions are
-in [`local_rerun_runbook.md`](local_rerun_runbook.md).
+in [`local_rerun_runbook.md`](notes/local_rerun_runbook.md).
 
 ---
 

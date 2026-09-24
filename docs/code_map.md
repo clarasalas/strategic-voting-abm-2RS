@@ -39,7 +39,7 @@ strategic-voting-abm-2RS/
 │       └── make_empirical_tables.py the 6 committed empirical tables
 │
 ├── tests/                 21 files, 577 tests, no skips
-├── results/tables/        22 compact CSVs, the citable artefacts
+├── results/tables/        23 compact CSVs, the citable artefacts
 ├── data/                  real inputs (committed) + raw output (ignored)
 ├── docs/                  this guide
 └── tools/                 operational scripts, not analysis
@@ -92,9 +92,9 @@ table regenerates without simulation. Everything the model *writes* is ignored.
 
 ### `docs/`
 
-This guide, plus the operational records: [`rerun_manifest.md`](rerun_manifest.md),
-[`local_rerun_runbook.md`](local_rerun_runbook.md),
-[`analysis_map.md`](analysis_map.md), and dated run records under
+This guide, plus the operational records: [`rerun_manifest.md`](notes/rerun_manifest.md),
+[`local_rerun_runbook.md`](notes/local_rerun_runbook.md),
+[`analysis_map.md`](notes/analysis_map.md), and dated run records under
 [`docs/reports/`](reports/empirical_rerun_2026-08-21.md).
 
 ### `tools/`
@@ -158,7 +158,7 @@ at [`empirical_2002_2022.py:511`](../analysis/empirical/empirical_2002_2022.py).
 ## Deferred consolidations
 
 Identified by the pre-rerun audit and left alone until the numerical results were
-safely regenerated. Full reasoning in [`analysis_map.md`](analysis_map.md).
+safely regenerated. Full reasoning in [`analysis_map.md`](notes/analysis_map.md).
 
 | | Item | Action |
 |---|---|---|

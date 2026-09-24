@@ -9,6 +9,7 @@
 - [Simulation counts](#simulation-counts)
 - [Figures](#figures)
 - [Data sources](#data-sources)
+- [The 2026-09-24 rerun](#the-2026-09-24-rerun-on-survey-inputs)
 - [The 2026-08-21 rerun](#the-2026-08-21-empirical-rerun)
 
 ---
@@ -287,6 +288,13 @@ two second-round finalists (abstention, blank, and null votes excluded).
 | 2022 | Ipsos / Sopra Steria post-election survey, 21-23 April 2022, *n* = 4 000, combining survey data with transfer analysis across 500 polling stations | Available for six electorates only: Mélenchon, Jadot, Macron, Pécresse, Le Pen, Zemmour |
 
 ---
+
+## The 2026-09-24 rerun on survey inputs
+
+The current empirical outputs come from this run: survey-based positions and electorates, polls
+rebuilt from fixed Wikipedia revisions, four robustness variants; 14,200 simulations, 33 / 33
+stages OK, 648 tests passed. Record: **[Empirical rerun record,
+2026-09-24](reports/empirical_rerun_2026-09-24.md)**.
 
 ## The 2026-08-21 empirical rerun
 

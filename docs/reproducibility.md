@@ -130,16 +130,21 @@ python analysis/empirical/behavioral_sweep.py --year 2002 --n_draws 1000 --n_rep
 ### The whole empirical pipeline
 
 ```bash
-bash tools/run_empirical_rerun.sh
+tools/archive_pre_rerun.sh <archive-name> "" <note.md>
+RUN_NAME=<run-name> RERUN_ARCHIVE=data/archive/<archive-name> \
+  caffeinate -i nohup tools/run_empirical_rerun.sh > /dev/null 2>&1 &
 ```
 
-Unattended driver: writes `run_metadata.json` (commit, host, PID, planned
-outputs), a master log, per-stage logs, a PID file, and a `COMPLETE` or `FAILED`
-marker. Uses `caffeinate` on macOS. Expect about 4 hours and 14 000 simulations.
-Full operating instructions for monitoring, recovery and verification are in
-[`local_rerun_runbook.md`](notes/local_rerun_runbook.md), and the most recent
-execution is recorded in the
-[empirical rerun record](reports/empirical_rerun_2026-08-21.md).
+Unattended driver. It refuses to start without an archive of the current
+outputs, and refuses to reuse a run name. It writes `logs/<run-name>/`: the run
+metadata (commit, settings, seeds), the hashes of every input, a master log,
+per-stage logs, a PID file, and a `COMPLETE` or `FAILED` marker. The last run
+was 14 200 simulations in about 2 h 30. `RERUN_SMOKE=1` runs the same commands
+at a few draws each, for a separate worktree. How to run and check it:
+[`tools/README.md`](../tools/README.md); the most recent execution is recorded in
+the [empirical rerun record](reports/empirical_rerun_2026-09-24.md). The August
+2026 runbook, [`local_rerun_runbook.md`](notes/local_rerun_runbook.md), has more
+on monitoring and recovery.
 
 ---
 

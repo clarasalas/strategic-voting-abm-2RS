@@ -122,15 +122,20 @@ The per-run formula depends only on `(seed, draw, repeat)`, which is what makes
 
 ## Simulation counts
 
-### Empirical rerun (2026-08-21)
+### Empirical rerun (2026-09-24)
 
 | Stage | Runs | Wall time |
 |---|---|---|
-| Replay, `nearest` (300 draws × 2 years + robustness) | 1 200 | ~30 min |
-| Replay, 3 probabilistic variants (800 × 2 each) | 4 800 | ~39 min |
-| Behavioural sweeps (1 000 × 4 × 2 years) | 8 000 | ~2 h 57 |
-| Downstream tables and figures | 0 | ~3 min |
-| **Total** | **14 000** | **4 h 07** |
+| Replay, `nearest` (300 draws × 2 years + 100 × 4 robustness variants × 2 years) | 1 400 | 11 min 40 |
+| Replay, 3 probabilistic variants (800 × 2 each) | 4 800 | 20 min 21 |
+| Behavioural sweeps (1 000 × 4 × 2 years) | 8 000 | 1 h 58 |
+| Downstream tables, figures, tests | 0 | ~1 min 30 |
+| **Total** | **14 200** | **2 h 32** |
+
+The 2026-08-21 run did 14 000 (three robustness variants) in 4 h 07. Every
+stage of the later run passed its row-count checks, so no work was skipped; the
+reason for the difference in speed was not measured. Record:
+[2026-09-24](reports/empirical_rerun_2026-09-24.md).
 
 ### Synthetic
 

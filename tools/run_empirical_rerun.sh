@@ -250,6 +250,12 @@ run 04d_diag_prob_signal_mu0 \
 run 05_figures \
     python3 analysis/empirical/empirical_figures.py
 
+# The observed poll->result targets.  They depend only on the polls and the
+# results, but they are regenerated here rather than trusted from an earlier
+# run, so the stages below never read a file this run did not write.
+run 06_targets \
+    python3 analysis/empirical/behavioral_targets.py
+
 run 06a_compare \
     python3 analysis/empirical/behavioral_compare.py
 run 06b_sweep_figure \

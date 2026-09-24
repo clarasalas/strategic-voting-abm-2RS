@@ -108,10 +108,12 @@ These describe how well the line fits the candidates it was fitted on. They are 
 validation of the imputed values: no imputed candidate has a survey value to check against. Two of
 the 2002 anchors (LO, MDC) have LLM-coded previous positions; the rest are CHES.
 
-The LLM-coded positions (`llm_coded` in `data/previous_inputs/`) were produced with a
-language model and checked against the order of parties in reports and party websites. **Still to
-document:** the model, the prompt, the date, and the checks. They enter the main specification
-only through the bridge, for five 2002 candidates.
+The LLM-coded positions (`llm_coded` in `data/previous_inputs/`) were assigned with the help of a
+language model and checked against the usual ordering of the parties in reports and on party
+websites. The procedure (model, prompt, date) was not recorded. In the main specification they
+enter only through the bridge, for five minor 2002 candidates (LCR, CAP21, CPNT, FRS, MNR), and are
+treated as assumptions: the `perturbed_imputed_positions` robustness variant measures how much the
+results depend on them.
 
 ## Robustness and comparison
 

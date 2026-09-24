@@ -160,7 +160,12 @@ match it.
 
 <br>
 
-* **Polls and voter ideology**: Ipsos pre- and post-election surveys, 2002 and 2022.
+* **Polls**: the French Wikipedia lists of polls, at fixed revisions for
+  [2002](https://fr.wikipedia.org/w/index.php?oldid=236399441) and
+  [2022](https://fr.wikipedia.org/w/index.php?oldid=235575713), extracted by `tools/build_polls_from_wikipedia.py`.
+* **Voter ideology**: left-right self-placement in the CSES, Module 2 (France 2002) and Module 6 (France 2022).
+* **Candidate positions**: respondents' placements of the candidates: CSES 2002, and the Ipsos–CEVIPOF
+  Enquête électorale 2022, wave 9. Six minor 2002 candidates are imputed.
 * **Election results**: Ministère de l'Intérieur.
 
 Provenance and processing: [docs/experiments.md → Data sources](docs/experiments.md#data-sources).

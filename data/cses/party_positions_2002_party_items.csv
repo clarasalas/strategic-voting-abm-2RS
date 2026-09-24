@@ -1,0 +1,16 @@
+election_year,party,left_right_position,position_source,block
+2002,LO,"1,675134024",cses_party_placement,far_left
+2002,LCR,"1,632283096",imputed_bridge_from_llm_coded,far_left
+2002,PCF,"2,027191509",cses_party_placement,left
+2002,PS,"3,806816727",cses_party_placement,left
+2002,PRG,"4,06726329",imputed_bridge_from_CHES,left
+2002,LV,"3,673384238",cses_party_placement,left
+2002,MDC,"4,755383581",cses_party_placement,left
+2002,CAP21,"5,218041602",imputed_bridge_from_llm_coded,center
+2002,CPNT,"7,136005454",imputed_bridge_from_llm_coded,right
+2002,UDF,"6,517702431",cses_party_placement,center
+2002,DL,"5,884326737",cses_party_placement,right
+2002,RPR,"6,985027795",cses_party_placement,right
+2002,FRS,"7,302784919",imputed_bridge_from_llm_coded,right
+2002,FN,"9,68608763",cses_party_placement,far_right
+2002,MNR,"9,220748771",imputed_bridge_from_llm_coded,far_right

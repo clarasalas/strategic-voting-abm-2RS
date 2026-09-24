@@ -198,7 +198,22 @@ def main():
                          "pipeline without a full run")
     ap.add_argument("--force", action="store_true",
                     help="allow overwriting an existing output file")
+    ap.add_argument("--preset-only", action="store_true",
+                    help="recompute only the France 2022 preset (one run) and "
+                         "rewrite it into the existing file; needed after the "
+                         "empirical inputs change, when the grid does not")
     args = ap.parse_args()
+
+    if args.preset_only:
+        out = args.out or (REPO / "docs" / "data" / "grid.json")
+        if not args.force:
+            sys.exit(f"--preset-only rewrites {out}; pass --force.")
+        payload = json.loads(out.read_text())
+        payload["preset_2022"] = preset_2022()
+        payload["meta"]["preset_2022_git"] = git_commit()
+        out.write_text(json.dumps(payload, separators=(",", ":")))
+        print(f"rewrote preset_2022 in {out.relative_to(REPO)}")
+        return
 
     c_vals, tau_vals, mu_vals = C_VALUES, TAU_VALUES, MU_VALUES
     if args.smoke:

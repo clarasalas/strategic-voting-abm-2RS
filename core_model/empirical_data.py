@@ -10,7 +10,7 @@ into the arrays the ABM consumes through the empirical-override kwargs of
     - party positions  : rescaled from the raw [0, 10] left-right scale to the
                          model's [-1, 1] ideological space, ordered left->right.
     - voter positions  : N samples drawn from the empirical ideology histogram
-                         (already on [-1, 1]).
+                         (raw 0-10 or 1-10 bins, mapped to [-1, 1]).
     - signal timeline  : a chronological list of normalised poll-share vectors
                          (weekly means by default; individual polls optionally).
 
@@ -56,6 +56,25 @@ def rescale_position(raw: float) -> float:
     return float(raw) / 5.0 - 1.0
 
 
+# ``position_source`` values that are a measurement of the candidate: an expert
+# survey or respondents' placements.  Every other source (LLM coding, the
+# ``imputed_bridge_from_*`` values) is an imputation, and the robustness run
+# perturbs exactly those.
+# Listing the measured ones, rather than the imputed ones, means a new or
+# misspelled source is treated as imputed: it gets perturbed, not trusted.
+MEASURED_SOURCES = frozenset({
+    "CHES",
+    "cses_party_placement",
+    "cses_candidate_placement",
+    "ipsos_candidate_placement",
+})
+
+
+def imputed_mask(sources) -> np.ndarray:
+    """True for every position whose source is not in ``MEASURED_SOURCES``."""
+    return np.array([s not in MEASURED_SOURCES for s in sources], dtype=bool)
+
+
 # =========================================================================== #
 #  PARTY POSITIONS                                                             #
 # =========================================================================== #
@@ -70,6 +89,7 @@ def load_party_positions(year: int, data_dir: Path = DATA_DIR) -> pd.DataFrame:
     DataFrame with columns:
         party     : str
         block     : str
+        source    : str    -- position_source (see MEASURED_SOURCES)
         raw       : float  -- original [0, 10] position
         position  : float  -- rescaled [-1, 1] position
     indexed 0..K-1 in left-to-right order.
@@ -78,8 +98,8 @@ def load_party_positions(year: int, data_dir: Path = DATA_DIR) -> pd.DataFrame:
     df = pd.read_csv(path, dtype=str)
     df["raw"] = df["left_right_position"].map(_to_float)
     df["position"] = df["raw"].map(rescale_position)
-    df = df.rename(columns={"block": "block"})[
-        ["party", "block", "raw", "position"]
+    df = df.rename(columns={"position_source": "source"})[
+        ["party", "block", "source", "raw", "position"]
     ]
     df = df.sort_values("position", kind="stable").reset_index(drop=True)
     return df
@@ -114,20 +134,33 @@ def load_results(year: int, party_order: list,
 #  VOTER IDEOLOGY                                                              #
 # =========================================================================== #
 
-def _map_voter_scale(raw: np.ndarray, year: int) -> np.ndarray:
+# The raw scales a voter file may declare in its ``scale`` column, and the
+# map from each onto the model's [-1, 1] space.
+VOTER_SCALES = {
+    "0-10": (0, 10),     # CSES; Ipsos 2022
+    "1-10": (1, 10),     # the original 2002 file
+}
+
+
+def _map_voter_scale(raw: np.ndarray, scale: str, year: int) -> np.ndarray:
     """
     Map a raw voter ideology scale onto the model's [-1, 1] space.
 
-    The two voter files use different raw scales:
-        2002 : scale 1-10  ->  x = 2 * (scale - 1) / 9 - 1
-        2022 : scale 0-10  ->  x = scale / 5 - 1
+    ``scale`` is the value the file declares in its ``scale`` column: the map
+    is set by the file's metadata, never inferred from the values it happens
+    to contain.  A bin outside the declared range is an error.
+        "0-10"  ->  x = scale / 5 - 1
+        "1-10"  ->  x = 2 * (scale - 1) / 9 - 1
     """
+    if scale not in VOTER_SCALES:
+        raise ValueError(f"voters_ideology_{year}.csv declares scale {scale!r}; "
+                         f"known scales are {sorted(VOTER_SCALES)}.")
+    lo, hi = VOTER_SCALES[scale]
     raw = np.asarray(raw, dtype=float)
-    if year == 2002:
-        return 2.0 * (raw - 1.0) / 9.0 - 1.0
-    if year == 2022:
-        return raw / 5.0 - 1.0
-    raise ValueError(f"No voter-scale mapping defined for year {year}.")
+    if raw.min() < lo or raw.max() > hi:
+        raise ValueError(f"voters_ideology_{year}.csv: bins outside its declared "
+                         f"{scale} scale: {sorted(set(raw.tolist()))}")
+    return 2.0 * (raw - lo) / (hi - lo) - 1.0
 
 
 def load_voter_histogram(year: int,
@@ -135,13 +168,14 @@ def load_voter_histogram(year: int,
     """
     Load the empirical voter ideology histogram and map it to [-1, 1].
 
-    The files are raw-scale, with a year-specific ideology range:
-        voters_ideology_2002.csv : ideological_scale (1-10), share
-        voters_ideology_2022.csv : ideological_scale (0-10), share
+    The files are raw-scale, and each declares its own scale:
+        voters_ideology_{year}.csv : ideological_scale, share, scale
 
     Columns are read **positionally** to tolerate header naming:
         column 0 -> raw ideology bin centre (mapped to [-1, 1])
         column 1 -> share / frequency
+        column 2 -> the declared scale, one value for the whole file
+                    (a key of ``VOTER_SCALES``); required
     Shares are normalised to sum to 1.
 
     Returns
@@ -151,9 +185,15 @@ def load_voter_histogram(year: int,
     """
     path = data_dir / f"voters_ideology_{year}.csv"
     df = pd.read_csv(path, dtype=str)
+    if df.shape[1] < 3:
+        raise ValueError(f"{path.name}: no scale column; every voter file must "
+                         "declare its raw scale (see VOTER_SCALES).")
+    scales = set(df.iloc[:, 2].str.strip())
+    if len(scales) != 1:
+        raise ValueError(f"{path.name}: more than one declared scale: {sorted(scales)}")
     raw = df.iloc[:, 0].map(_to_float).to_numpy(dtype=float)
     share = df.iloc[:, 1].map(_to_float).to_numpy(dtype=float)
-    pos = _map_voter_scale(raw, year)
+    pos = _map_voter_scale(raw, scales.pop(), year)
     order = np.argsort(pos)
     pos, share = pos[order], share[order]
     share = share / share.sum()
@@ -266,7 +306,7 @@ def individual_signal_timeline(year: int, party_order: list,
 # =========================================================================== #
 
 def perturb_positions(positions: np.ndarray, size: float, rng,
-                      space: tuple = (-1.0, 1.0)) -> np.ndarray:
+                      space: tuple = (-1.0, 1.0), mask=None) -> np.ndarray:
     """
     Add an equal-magnitude uniform perturbation U[-size, size] to every party
     position, clipped to ``space``.
@@ -274,12 +314,18 @@ def perturb_positions(positions: np.ndarray, size: float, rng,
     ``size`` is on the model's [-1, 1] scale and should stay small (e.g. 0.05)
     so the broad left/centre/right bloc structure is preserved.
 
+    ``mask`` (bool, K) restricts the perturbation to the marked positions, e.g.
+    ``imputed_mask(bundle["sources"])``; the others are returned unchanged.
+    Noise is drawn for all K either way, so the draw does not depend on the mask.
+
     Returns
     -------
     np.ndarray (K,) perturbed positions.
     """
     positions = np.asarray(positions, dtype=float)
     noise = rng.uniform(-size, size, size=positions.shape)
+    if mask is not None:
+        noise = np.where(np.asarray(mask, dtype=bool), noise, 0.0)
     return np.clip(positions + noise, space[0], space[1])
 
 
@@ -304,6 +350,7 @@ def load_year(year: int, signal_mode: str = "weekly",
         K            : int
         parties      : list[str]            -- canonical left->right order
         blocks       : list[str]
+        sources      : list[str]            -- position_source per party
         positions    : np.ndarray (K,)      -- rescaled [-1, 1]
         positions_raw: np.ndarray (K,)      -- original [0, 10]
         results      : np.ndarray (K,)      -- actual R1 shares (sum 1)
@@ -325,6 +372,7 @@ def load_year(year: int, signal_mode: str = "weekly",
         "K": len(parties),
         "parties": parties,
         "blocks": pos_df["block"].tolist(),
+        "sources": pos_df["source"].tolist(),
         "positions": positions,
         "positions_raw": pos_df["raw"].to_numpy(dtype=float),
         "results": load_results(year, parties, data_dir),

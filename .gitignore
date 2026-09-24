@@ -247,3 +247,8 @@ analysis/synthetic/saltelli_sobol_*.csv
 # Rerun logs: per-run, bulky, regenerable.
 logs/
 docs/data/smoke.json
+
+# Downloaded third-party survey files (CSES).  Licensed for download from
+# cses.org, not for redistribution; tools/build_cses_inputs.py reads them in
+# place.  Only the derived CSVs in data/cses/ are committed.
+data/raw/

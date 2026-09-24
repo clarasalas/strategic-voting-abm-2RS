@@ -9,6 +9,7 @@
 - [Simulation counts](#simulation-counts)
 - [Figures](#figures)
 - [Data sources](#data-sources)
+- [The 2026-09-24 rerun](#the-2026-09-24-rerun-on-survey-inputs)
 - [The 2026-08-21 rerun](#the-2026-08-21-empirical-rerun)
 
 ---
@@ -22,7 +23,7 @@
 | n/a | Horizon / population validation | synthetic | `protocol_validation.py` | varies |
 | n/a | Stochastic-noise decomposition | synthetic | `protocol_posthoc.py` | post-hoc |
 | **D** | Empirical replay, 4 specifications | empirical | `empirical_2002_2022.py` | 6 000 |
-| **E** | Empirical robustness, 3 variants | empirical | `empirical_2002_2022.py` | 600 |
+| **E** | Empirical robustness, 4 variants | empirical | `empirical_2002_2022.py` | 800 |
 | **G** | Activation diagnostics | empirical | `empirical_diagnostics.py` | 0 (post-hoc) |
 | **H** | Behavioural ΔCENP sweep | empirical | `behavioral_sweep.py` | 8 000 |
 | **I** | 2002 vs 2022 significance test | empirical | `behavioral_compare.py` | 0 (post-hoc) |
@@ -80,8 +81,8 @@ sampled, 1 000 draws × 4 repeats per year.
 
 | Held fixed in empirical mode | Value |
 |---|---|
-| Party positions | real, coded on [−1, 1] |
-| Electorate | *N* = 2000 sampled from the real ideology histogram |
+| Party positions | survey placements of the real candidates (0–10), mapped to [−1, 1] |
+| Electorate | *N* = 2000 sampled from the survey self-placement histogram |
 | Signal timeline | real weekly-mean polls (exogenous) |
 | *K*<sub>runoff</sub> | 2 |
 | *T*<sub>max</sub> | length of the poll sequence |
@@ -228,6 +229,33 @@ locally, and do not treat anything in `figures/` as authoritative.
 
 ## Data sources
 
+### Model inputs
+
+| File | 2002 | 2022 |
+|---|---|---|
+| `polls_{year}.csv` | Wikipedia poll list, [revision 236399441](https://fr.wikipedia.org/w/index.php?oldid=236399441): sections *Avril* and *Mars*, 39 polls, 1 Mar–18 Apr | Wikipedia poll list, [revision 235575713](https://fr.wikipedia.org/w/index.php?oldid=235575713): section *Sondages réalisés après la publication de la liste officielle des candidats*, 81 polls, 8 Mar–8 Apr |
+| `voters_ideology_{year}.csv` | CSES Module 2 self-placement, weighted | CSES Module 6 self-placement |
+| `party_positions_{year}.csv` | CSES candidate placements, screened means; 6 imputed | Ipsos–CEVIPOF wave 9 means, all 12 |
+| `results_{year}.csv` | Ministère de l'Intérieur | Ministère de l'Intérieur |
+
+Positions and electorates: [`data/cses/README.md`](../data/cses/README.md) (construction,
+specifications, limitations), [`data/ipsos/README.md`](../data/ipsos/README.md), and, for the inputs
+they replaced, [`data/previous_inputs/README.md`](../data/previous_inputs/README.md).
+
+**Polls.** Both files are built by `tools/build_polls_from_wikipedia.py` from the fixed revisions
+above, which it caches and checks; rerunning it gives the same files. Each column is matched to a
+candidate by the party code in its header, never by position. The window is the one the page
+defines: in 2022, the polls after the official list of candidates (7 March); in 2002, the March and
+April tables. Candidates not in the model are dropped: Gluckstein (POI) in 2002, and Pasqua (RPF),
+who withdrew and appears in March polls only. Each poll is renormalised by the loader. Two 2002
+Ifop polls that did not offer every modelled candidate are dropped rather than given a 0
+(`data/polls_dropped.csv`). Four 2022 values published only as below a threshold ("<1 %") are set
+to half the threshold and flagged in `below_threshold`. `tests/test_polls.py` checks values by
+candidate name against the page.
+
+The hand-copied files these replaced had LO/NPA and EELV/PS swapped in every 2022 poll; they are
+kept in `data/previous_inputs/`, and every empirical result up to the 2026-08-21 run used them.
+
 ### `FR-electoral_data.csv`
 
 Party-level pre-electoral poll shares and first-round results for five French
@@ -260,6 +288,13 @@ two second-round finalists (abstention, blank, and null votes excluded).
 | 2022 | Ipsos / Sopra Steria post-election survey, 21-23 April 2022, *n* = 4 000, combining survey data with transfer analysis across 500 polling stations | Available for six electorates only: Mélenchon, Jadot, Macron, Pécresse, Le Pen, Zemmour |
 
 ---
+
+## The 2026-09-24 rerun on survey inputs
+
+The current empirical outputs come from this run: survey-based positions and electorates, polls
+rebuilt from fixed Wikipedia revisions, four robustness variants; 14,200 simulations, 33 / 33
+stages OK, 648 tests passed. Record: **[Empirical rerun record,
+2026-09-24](reports/empirical_rerun_2026-09-24.md)**.
 
 ## The 2026-08-21 empirical rerun
 

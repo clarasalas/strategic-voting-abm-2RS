@@ -47,7 +47,7 @@ Writes (to data/; <tag> is empty for the nearest specification)
     empirical_candidate_shares<tag>_<year>.csv  per-candidate aggregates
     empirical_candidate_draws<tag>_<year>.csv   per-draw x per-candidate table
                                                 (consumed by empirical_beta_bins)
-    empirical_robustness_<year>.csv             scalar metrics under 3
+    empirical_robustness_<year>.csv             scalar metrics under 4
                                                 robustness variants
     empirical_init_benchmarks_<year>.csv        the three attachment rules
                                                 compared on identical footing
@@ -82,7 +82,7 @@ sys.path.insert(0, str(REPO))
 
 from core_model.model import run_simulation
 from core_model.empirical_data import (
-    load_year, sample_voters, perturb_positions,
+    load_year, sample_voters, perturb_positions, imputed_mask,
     weekly_signal_timeline, individual_signal_timeline,
 )
 from core_model.empirical_outcomes import compute_run_outcomes, initialization_benchmarks
@@ -117,6 +117,13 @@ BETA_RANGE = (0.0, 20.0)   # ideological sharpness (probabilistic init only)
 
 # Position perturbation magnitude on the [-1, 1] scale (robustness).
 PERTURB_SIZE = 0.05
+
+# Perturbation of the IMPUTED positions only (LLM-coded, or placed by the
+# bridge; see core_model.empirical_data.MEASURED_SOURCES).  0.2 on [-1, 1] is
+# one point on the 0-10 survey scale: about twice the bridge's in-sample RMSE
+# (0.44-0.50 points) and above its largest in-sample residual in the main
+# specification (0.85; data/cses/bridge_fit.csv).
+PERTURB_IMPUTED_SIZE = 0.2
 
 # Main spec: stop after the empirical signal sequence (no holding).
 HOLD_LAST_SIGNAL = False
@@ -441,10 +448,13 @@ def run_main_experiment(n_draws: int = N_DRAWS, cfg: dict = None,
 def run_robustness(n_draws: int = N_DRAWS_ROBUST, out_dir: Path = None,
                    overwrite: bool = False) -> None:
     """
-    Three robustness variants, each applied to both years:
+    Four robustness variants, each applied to both years:
         individual_signals : every poll is its own signal (no weekly mean)
         perturbed_positions: equal-size jitter of party positions
         resampled_voters   : fresh voter sample per draw (different seed)
+        perturbed_imputed_positions:
+                             larger jitter of the positions that are not
+                             measured (LLM-coded or bridged), the others fixed
     """
     out_dir = Path(out_dir) if out_dir is not None else DATA_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -491,10 +501,20 @@ def run_robustness(n_draws: int = N_DRAWS_ROBUST, out_dir: Path = None,
             rows.append({"variant": "resampled_voters",
                          **_scalar_row(params, o3)})
 
+            # --- variant 4: perturbed imputed positions only ---
+            imp_rng = np.random.default_rng(draw_seed * 15485863 + year)
+            imp_pos = perturb_positions(bundle["positions"],
+                                        PERTURB_IMPUTED_SIZE, imp_rng,
+                                        mask=imputed_mask(bundle["sources"]))
+            o4 = run_single(params, imp_pos, voters, bundle["signals"],
+                            bundle["results"], bundle["parties"], draw_seed)
+            rows.append({"variant": "perturbed_imputed_positions",
+                         **_scalar_row(params, o4)})
+
         rob_path = out_dir / f"empirical_robustness_{year}.csv"
         pd.DataFrame(rows).to_csv(rob_path, index=False)
         print(f"[robustness] {year}: wrote {len(rows)} rows "
-              f"({n_draws} draws x 3 variants).")
+              f"({n_draws} draws x 4 variants).")
 
 
 # =========================================================================== #

@@ -24,7 +24,7 @@ DATA = ROOT / "data"
 # table -> (key columns, expected row count)
 SPEC = {
     "empirical_replay_summary.csv": (["specification", "year", "metric"], 112),
-    "empirical_robustness_summary.csv": (["variant", "year", "metric"], 84),
+    "empirical_robustness_summary.csv": (["variant", "year", "metric"], 112),
     "empirical_activation_summary.csv": (["specification", "year"], 8),
     "behavioral_sweep_quantiles.csv": (["year"], 2),
     "empirical_year_contrast.csv": (["specification", "metric"], 56),

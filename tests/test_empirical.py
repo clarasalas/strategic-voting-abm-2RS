@@ -87,6 +87,71 @@ def test_voter_sample_deterministic():
     assert np.array_equal(a, b)
 
 
+def test_voter_scale_is_set_by_the_declared_scale():
+    # 0-10 maps to [-1, 1] with 5 at the centre, whichever year the file is
+    for year in (2002, 2022):
+        np.testing.assert_allclose(
+            ed._map_voter_scale(np.arange(0, 11), "0-10", year),
+            np.arange(11) / 5 - 1)
+    out = ed._map_voter_scale(np.arange(1, 11), "1-10", 2002)
+    assert out[0] == -1.0 and out[-1] == 1.0
+    # the same values under a different declaration map differently: the
+    # declaration decides, not the values
+    np.testing.assert_allclose(ed._map_voter_scale(np.arange(1, 11), "0-10", 2002),
+                               np.arange(1, 11) / 5 - 1)
+
+
+def test_voter_scale_refuses_unknown_or_violated_declarations():
+    with pytest.raises(ValueError, match="known scales"):
+        ed._map_voter_scale(np.arange(0, 11), "0-100", 2002)
+    with pytest.raises(ValueError, match="outside"):
+        ed._map_voter_scale(np.arange(0, 11), "1-10", 2002)
+
+
+def test_voter_file_without_a_scale_column_is_refused(tmp_path):
+    (tmp_path / "voters_ideology_2002.csv").write_text(
+        'ideological_scale,share\n1,"0,5"\n10,"0,5"\n')
+    with pytest.raises(ValueError, match="no scale column"):
+        ed.load_voter_histogram(2002, data_dir=tmp_path)
+
+
+@pytest.mark.parametrize("year", YEARS)
+def test_committed_voter_files_declare_a_scale(year):
+    head = (ed.DATA_DIR / f"voters_ideology_{year}.csv").read_text().splitlines()[0]
+    assert head.split(",")[2] == "scale"
+
+
+# --------------------------------------------------------------------------- #
+#  Position sources and the imputed-position perturbation                     #
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.parametrize("year", YEARS)
+def test_bundle_carries_a_source_per_party(year):
+    bundle = ed.load_year(year)
+    assert len(bundle["sources"]) == bundle["K"]
+    assert all(isinstance(s, str) and s for s in bundle["sources"])
+
+
+def test_imputed_mask_trusts_only_listed_measurements():
+    mask = ed.imputed_mask(["CHES", "llm_coded", "cses_party_placement",
+                            "imputed_bridge_from_llm_coded", "Ches",
+                            "ipsos_candidate_placement", "cses_candidate_placement"])
+    # an unknown spelling counts as imputed, so it is perturbed, not trusted
+    assert mask.tolist() == [False, True, False, True, True, False, False]
+
+
+def test_masked_perturbation_moves_only_marked_positions():
+    pos = np.linspace(-0.9, 0.9, 6)
+    mask = np.array([True, False, False, True, False, True])
+    out = ed.perturb_positions(pos, 0.2, np.random.default_rng(0), mask=mask)
+    assert np.array_equal(out[~mask], pos[~mask])
+    assert np.all(out[mask] != pos[mask])
+    assert np.all(np.abs(out - pos) <= 0.2)
+    # the noise drawn does not depend on the mask
+    full = ed.perturb_positions(pos, 0.2, np.random.default_rng(0))
+    assert np.array_equal(out[mask], full[mask])
+
+
 # --------------------------------------------------------------------------- #
 #  model.py override backward-compatibility                                    #
 # --------------------------------------------------------------------------- #
@@ -318,7 +383,17 @@ def test_golden_synthetic_baseline():
     assert res["switching"]["strategic"] == 19
 
 
-def test_golden_empirical_probabilistic():
+def _previous_inputs_dir(tmp_path):
+    """data/ with the 2026-08-21 run's positions and electorates swapped back in."""
+    import shutil
+    for f in ed.DATA_DIR.glob("*.csv"):
+        shutil.copy(f, tmp_path / f.name)
+    for f in (ed.DATA_DIR / "previous_inputs").glob("*.csv"):
+        shutil.copy(f, tmp_path / f.name)
+    return tmp_path
+
+
+def test_golden_empirical_probabilistic(tmp_path):
     """
     Empirical 2022 replay under the main specification (probabilistic sincere
     initialization, salience = s^0), pinned.
@@ -336,8 +411,11 @@ def test_golden_empirical_probabilistic():
         r = run_simulation(... tau=tau_absolute(1.75, bundle["K"]) ...)
         print(r["sincere_shares"], r["final_shares"], r["switching"])
     """
-    bundle = ed.load_year(2022)
-    voters = ed.sample_voters(2022, 350, np.random.default_rng(8))
+    # Run on the frozen inputs of the 2026-08-21 run, not on data/: this pins
+    # the code, so it must not move when the empirical inputs are replaced.
+    frozen = _previous_inputs_dir(tmp_path)
+    bundle = ed.load_year(2022, data_dir=frozen)
+    voters = ed.sample_voters(2022, 350, np.random.default_rng(8), data_dir=frozen)
     res = run_simulation(
         K=bundle["K"], party_ids=bundle["parties"],
         party_positions_override=bundle["positions"],

@@ -20,8 +20,8 @@ standing property of the repository; CI is the continuous check.
 | | |
 |---|---|
 | **Command** | `python -m pytest -ra` |
-| **Result** | **570 passed, 0 skipped, 0 warnings** |
-| **Date** | 2026-08-22 |
+| **Result** | **653 passed, 0 skipped, 0 warnings** |
+| **Date** | 2026-09-25 |
 | **Platform** | Darwin 25.5.0, Python 3.11.7 |
 
 Run in two dependency environments, because the previous snapshot was taken in
@@ -29,8 +29,8 @@ only one and missed a defect that CI then caught:
 
 | Environment | numpy | pandas | Result |
 |---|---|---|---|
-| Development | 1.26.4 | 3.0.3 | 570 passed, 0 skipped, 0 warnings |
-| CI-matched | **2.4.6** | **3.0.5** | 570 passed, 0 skipped, 0 warnings |
+| Development | 1.26.4 | 3.0.3 | 653 passed, 0 skipped, 0 warnings |
+| CI-matched | **2.4.6** | **3.0.6** | 653 passed, 0 skipped, 0 warnings |
 
 Also run against a tracked-files-only checkout, with no git-ignored data present
 as on a fresh clone, in both environments, with the same result. No test depends
@@ -47,7 +47,7 @@ environments are the identifying facts. CI is the authoritative check.
 
 ### Test discovery
 
-`pytest.ini` sets `testpaths = tests`. All 20 `test_*.py` files in the
+`pytest.ini` sets `testpaths = tests`. All 24 `test_*.py` files in the
 repository are under `tests/`, and collection with and without the repository's
 `pytest.ini` returns the same test IDs, so the setting hides nothing.
 
@@ -442,7 +442,7 @@ decomposing variance.
 | **Implementation** | [`empirical_2002_2022.py`](../analysis/empirical/empirical_2002_2022.py) |
 | **Tests** | [`test_tau_absolute_output.py`](../tests/test_tau_absolute_output.py) (17), [`test_tau_units.py`](../tests/test_tau_units.py) (10), [`test_empirical_tables.py`](../tests/test_empirical_tables.py) (42), [`test_table_regeneration_check.py`](../tests/test_table_regeneration_check.py) (11) |
 | **Criterion** | `tau_absolute == tau_hat × 2/K` to 1e-12; year-specific ceilings (2002 ≤ 0.4, 2022 ≤ 0.5, inclusive); `tau_hat` unchanged. |
-| **Status** | ✅ passing; validated across all 14 output files of the 2026-08-21 rerun |
+| **Status** | ✅ passing; validated across all 14 output files of the 2026-09-24 rerun, as it was for the 2026-08-21 one |
 | **Evidence** | [`empirical_replay_summary.csv`](../results/tables/empirical_replay_summary.csv), [`empirical_activation_summary.csv`](../results/tables/empirical_activation_summary.csv) |
 
 Enforced at runtime as well, by
@@ -456,7 +456,7 @@ pre-fix `tau >= 2.0` warning appears zero times in the simulation logs.
 | **Question** | Does the replay depend on arbitrary setup choices, or on the positions that were imputed rather than measured? |
 | **Variants** | `individual_signals` (individual polls vs weekly means), `perturbed_positions` (±0.05 jitter), `resampled_voters` (different electorate draw), `perturbed_imputed_positions` (±0.2 jitter of LLM-coded or bridged positions only) |
 | **Design** | 100 draws × 4 variants × 2 years = 800 runs |
-| **Status** | ✅ complete for the first three (2026-08-21 rerun); `perturbed_imputed_positions` added afterwards, runs at the next rerun |
+| **Status** | ✅ complete, all four variants (2026-09-24 rerun) |
 | **Evidence** | [`empirical_robustness_summary.csv`](../results/tables/empirical_robustness_summary.csv) |
 
 ### 17 · Stochastic-noise analysis

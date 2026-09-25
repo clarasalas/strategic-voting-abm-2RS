@@ -1,174 +1,179 @@
-# Code map
+<h1 align="center">Code map</h1>
 
-[← Reproducibility](reproducibility.md) · **Code map** · [Docs index →](README.md)
+<p align="center">
+How the repository is laid out, and which definition wins when two seem to compute the same thing.
+</p>
 
----
+<p align="center"><sub>
+<a href="reproducibility.md">← Reproducibility</a> · <strong>Code map</strong> · <a href="README.md">Docs →</a>
+</sub></p>
 
-## Tree
+## The layout
+
+The model lives in one package, [`core_model/`](../core_model/README.md), which is the only folder that is installed.
+Everything else uses it. The synthetic and empirical experiments in [`analysis/`](../analysis/README.md) import the
+model and share nothing else, and [`tools/`](../tools/README.md) builds the inputs and runs the pipeline without
+computing any result itself.
 
 ```
 strategic-voting-abm-2RS/
-├── core_model/            the model itself: no analysis, no I/O of results
-│   ├── agents.py            Elector and Party; the decision rule
-│   ├── model.py             run_simulation(), the iteration loop
-│   ├── functions.py         electorate construction, coordination_measures
-│   ├── metrics.py           ENP, CENP, ΔCENP, tau_absolute   ← CANONICAL units
-│   ├── signals.py           temperature transform + Dirichlet draw
-│   ├── empirical_data.py    loaders for the real 2002/2022 bundles
-│   └── empirical_outcomes.py per-run outcome extraction, topk, benchmarks
+├── core_model/            the model: no experiment design, no result files, no command line
+│   ├── model.py             run_simulation(), the loop over rounds
+│   ├── agents.py            voters and candidates; the decision rule
+│   ├── environment.py       imagined electorates and candidate positions
+│   ├── signals.py           generated polls: temperature and noise
+│   ├── functions.py         electorate helpers, coordination_measures
+│   ├── metrics.py           ENP, CENP, tau_absolute   ← the only place units are converted
+│   ├── empirical_data.py    reads the real 2002 and 2022 inputs
+│   └── empirical_outcomes.py compares a replay with the real election
 │
 ├── analysis/
-│   ├── synthetic/         abstract-model experiments
-│   │   ├── parameter_space.py     the Saltelli PROBLEM  ← CANONICAL bounds
-│   │   ├── saltelli_sensitivity.py  Sobol indices (SALib)
-│   │   ├── robustness_checks.py     protocol panels A-G
-│   │   ├── protocol_validation.py   horizon + population validation
-│   │   ├── protocol_posthoc.py      seed-noise decomposition, BH correction
-│   │   └── main_results.py          synthetic headline figures
+│   ├── synthetic/         imagined electorates
+│   │   ├── parameter_space.py      the Saltelli design   ← the only place its ranges are declared
+│   │   ├── saltelli_sensitivity.py Sobol indices (SALib)
+│   │   ├── robustness_checks.py    protocol panels A–G
+│   │   ├── protocol_validation.py  enough rounds, enough voters
+│   │   ├── protocol_posthoc.py     seed noise, Benjamini–Hochberg correction
+│   │   └── main_results.py         synthetic headline figures
 │   │
-│   └── empirical/         real-election replay
-│       ├── empirical_2002_2022.py   the replay runner (4 specifications)
-│       ├── behavioral_sweep.py      1000-draw ΔCENP sweep, resumable
-│       ├── behavioral_targets.py    observed ΔCENP from real results
-│       ├── behavioral_compare.py    2002 vs 2022 significance tests
-│       ├── empirical_diagnostics.py activation diagnostics (post-hoc)
-│       ├── empirical_figures.py     replay figures
+│   └── empirical/         France 2002 and 2022
+│       ├── empirical_2002_2022.py  the replay (4 ways of starting)
+│       ├── behavioral_sweep.py     the 1 000-draw ΔCENP sweep, resumable
+│       ├── behavioral_targets.py   the real ΔCENP of each election
+│       ├── behavioral_compare.py   2002 against 2022, significance tests
+│       ├── empirical_diagnostics.py who is triggered, and who switches
+│       ├── empirical_figures.py    replay figures
 │       ├── behavioral_sweep_figure.py
-│       ├── empirical_beta_bins.py   β-bin candidate diagnostics
-│       ├── lhs_importance.py        RandomForest surrogate + permutation
+│       ├── empirical_beta_bins.py  candidate diagnostics by range of β
+│       ├── lhs_importance.py       RandomForest surrogate and permutation importance
 │       └── make_empirical_tables.py the 6 committed empirical tables
 │
-├── tests/                 21 files, 577 tests, no skips
-├── results/tables/        23 compact CSVs, the citable artefacts
-├── data/                  real inputs (committed) + raw output (ignored)
-├── docs/                  this guide
-└── tools/                 operational scripts, not analysis
-    ├── run_empirical_rerun.sh   unattended pipeline driver
-    ├── validate_rerun.py        per-file output validator
-    ├── check_tables_reproduce.py enforces that committed tables regenerate
-    └── archive_pre_rerun.sh     evidence snapshot + SHA-256 manifest
+├── data/                  real inputs (committed), raw output (ignored)
+├── results/tables/        23 small tables, the numbers to cite
+├── tests/                 24 files, 653 tests, no skips
+├── tools/                 building inputs, running and checking the pipeline
+├── demo/                  the data behind the interactive page
+├── illustration_figures/  figures that explain the model
+└── docs/                  the interactive page and these reference pages
 ```
 
----
+Each folder has its own short guide, listed in the [project README](../README.md).
 
-## Responsibilities
+<details>
+<summary><strong>What each folder is responsible for</strong></summary>
 
-### `core_model/`
+<br>
 
-The model, and nothing else. No experiment design, no result files, no CLI. Both
-analysis trees import from here and share nothing else.
+**`core_model/`** is the model and nothing else: no experiment design, no result files, no command line. It uses
+relative imports, and `pip install -e .` makes `from core_model.model import run_simulation` work from any folder.
 
-> Uses flat internal imports (`from agents import …`), so `core_model` must be
-> on `sys.path`. Every script in `analysis/` does
-> `sys.path.insert(0, str(REPO / "core_model"))`.
+**`analysis/synthetic/`** runs the experiments on imagined electorates, with generated polls: which parameters
+matter, and whether the protocol is sound. It produces the Sobol indices and the protocol panels.
 
-### `analysis/synthetic/`
+**`analysis/empirical/`** replays 2002 and 2022 with the real candidates, a real electorate and the real polls, and
+asks whether the rule reproduces the contrast between them.
 
-Experiments on the abstract model: which parameters matter, and is the protocol
-sound? Generated electorates and generated signals. Outputs the Sobol indices
-and the protocol panels.
+**`tests/`** is organized by what each test guarantees rather than by source file. See
+[Validation](validation.md#the-17-families-of-checks).
 
-### `analysis/empirical/`
+**`results/tables/`** holds the only committed derived output: small, deterministic and easy to compare line by
+line. Each table is described in [`results/README.md`](../results/README.md).
 
-Replay against the real 2002/2022 structure, with real positions, a real
-electorate, and exogenous real poll timelines. Answers whether the rule
-reproduces the observed contrast.
+**`data/`** holds the real inputs (`polls_*`, `results_*`, `party_positions_*`, `voters_ideology_*`, `FR-*`) and the
+raw Saltelli matrices, so that the Sobol table rebuilds without simulation. Everything the model *writes* there is
+git-ignored.
 
-### `tests/`
+**`tools/`** is operational rather than scientific. Nothing in it computes a result.
 
-See the [validation matrix](validation.md#validation-matrix). Organised by
-contract rather than by source file.
+**`docs/`** holds these pages, the interactive page, the dated [run records](reports/empirical_rerun_2026-09-24.md),
+and the [working notes](README.md#run-records) of the August 2026 run.
 
-### `results/tables/`
+</details>
 
-The only committed derived output: compact, deterministic and diff-readable.
-Documented in [`results/README.md`](../results/README.md).
+## One home for each definition
 
-### `data/`
+Where the same idea could be written in several places, exactly one is authoritative. When two files seem to compute
+the same thing, this table says which one wins.
 
-Real inputs are committed (`polls_*`, `results_*`, `party_positions_*`,
-`voters_ideology_*`, `FR-*`), along with the raw Saltelli matrices so the Sobol
-table regenerates without simulation. Everything the model *writes* is ignored.
-
-### `docs/`
-
-This guide, plus the operational records: [`rerun_manifest.md`](notes/rerun_manifest.md),
-[`local_rerun_runbook.md`](notes/local_rerun_runbook.md),
-[`analysis_map.md`](notes/analysis_map.md), and dated run records under
-[`docs/reports/`](reports/empirical_rerun_2026-08-21.md).
-
-### `tools/`
-
-Operational, not scientific. Nothing here computes a result.
-
----
-
-## Canonical definitions
-
-Where the same idea could live in several places, exactly one is authoritative.
-
-| Concept | Canonical home | Rule |
+| Concept | Where it lives | Rule |
 |---|---|---|
 | **τ̂ → τ conversion** | `core_model/metrics.py::tau_absolute` | The only place the conversion may happen. Callers convert once and record both values. |
-| **ENP / CENP** | `core_model/metrics.py` | |
-| **Saltelli bounds** | `analysis/synthetic/parameter_space.py::PROBLEM` | Never re-declare bounds by hand. |
-| **Swept predictors** | `lhs_importance.py::SWEPT_PREDICTORS` | An explicit allowlist per design, never auto-detection plus exclusions. Metadata columns can never become predictors. |
-| **Outcome extraction** | `core_model/empirical_outcomes.py` | |
-| **Observed ΔCENP targets** | `analysis/empirical/behavioral_targets.py` | |
+| **ENP and CENP** | `core_model/metrics.py` | |
+| **Saltelli ranges** | `analysis/synthetic/parameter_space.py::PROBLEM` | Never restate the ranges by hand. |
+| **Swept parameters** | `lhs_importance.py::SWEPT_PREDICTORS` | An explicit list for each design, rather than detecting columns and excluding some, so a metadata column can never become a predictor. |
+| **Outcomes of a replay** | `core_model/empirical_outcomes.py` | |
+| **Real ΔCENP of each election** | `analysis/empirical/behavioral_targets.py` | |
 
----
+## Look alike, but must stay separate
 
-## Intentionally separate: do not merge
+Some code looks duplicated and is not. Merging any of these would silently change results.
 
-These look like duplicates and are not.
+<details>
+<summary><strong>The two ΔCENP definitions</strong></summary>
 
-### The two ΔCENP definitions
+<br>
 
-| | Baseline |
+| | Starting point |
 |---|---|
-| `functions.coordination_measures(sincere, final)` | the model's own iteration-0 sincere shares |
-| `behavioral_sweep.py:199`, `cenp(final) − cenp(s⁰)` | the exogenous opening poll |
+| `functions.coordination_measures(sincere, final)` | the model's own sincere vote in round 0 |
+| [`behavioral_sweep.py:215`](../analysis/empirical/behavioral_sweep.py#L215), `cenp(final) − cenp(s⁰)` | the real opening poll |
 
-These are different quantities answering different questions, and only the
-second is comparable to observation. A contract test pins both against drift and
-deliberately does not assert they are equal.
+They are different quantities answering different questions, and only the second can be compared with the real
+election ([why](model.md#two-kinds-of-δcenp)). A contract test pins each against drift and does not assert that they
+are equal.
 
-### The two Latin-hypercube declarations
+</details>
 
-The *function* bodies are identical; the *dimension orders* are not:
+<details>
+<summary><strong>The two Latin-hypercube declarations</strong></summary>
+
+<br>
+
+The two functions are identical; the order of their dimensions is not.
 
 | Runner | Order |
 |---|---|
 | `empirical_2002_2022` | `tau_hat, rho_pi, alpha, [mu], [beta]` |
 | `behavioral_sweep` | `tau_hat, mu, alpha, rho_pi, beta` |
 
-> The LHS routine draws one dimension at a time from a shared generator, so the
-> order determines the design. Reordering the list changes every drawn value and
-> would silently invalidate the comparison the reruns exist to produce. The
-> function may be lifted; the orders must not move.
+The sampler draws one dimension at a time from a shared generator, so the order determines the design. Reordering the
+list would change every drawn value and silently invalidate the comparison the reruns exist to make. The function can
+be shared; the orders must not move.
 
-### `initialization_benchmarks` passing `tau=2.0`
+</details>
 
-A deliberate exception to the conversion rule, so every party is a contender and
-the three attachment rules are compared on identical footing. Commented as such
-at [`empirical_2002_2022.py:511`](../analysis/empirical/empirical_2002_2022.py).
+<details>
+<summary><strong><code>initialization_benchmarks</code> passing <code>tau=2.0</code></strong></summary>
 
----
+<br>
 
-## Deferred consolidations
+A deliberate exception to the conversion rule, so that every candidate is tolerable and the ways of choosing a
+favourite are compared on the same footing. It is commented as such at
+[`empirical_2002_2022.py:554`](../analysis/empirical/empirical_2002_2022.py#L554).
 
-Identified by the pre-rerun audit and left alone until the numerical results were
-safely regenerated. Full reasoning in [`analysis_map.md`](notes/analysis_map.md).
+</details>
+
+<details>
+<summary><strong>Merges left for later</strong></summary>
+
+<br>
+
+The audit before the August 2026 rerun found these, and they were left alone until the results had been safely
+regenerated. The reasoning is in [`analysis_map.md`](notes/analysis_map.md).
 
 | | Item | Action |
 |---|---|---|
-| A1 | LHS function | consolidate; keep both call orders, fingerprint first |
-| A2 | ENP/CENP duplicates | consolidate; equivalence already pinned |
-| A3 | Parameter ranges | consolidate |
-| B3 | Outcome extraction | consolidate |
-| B4 | Row builder | consolidate |
-| B5 | Binning helper | consolidate |
+| A1 | Latin-hypercube function | merge; keep both orders, fingerprint first |
+| A2 | Duplicated ENP and CENP | merge; their equivalence is already pinned |
+| A3 | Parameter ranges | merge |
+| B3 | Extraction of outcomes | merge |
+| B4 | Row builder | merge |
+| B5 | Binning helper | merge |
+
+</details>
 
 ---
 
-[← Reproducibility](reproducibility.md) · **Code map** · [Docs index →](README.md)
+<p align="center"><sub>
+<a href="reproducibility.md">← Reproducibility</a> · <strong>Code map</strong> · <a href="README.md">Docs →</a>
+</sub></p>

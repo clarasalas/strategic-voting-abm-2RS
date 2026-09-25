@@ -1,64 +1,60 @@
-# Reproducibility
+<h1 align="center">Reproducibility</h1>
 
-[← Experiments](experiments.md) · **Reproducibility** · [Code map →](code_map.md)
+<p align="center">
+How to install the model, run it, and rebuild every committed number.
+</p>
 
----
+<p align="center"><sub>
+<a href="experiments.md">← Experiments</a> · <strong>Reproducibility</strong> · <a href="code_map.md">Code map →</a>
+</sub></p>
 
-## Installation
+## Install
 
-Requires Python 3.10 or later. Every committed result was produced under 3.11.
+Python 3.10 or later. Every committed result was produced under 3.11.
 
 ```bash
 git clone https://github.com/clarasalas/strategic-voting-abm-2RS.git
 cd strategic-voting-abm-2RS
-python -m pip install -r requirements.txt
+pip install -e .                  # the model
+pip install -e ".[analysis]"      # plus SALib and scikit-learn, for the analysis scripts
+pip install pytest                # for the tests
 ```
 
-`requirements.txt` lists what the *model* needs:
+The first line installs only what the model imports: numpy, scipy, matplotlib and pandas. The analysis scripts need
+two more packages, SALib for the sensitivity analysis and scikit-learn for the importance analysis, and they come
+with the `[analysis]` extra.
 
-```
-numpy>=1.24   scipy>=1.10   matplotlib>=3.7   pandas>=2.0   SALib>=1.4
-```
+<details>
+<summary><strong>Which file to install from</strong></summary>
 
-Two more are needed to run the test suite. They are installed separately and
-are not model dependencies:
+<br>
 
-```bash
-pip install pytest scikit-learn
-```
+[`requirements.txt`](../requirements.txt) and [`pyproject.toml`](../pyproject.toml) give minimum versions, and are
+the right files for running the code. [`requirements-lock.txt`](../requirements-lock.txt) gives the exact versions
+that produced the committed tables, and is the right file when the question is why a number came out as it did.
 
-> `scikit-learn` is imported by `lhs_importance.py` (the RandomForest surrogate).
-> Whether it belongs in `requirements.txt` is a genuine question about the
-> model's declared dependencies, and it is left open rather than settled by
-> convenience.
+</details>
 
----
+## See it run
 
-## Smoke example (~10 seconds)
+About ten seconds:
 
-The fastest way to see the model do something real:
-
-```bash
-python -c "
-import sys; sys.path.insert(0, 'core_model')
-from model import run_simulation
-from metrics import tau_absolute, enp
+```python
+from core_model.model import run_simulation
+from core_model.metrics import tau_absolute, enp
 
 K = 8
 res = run_simulation(
     K=K, n_modes=1, width_factor=1.5, theta=1.0, rho=100.0, rho_pi=100.0,
     n_electors=500,
-    tau=tau_absolute(1.75, K),      # NEVER pass tau_hat straight in
+    tau=tau_absolute(1.75, K),      # convert the tolerance first; never pass tau_hat directly
     mu=0.1, alpha_prior=0.0, K_runoff=2,
     max_iterations=15, seed=42, verbose=False, collect_diagnostics=True,
 )
-print(f\"ENP  sincere {enp(res['sincere_shares']):.3f}  ->  final {enp(res['final_shares']):.3f}\")
-print(f\"winner   party {res['winner_id']}\")
-print(f\"switchers {res['switching']['strategic']} of 500\")
-"
+print(f"ENP  sincere {enp(res['sincere_shares']):.3f}  ->  final {enp(res['final_shares']):.3f}")
+print(f"winner   party {res['winner_id']}")
+print(f"switchers {res['switching']['strategic']} of 500")
 ```
-
-Expected output:
 
 ```
 ENP  sincere 5.441  ->  final 5.208
@@ -66,68 +62,74 @@ winner   party 4
 switchers 19 of 500
 ```
 
-> `core_model` uses flat imports internally, so it must be on `sys.path`. That
-> is how every script in `analysis/` loads it. This exact configuration is the
-> one pinned by `test_golden_synthetic_baseline`, so if these three numbers ever
-> change, that test fails first.
-
-A quick empirical run, isolated under `data/smoke/`:
+This is the configuration pinned by `test_golden_synthetic_baseline`, so if these three numbers ever change, that
+test fails first. A quick empirical run, written to `data/smoke/` so that it cannot touch real output:
 
 ```bash
 python analysis/empirical/empirical_2002_2022.py --quick
 ```
 
----
-
-## Running the tests
+## Run the tests
 
 ```bash
-python -m pytest -ra                                 # full suite
+python -m pytest -ra                                 # everything
 python -m pytest -ra tests/test_decision_rule.py     # one family
 python -m pytest -ra -k tau                          # by keyword
 ```
 
-`-ra` shows skip reasons; the suite currently has none. For the most recent
-recorded result, the environment it was taken in, and the warning policy, see
-[Validation → Verification snapshot](validation.md#verification-snapshot).
+`-ra` prints the reason for any skipped test; there are none at the moment. The latest recorded result and the
+warning policy are in [Validation → Where things stand](validation.md#where-things-stand).
 
----
+CI runs the same suite on every push and on every pull request to `main`, on a clean machine with a fresh install.
+It is the authoritative check. Results quoted elsewhere in the documentation are dated runs on one machine, and CI
+has already caught a defect that such a run missed.
 
-## Regenerating committed artefacts
+<details>
+<summary><strong>What CI does exactly</strong></summary>
 
-### Needs no simulation
+<br>
+
+[`.github/workflows/tests.yml`](../.github/workflows/tests.yml) sets up Python 3.11, installs `requirements.txt`,
+pytest and `pip install -e ".[analysis]"`, imports every analysis script with
+`tools/check_analysis_imports.py`, then runs `pytest -ra` with no suppressed failures. It installs minimum versions
+rather than the lock file on purpose, so that it checks the code still works as its dependencies move. It was merged
+in [#13](https://github.com/clarasalas/strategic-voting-abm-2RS/pull/13), and its
+[run history](https://github.com/clarasalas/strategic-voting-abm-2RS/actions) is public.
+
+</details>
+
+## Rebuild the committed numbers
+
+Some tables rebuild in seconds from files already in the repository; others need the raw simulation output, which is
+not committed and has to be regenerated first.
+
+**No simulation needed.** The Sobol indices rebuild from the raw matrices, whose 30 720 evaluations are committed:
 
 ```bash
 python analysis/synthetic/saltelli_sensitivity.py --analyze-existing
 ```
 
-Recomputes `sobol_indices.csv` from the committed raw matrices. All 30 720
-evaluations are already on disk.
-
-Once raw empirical output exists in `data/`:
+**Once the raw empirical output exists in `data/`:**
 
 ```bash
-python analysis/empirical/make_empirical_tables.py   # 6 empirical tables
-python analysis/empirical/lhs_importance.py          # importance table
+python analysis/empirical/make_empirical_tables.py   # the 6 empirical tables
+python analysis/empirical/lhs_importance.py          # the importance table
+python tools/check_tables_reproduce.py               # fails, naming the files, if a committed table changed
 ```
 
-To check the committed tables still reproduce. This regenerates them and exits
-non-zero if any of them changes, naming the files:
+**Simulations:**
 
 ```bash
-python tools/check_tables_reproduce.py
-```
-
-### Needs simulation
-
-```bash
-python analysis/synthetic/robustness_checks.py       # panels A-G, ~2-4 min
-python analysis/synthetic/protocol_validation.py     # horizon + population
-python analysis/empirical/empirical_2002_2022.py     # replay
+python analysis/synthetic/robustness_checks.py       # panels A–G, 2 to 4 minutes
+python analysis/synthetic/protocol_validation.py     # enough rounds, enough voters
+python analysis/empirical/empirical_2002_2022.py     # the replay
 python analysis/empirical/behavioral_sweep.py --year 2002 --n_draws 1000 --n_repeats 4 --seed 20020422
 ```
 
-### The whole empirical pipeline
+<details>
+<summary><strong>The whole empirical pipeline, unattended</strong></summary>
+
+<br>
 
 ```bash
 tools/archive_pre_rerun.sh <archive-name> "" <note.md>
@@ -135,89 +137,68 @@ RUN_NAME=<run-name> RERUN_ARCHIVE=data/archive/<archive-name> \
   caffeinate -i nohup tools/run_empirical_rerun.sh > /dev/null 2>&1 &
 ```
 
-Unattended driver. It refuses to start without an archive of the current
-outputs, and refuses to reuse a run name. It writes `logs/<run-name>/`: the run
-metadata (commit, settings, seeds), the hashes of every input, a master log,
-per-stage logs, a PID file, and a `COMPLETE` or `FAILED` marker. The last run
-was 14 200 simulations in about 2 h 30. `RERUN_SMOKE=1` runs the same commands
-at a few draws each, for a separate worktree. How to run and check it:
-[`tools/README.md`](../tools/README.md); the most recent execution is recorded in
-the [empirical rerun record](reports/empirical_rerun_2026-09-24.md). The August
-2026 runbook, [`local_rerun_runbook.md`](notes/local_rerun_runbook.md), has more
-on monitoring and recovery.
+The driver refuses to start without an archive of the current outputs, and refuses to reuse a run name. It writes
+`logs/<run-name>/`: the run metadata (commit, settings, seeds), the hashes of every input, a master log, a log per
+stage, a PID file, and a `COMPLETE` or `FAILED` marker. The last run was 14 200 simulations in about 2 h 30.
+`RERUN_SMOKE=1` runs the same commands at a few draws each, in a separate worktree.
 
----
+How to run and check it: [`tools/README.md`](../tools/README.md). The latest run is recorded in the
+[run record](reports/empirical_rerun_2026-09-24.md). The August 2026 runbook,
+[`local_rerun_runbook.md`](notes/local_rerun_runbook.md), has more on monitoring and recovery.
 
-## Determinism guarantees
+</details>
 
-| Artefact | Guarantee | How to compare |
-|---|---|---|
-| Model runs | bit-identical for a fixed seed | direct equality |
-| `sobol_indices.csv` | regenerates exactly from committed inputs | checksum |
-| The 6 empirical tables | byte-identical on regeneration | checksum |
-| `lhs_parameter_importance.csv` | reproducible, but not byte-identical | numerically |
+<details>
+<summary><strong>Checking a finished run</strong></summary>
 
-> ⚠️ The importance table is fitted in parallel, so the order of floating-point
-> reduction is not fixed and the last bit of a double can move (~1e-16).
-> Predictor selection and all seeds are fixed; values reproduce within tolerance
-> and rankings are stable. Never compare it by checksum.
-
----
-
-## What is committed and what is not
-
-| Committed | Ignored |
-|---|---|
-| `results/tables/*.csv` (22) | `data/empirical_*`, `data/behavioral_*` |
-| Real input data (`polls_*`, `results_*`, `party_positions_*`, `voters_ideology_*`) | `data/smoke/`, `data/archive/` |
-| `data/saltelli_results_K{6,8,9}.csv` | `figures/` (108 files) |
-| All source, tests and docs | `logs/`, `analysis/**/outputs/` |
-
-The principle is to commit the numbers a reader needs to cite and regenerate the
-rest. Raw simulation output is bulky and reproducible from a seed, while derived
-tables are small and diff-readable.
-
----
-
-## Continuous integration
-
-[`.github/workflows/tests.yml`](../.github/workflows/tests.yml) runs on every
-push to `main` and on every pull request targeting `main`: Python 3.11, pip
-caching keyed on `requirements.txt`, `pytest -ra` with no suppressed failures.
-It was merged in [#13](https://github.com/clarasalas/strategic-voting-abm-2RS/pull/13)
-and has been running since; the
-[run history](https://github.com/clarasalas/strategic-voting-abm-2RS/actions) is
-public.
-
-CI is the authoritative check. Test results quoted elsewhere in this
-documentation are dated local runs on a single machine, a record of one moment
-rather than a standing property of the repository. CI runs the same suite on a
-clean machine with a fresh dependency install, which is what catches defects a
-configured local environment can hide. See the
-[verification snapshot](validation.md#verification-snapshot) for a case where it
-did exactly that.
-
----
-
-## Verifying a completed rerun
+<br>
 
 ```bash
-export LOGDIR=logs/rerun_20260821_launch
+export LOGDIR=logs/<run-name>
 
-ls $LOGDIR/COMPLETE && grep -c "  OK     " $LOGDIR/master.log   # expect 31
+ls $LOGDIR/COMPLETE && grep -c "  OK     " $LOGDIR/master.log   # one per stage: 33 in the 2026-09-24 run
 
-# tau relation, ceilings, row counts, finiteness, per file
+# tolerance units, ceilings, row counts and finite values, file by file
 python3 tools/validate_rerun.py data/empirical_runs_2002.csv --year 2002 --expect-rows 300
 
-# the pre-fix defect signature must not appear in ANY simulation log
+# the sign of the old unit error must not appear in any simulation log
 grep -l ">= 2.0: every party is a contender" $LOGDIR/0[1-7]*.log || echo "clean"
 
 python -m pytest -ra | tail -3
 ```
 
-The full twelve-check verification block is in
+The full list of twelve checks is in
 [`local_rerun_runbook.md`](notes/local_rerun_runbook.md#4-verifying-successful-completion).
+
+</details>
+
+## How exactly things reproduce
+
+| Output | Guarantee | How to compare |
+|---|---|---|
+| Model runs | bit-identical for a fixed seed | direct equality |
+| `sobol_indices.csv` | rebuilds exactly from committed inputs | checksum |
+| The 6 empirical tables | byte-identical when regenerated | checksum |
+| `lhs_parameter_importance.csv` | reproducible, but not byte-identical | numerically |
+
+The importance table is fitted in parallel, so the order of floating-point sums is not fixed and the last bit of a
+number can move (~1e-16). Its predictors and all seeds are fixed, the values reproduce within tolerance and the
+rankings are stable, but it should never be compared by checksum.
+
+## What is committed, and what is not
+
+The rule is to commit the numbers a reader needs to cite, and to regenerate the rest. Raw simulation output is bulky
+and comes back from a seed, while the derived tables are small and easy to compare line by line.
+
+| Committed | Not committed |
+|---|---|
+| `results/tables/*.csv` (23) | `data/empirical_*`, `data/behavioral_*` |
+| Real inputs (`polls_*`, `results_*`, `party_positions_*`, `voters_ideology_*`) | `data/smoke/`, `data/archive/` |
+| `data/saltelli_results_K{6,8,9}.csv` | `figures/` (108 files) |
+| All code, tests and documentation | `logs/`, `analysis/**/outputs/` |
 
 ---
 
-[← Experiments](experiments.md) · **Reproducibility** · [Code map →](code_map.md)
+<p align="center"><sub>
+<a href="experiments.md">← Experiments</a> · <strong>Reproducibility</strong> · <a href="code_map.md">Code map →</a>
+</sub></p>

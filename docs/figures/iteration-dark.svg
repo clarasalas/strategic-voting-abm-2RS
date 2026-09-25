@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 290" width="1200" height="290" role="img"
+     aria-labelledby="t d">
+  <title id="t">One round of the model</title>
+  <desc id="d">Every voter reads the poll, guesses which two candidates reach the runoff, and lists the candidates
+    they tolerate. If one of those is in the runoff they stay with their favourite; otherwise they switch when the gain
+    beats the cost. The votes are counted and feed the next round.</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; text-anchor: middle; }
+    .title { font-size: 17px; font-weight: 600; fill: #e8e6e3; }
+    .body { font-size: 14px; fill: #a3a6aa; }
+    .maths { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; fill: #82b4e2; }
+    .badge { font-size: 13px; font-weight: 700; fill: #131517; }
+    .label { font-size: 14px; font-weight: 600; }
+    .loop { font-size: 14px; fill: #a3a6aa; }
+    .f-card { fill: #1c1f22; } .f-wash { fill: #1b2733; } .f-ok-wash { fill: #17261f; }
+    .f-accent { fill: #82b4e2; } .f-ok { fill: #7cc4a1; }
+    .s-edge { stroke: #41464b; } .s-accent { stroke: #82b4e2; } .s-ok { stroke: #7cc4a1; }
+    .s-arrow { stroke: #7d8186; }
+    .t-ok { fill: #7cc4a1; } .t-accent { fill: #82b4e2; }
+  </style>
+  <defs>
+    <marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7d8186"/>
+    </marker>
+  </defs>
+  <rect x="0" y="58.0" width="150" height="104" rx="12" class="f-card s-edge" stroke-width="1.5"/>
+  <circle cx="18" cy="76.0" r="11" class="f-accent"/>
+  <text x="18" y="80.5" class="badge">1</text>
+  <text x="75.0" y="102.0" class="title">The poll</text>
+  <text x="75.0" y="124.0" class="body">same for everyone</text>
+  <text x="75.0" y="148.0" class="maths">sᵗ</text>
+  <path d="M151,110 L180,110" class="s-arrow" stroke-width="1.8" fill="none" marker-end="url(#head)"/>
+  <rect x="184" y="58.0" width="186" height="104" rx="12" class="f-card s-edge" stroke-width="1.5"/>
+  <circle cx="202" cy="76.0" r="11" class="f-accent"/>
+  <text x="202" y="80.5" class="badge">2</text>
+  <text x="277.0" y="102.0" class="title">Guess the runoff</text>
+  <text x="277.0" y="124.0" class="body">top two in their beliefs</text>
+  <text x="277.0" y="148.0" class="maths">α·π + (1−α)·sᵗ</text>
+  <path d="M371,110 L400,110" class="s-arrow" stroke-width="1.8" fill="none" marker-end="url(#head)"/>
+  <rect x="404" y="58.0" width="186" height="104" rx="12" class="f-card s-edge" stroke-width="1.5"/>
+  <circle cx="422" cy="76.0" r="11" class="f-accent"/>
+  <text x="422" y="80.5" class="badge">3</text>
+  <text x="497.0" y="102.0" class="title">Who they tolerate</text>
+  <text x="497.0" y="124.0" class="body">candidates close enough</text>
+  <text x="497.0" y="148.0" class="maths">|x − xⱼ| ≤ τ</text>
+  <path d="M591,110 L618,110" class="s-arrow" stroke-width="1.8" fill="none" marker-end="url(#head)"/>
+  <path d="M700,30 L780,110 L700,190 L620,110 z" class="f-wash s-accent"
+        stroke-width="1.5"/>
+  <circle cx="700" cy="54" r="11" class="f-accent"/>
+  <text x="700" y="58.5" class="badge">4</text>
+  <text x="700" y="104" class="body" style="fill:#e8e6e3">A tolerable one</text>
+  <text x="700" y="123" class="body" style="fill:#e8e6e3">in the runoff?</text>
+  <path d="M740,70 C770,54.0 800,54.0 827,54.0" class="s-arrow" stroke-width="1.8" fill="none" marker-end="url(#head)"/>
+  <path d="M740,150 C770,172.0 800,172.0 827,172.0" class="s-arrow" stroke-width="1.8" fill="none" marker-end="url(#head)"/>
+  <text x="772" y="36" class="label t-ok">yes</text>
+  <text x="772" y="202" class="label t-accent">no</text>
+  <rect x="830" y="6" width="196" height="96" rx="12" class="f-ok-wash s-ok" stroke-width="1.5"/>
+  <text x="928.0" y="42" class="title">Stay</text>
+  <text x="928.0" y="66" class="body">with their favourite</text>
+  <text x="928.0" y="90" class="maths">j*</text>
+  <rect x="830" y="124" width="196" height="96" rx="12" class="f-wash s-accent" stroke-width="1.5"/>
+  <text x="928.0" y="160" class="title">Maybe switch</text>
+  <text x="928.0" y="184" class="body">if the gain beats the cost</text>
+  <text x="928.0" y="208" class="maths">cost weighted by μ</text>
+  <path d="M1027,54.0 C1040,54.0 1030,110 1051,110" class="s-arrow" stroke-width="1.8" fill="none" marker-end="url(#head)"/>
+  <path d="M1027,172.0 C1040,172.0 1030,110 1051,110" class="s-arrow" stroke-width="1.8" fill="none"/>
+  <rect x="1054" y="58.0" width="146" height="104" rx="12" class="f-card s-edge" stroke-width="1.5"/>
+  <circle cx="1072" cy="76.0" r="11" class="f-accent"/>
+  <text x="1072" y="80.5" class="badge">5</text>
+  <text x="1127.0" y="102.0" class="title">Count votes</text>
+  <text x="1127.0" y="124.0" class="body">new vote shares</text>
+  <text x="1127.0" y="148.0" class="maths">ENP, CENP</text>
+  <path d="M1127.0,163.0 L1127.0,262 L75,262 L75,166.0" class="s-accent" stroke-width="1.8" stroke-dasharray="6 5" fill="none" marker-end="url(#head)"/>
+  <text x="540" y="253" class="loop">next round: the votes shape the next poll, or the next real poll is read</text>
+</svg>

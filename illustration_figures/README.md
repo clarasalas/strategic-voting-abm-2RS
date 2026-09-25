@@ -15,6 +15,7 @@ tolerates, how a poll is distorted, and how coordination is measured.
 | [`preferences_figure.py`](preferences_figure.py) | One voter, the candidates they tolerate, and the ones they do not. |
 | [`signal_figures.py`](signal_figures.py) | How a poll is made from true support: sharpened or flattened by a temperature, then blurred by noise. |
 | [`outcome_measures_figure.py`](outcome_measures_figure.py) | A sincere vote next to the vote after switching, with the coordination measures in between. |
+| [`iteration_diagram.py`](iteration_diagram.py) | One round of the model, from the poll to the count, as shown on the [model page](../docs/model.md#one-round). |
 | [`fr_elections.py`](fr_elections.py) | For five French presidential elections, the poll next to the first- and second-round results. |
 | [`fr_vote_transfers.py`](fr_vote_transfers.py) | Where each first-round electorate went in the second round, 2002 and 2022. |
 
@@ -30,3 +31,5 @@ python illustration_figures/<script>.py
 
 Each script writes its own PNG and PDF. Figures are not committed: they regenerate in seconds, and a stale image is
 harder to spot than a stale number.
+The exception is `iteration_diagram.py`, which writes two SVGs, light and dark, into `docs/figures/`. They are
+committed because the model page shows them.

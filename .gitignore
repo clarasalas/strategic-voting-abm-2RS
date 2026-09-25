@@ -220,6 +220,8 @@ __marimo__/
 
 # Generated outputs (regenerate from analysis scripts)
 figures/
+# except the diagram the model page shows (illustration_figures/iteration_diagram.py)
+!docs/figures/
 data/empirical_*
 data/behavioral_*
 data/sweep_*

@@ -218,7 +218,7 @@ derived tables are committed.
 
 | | |
 |---|---|
-| **[Model](docs/model.md)** | Entities, one full iteration, initialisation, tolerance units, the decision rule, outcome measures. |
+| **[Model](docs/model.md)** | One round in a diagram, where voters start, what they tolerate and believe, when they switch, how coordination is measured. |
 | **[Validation](docs/validation.md)** | The 17 check families, what each guarantees, current status. |
 | **[Experiments](docs/experiments.md)** | Parameter spaces, seeds, simulation counts, data provenance. |
 | **[Reproducibility](docs/reproducibility.md)** | Install, run, regenerate, verify. |

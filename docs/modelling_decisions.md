@@ -14,7 +14,7 @@ rather than renumbering, so the paper and the commit history can keep referring 
 
 | Column | What goes in it |
 |---|---|
-| **ID** | stable identifier, prefixed by block (S, V, C, I, B, F, D, T, O, E) |
+| **ID** | stable identifier, prefixed by block (S, V, C, I, B, F, D, T, O) |
 | **Model component** | the part of the model the decision is about |
 | **Choice made** | what the model does now, in one sentence |
 | **Alternatives considered** | the other options that were on the table |
@@ -136,17 +136,21 @@ rather than renumbering, so the paper and the commit history can keep referring 
 
 ## E · Experimental design and validation
 
-| ID | Model component | Choice made | Alternatives considered | Justification | References | Where in code | Sensitivity tested? | Status |
-|---|---|---|---|---|---|---|---|---|
-| E1 | Case selection (France 2002 and 2022) | | | | | | | |
-| E2 | Global sensitivity analysis (Saltelli sampling, Sobol indices) | | | | | | | |
-| E3 | Parameter ranges for the synthetic design | | | | | | | |
-| E4 | Pattern-oriented validation, nothing fitted | | | | | | | |
-| E5 | One behavioural setting for both years | | | | | | | |
-| E6 | Behavioural sweep design (Latin hypercube) | | | | | | | |
-| E7 | Parameter importance from a surrogate model | | | | | | | |
-| E8 | Protocol robustness panels (A–G) | | | | | | | |
-| E9 | Number of draws and repeats per setting | | | | | | | |
+**Deferred.** The protocol will be designed once the model is frozen. The experiments run so far (Sobol on the
+synthetic mode, the 2002 and 2022 replays, the behavioural sweeps, the robustness panels) were exploratory: they
+show how the model behaves, but they are not the final protocol, and they are not logged here as decisions.
+
+Candidate components for the final protocol, to be decided then:
+
+- [ ] Verification (unit and invariant tests, analytic limits)
+- [ ] Number of replications per setting (convergence of the output variance)
+- [ ] Time horizon and convergence of the dynamics
+- [ ] Global sensitivity analysis (Saltelli sampling, Sobol indices) in **both** modes
+- [ ] Calibration or estimation method (e.g. likelihood-based, simulated likelihood, approximate Bayesian computation, method of simulated moments)
+- [ ] Goodness of fit against the real elections (which targets, which metric)
+- [ ] Pattern-oriented validation (which stylized facts the model must reproduce)
+- [ ] Out-of-sample validation (e.g. other French elections)
+- [ ] Case selection (2002 and 2022, and why)
 
 ---
 

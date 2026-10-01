@@ -291,9 +291,10 @@ The hand-copied files these replaced had LO/NPA and EELV/PS swapped in every 202
 
 <br>
 
-**`FR-electoral_data.csv`** holds party-level poll shares before the election and first-round results for five
-French presidential elections. Parties are ordered on the left-right axis following the classification in Ipsos
-post-election reports.
+**`FR-electoral_data.csv`** holds one row per first-round candidate (party code and candidate name) for five
+French presidential elections, with the poll share before the election and the official first-round result. Parties
+are ordered on the left-right axis following the classification in Ipsos post-election reports; candidates that the
+poll did not include have no poll share and no ideological order.
 
 | Year | Poll source | Results |
 |------|-------------|---------|
@@ -303,8 +304,10 @@ post-election reports.
 | 2017 | n/a | Ministère de l'Intérieur (2017) |
 | 2022 | Ipsos / CEVIPOF / *Le Monde* / Fondation Jean Jaurès wave 5, 3–7 February 2022, *n* = 12 499 | Ministère de l'Intérieur (2022) |
 
-Gluckstein (POI, 2002) is left out of the 2002 data: he had not announced his candidacy at the time of the survey,
-and obtained 0.47% in the first round.
+Gluckstein (PT, 2002) had not announced his candidacy at the time of the 2002 survey, so his row carries only his
+official result (0.47%). The same holds for the 2012 and 2017 candidates the poll did not list (Poutou and Cheminade
+in 2012; Arthaud, Lassalle, Asselineau and Cheminade in 2017). ΔCENP is computed over the candidates that have a
+poll share.
 
 **`FR-vote_transfers.csv`** holds estimated second-round vote transfers for 2002 and 2022. The left-hand nodes are
 sized by the official first-round shares, and the right-hand nodes by the official second-round shares, both from

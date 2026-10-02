@@ -25,6 +25,7 @@ leaves out: the equations, every family of checks, parameter ranges and seeds, a
 | **[Experiments](experiments.md)** | The synthetic and empirical protocols: parameter ranges, seeds, simulation counts, data sources. |
 | **[Reproducibility](reproducibility.md)** | Install, run, and rebuild every committed number. |
 | **[Code map](code_map.md)** | How the repository is laid out, and which definition wins when two seem to compute the same thing. |
+| **[Modelling decisions](modelling_decisions.md)** | Every modelling choice, the alternatives, and why: the log behind the paper's ODD+D and parameter table. |
 
 ## Run records
 

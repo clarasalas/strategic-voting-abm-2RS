@@ -264,6 +264,15 @@ Provenance and processing: [docs/experiments.md → Data sources](docs/experimen
 
 </details>
 
+## Licence
+
+Copyright © 2026 Clara Salas.
+
+The code is free software, licensed under the [GNU General Public License v3.0 or later](LICENSE): you may use,
+modify and redistribute it, and anything you distribute that is based on it must be released under the same
+licence. The data, results and figures (`data/`, `results/`, `figures/`, `illustration_figures/` and `docs/figures/`) are licensed under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); see [`LICENSE-DATA.md`](LICENSE-DATA.md), which also lists the sources to credit.
+
 ---
 
 <sub>Clara Salas (ENS-PSL). This project started as a master's thesis in cognitive science at ENS-PSL, written after a

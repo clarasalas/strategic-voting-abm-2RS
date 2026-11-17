@@ -33,10 +33,17 @@ jobs:
       # This installs floors, not the pins in requirements-lock.txt.  That is
       # deliberate: CI checks the code still works as its dependencies move.
       # Reproducing a committed number is the lock file's job, not CI's.
+      #
+      # One temporary exception: pandas is capped below 3.1.  Under pandas
+      # 3.1.1 the France 2022 preset of the demo (demo/precompute.py) comes
+      # out slightly different, and test_france_2022_preset_matches_the_
+      # current_inputs fails, on main as well (checked 2026-11-17; it passes
+      # under 3.0.5).  The cause has not been looked into yet.  Remove the cap
+      # once the code gives the same numbers under pandas 3.1.
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt "pandas<3.1"
           pip install pytest
           # Editable, so the checkout stays the code under test.  This is what
           # makes `import core_model.model` resolve the same way it does for

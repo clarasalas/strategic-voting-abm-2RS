@@ -266,6 +266,7 @@ Provenance and processing: [docs/experiments.md → Data sources](docs/experimen
 
 ---
 
-<sub>Clara Salas (ENS-PSL). This project started as a master's thesis at Centre Borelli, supervised by
-Julien Randon-Furling, with advice from Cécile de Bezenac, and continues under their supervision. Companion project on the geography of coordination:
+<sub>Clara Salas (ENS-PSL). This project started as a master's thesis in cognitive science at ENS-PSL, written after a
+research internship at Centre Borelli (ENS Paris-Saclay). It was supervised by Julien Randon-Furling and Cécile de Bézenac, and
+continues under their supervision. Companion project on the geography of coordination:
 [strategic-voting-geo-2RS](https://github.com/clarasalas/strategic-voting-geo-2RS).</sub>
